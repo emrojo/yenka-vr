@@ -16,19 +16,28 @@ AYenkaDesktopPawn::AYenkaDesktopPawn()
 	CameraBoom->TargetArmLength = 120.0f;
 	CameraBoom->bUsePawnControlRotation = true;
 	CameraBoom->bDoCollisionTest = false;
+	CameraBoom->SetRelativeRotation(FRotator(-20.0f, 0.0f, 0.0f));
 
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 
+	HandAvatarClass = AYenkaHandAvatar::StaticClass();
 	HoveredBlock = nullptr;
 	GrabbedBlock = nullptr;
 	bIsOrbitingCamera = false;
-	PullDepthOffset = 0.0f;
 }
 
 void AYenkaDesktopPawn::BeginPlay()
 {
 	Super::BeginPlay();
+
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC && IsLocallyControlled())
+	{
+		PC->bShowMouseCursor = true;
+		PC->bEnableClickEvents = true;
+		PC->bEnableMouseOverEvents = true;
+	}
 
 	if (IsLocallyControlled() && HandAvatarClass)
 	{
@@ -51,6 +60,60 @@ void AYenkaDesktopPawn::Tick(float DeltaTime)
 void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
+
+	if (PlayerInputComponent)
+	{
+		PlayerInputComponent->BindAction("PrimaryClick", IE_Pressed, this, &AYenkaDesktopPawn::OnPrimaryClickPressed);
+		PlayerInputComponent->BindAction("PrimaryClick", IE_Released, this, &AYenkaDesktopPawn::OnPrimaryClickReleased);
+		PlayerInputComponent->BindAction("SecondaryClick", IE_Pressed, this, &AYenkaDesktopPawn::OnSecondaryClickPressed);
+		PlayerInputComponent->BindAction("SecondaryClick", IE_Released, this, &AYenkaDesktopPawn::OnSecondaryClickReleased);
+		PlayerInputComponent->BindAxis("Turn", this, &AYenkaDesktopPawn::AddOrbitYaw);
+		PlayerInputComponent->BindAxis("LookUp", this, &AYenkaDesktopPawn::AddOrbitPitch);
+		PlayerInputComponent->BindAction("ZoomIn", IE_Pressed, this, &AYenkaDesktopPawn::OnZoomIn);
+		PlayerInputComponent->BindAction("ZoomOut", IE_Pressed, this, &AYenkaDesktopPawn::OnZoomOut);
+	}
+}
+
+void AYenkaDesktopPawn::OnSecondaryClickPressed()
+{
+	bIsOrbitingCamera = true;
+}
+
+void AYenkaDesktopPawn::OnSecondaryClickReleased()
+{
+	bIsOrbitingCamera = false;
+}
+
+void AYenkaDesktopPawn::AddOrbitYaw(float Val)
+{
+	if (bIsOrbitingCamera && FMath::Abs(Val) > 0.01f)
+	{
+		AddControllerYawInput(Val);
+	}
+}
+
+void AYenkaDesktopPawn::AddOrbitPitch(float Val)
+{
+	if (bIsOrbitingCamera && FMath::Abs(Val) > 0.01f)
+	{
+		AddControllerPitchInput(-Val);
+	}
+}
+
+void AYenkaDesktopPawn::OnZoomIn()
+{
+	if (CameraBoom)
+	{
+		CameraBoom->TargetArmLength = FMath::Clamp(CameraBoom->TargetArmLength - 10.0f, 40.0f, 300.0f);
+	}
+}
+
+void AYenkaDesktopPawn::OnZoomOut()
+{
+	if (CameraBoom)
+	{
+		CameraBoom->TargetArmLength = FMath::Clamp(CameraBoom->TargetArmLength + 10.0f, 40.0f, 300.0f);
+	}
 }
 
 void AYenkaDesktopPawn::HandleMouseTrace()

@@ -3,6 +3,8 @@
 #include "YenkaPlayerState.h"
 #include "YenkaVR/Physics/YenkaTowerManager.h"
 #include "YenkaVR/Interaction/YenkaVRPawn.h"
+#include "YenkaVR/Interaction/YenkaDesktopPawn.h"
+#include "IXRTrackingSystem.h"
 #include "YenkaVR.h"
 #include "TimerManager.h"
 #include "Kismet/GameplayStatics.h"
@@ -32,6 +34,15 @@ void AYenkaGameMode::BeginPlay()
 		SpawnParams.Owner = this;
 		GetWorld()->SpawnActor<AYenkaTowerManager>(AYenkaTowerManager::StaticClass(), FVector(80.0f, 0.0f, 70.0f), FRotator::ZeroRotator, SpawnParams);
 	}
+}
+
+UClass* AYenkaGameMode::GetDefaultPawnClassForController_Implementation(AController* InController)
+{
+	if (GEngine && GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowed())
+	{
+		return AYenkaVRPawn::StaticClass();
+	}
+	return AYenkaDesktopPawn::StaticClass();
 }
 
 void AYenkaGameMode::PostLogin(APlayerController* NewPlayer)

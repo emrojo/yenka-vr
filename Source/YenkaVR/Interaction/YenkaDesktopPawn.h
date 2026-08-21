@@ -44,9 +44,13 @@ protected:
 	AYenkaBlock* GrabbedBlock;
 
 	bool bIsOrbitingCamera;
-	float PullDepthOffset;
-
 	void HandleMouseTrace();
 	void OnPrimaryClickPressed();
 	void OnPrimaryClickReleased();
+	void OnSecondaryClickPressed();
+	void OnSecondaryClickReleased();
+	void AddOrbitYaw(float Val);
+	void AddOrbitPitch(float Val);
+	void OnZoomIn();
+	void OnZoomOut();
 };

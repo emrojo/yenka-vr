@@ -31,6 +31,7 @@ public:
 	virtual void BeginPlay() override;
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 	virtual void Logout(AController* Exiting) override;
+	virtual UClass* GetDefaultPawnClassForController_Implementation(AController* InController) override;
 
 	/** Starts the next player's turn */
 	UFUNCTION(BlueprintCallable, Category = "Yenka|Turn")
