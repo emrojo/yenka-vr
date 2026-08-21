@@ -11,6 +11,8 @@ Este documento registra todas las decisiones de arquitectura, diseño técnico y
 * [ADR-003: Compatibilidad Multi-Entorno (Realidad Mixta Passthrough, VR Puro y Escritorio No-VR)](#adr-003-compatibilidad-multi-entorno-realidad-mixta-passthrough-vr-puro-y-escritorio-no-vr)
 * [ADR-004: Representación Unificada de Manos e Interacciones Asimétricas](#adr-004-representación-unificada-de-manos-e-interacciones-asimétricas)
 * [ADR-005: Sistema de Conectividad mediante Steam Lobbies, Códigos Alfanuméricos y VoIP 3D](#adr-005-sistema-de-conectividad-mediante-steam-lobbies-códigos-alfanuméricos-y-voip-3d)
+* [ADR-006: Estabilización de Torre Chaos Physics mediante Micro-Holgura, Sleep Inicial y Despertar Selectivo](#adr-006-estabilización-de-torre-chaos-physics-mediante-micro-holgura-sleep-inicial-y-despertar-selectivo)
+* [ADR-007: Modelo 3D de Mano Articulada con Shader VR y Manipulación por Physics Handle en PC](#adr-007-modelo-3d-de-mano-articulada-con-shader-vr-y-manipulación-por-physics-handle-en-pc)
 
 ---
 
@@ -76,6 +78,35 @@ Este documento registra todas las decisiones de arquitectura, diseño técnico y
 * **Consecuencias:**
   * *(Positivo)* Conexión directa P2P segura mediante los relays de Steam.
   * *(Positivo)* Inmersión acústica: escuchar la voz de tus amigos venir exactamente de donde se encuentra su avatar alrededor de la mesa.
+
+---
+
+### ADR-006: Estabilización de Torre Chaos Physics mediante Micro-Holgura, Sleep Inicial y Despertar Selectivo
+* **Fecha:** 2026-08-22
+* **Estado:** Aceptado
+* **Contexto:** En simulaciones de apilamiento de 54 cuerpos rígidos en Chaos Physics, el contacto directo sin holgura en el frame 0 acumula micro-impulsos normales de penetración numérica que causaban la caída inmediata de la torre al nacer.
+* **Decisión:**
+  * Implementar una micro-holgura lateral de seguridad de $0.3\text{ mm}$ entre los 3 bloques de cada capa (`Offset = (i - 1) * 2.53f`) y $0.3\text{ mm}$ de holgura vertical por capa.
+  * Mantener la torre en estado *Rigid Body Sleep* al spawnear con `SetSimulatePhysics(true)` y `SetEnableGravity(true)` habilitados.
+  * Despertar selectivo: al hacer clic en un bloque, solo se despierta la pieza interactuada (`WakeRigidBody()`), propagando el movimiento a bloques vecinos por contacto y permitiendo el colapso gravitatorio cuando se retira el soporte de un piso.
+  * Configurar 16 iteraciones del solucionador de posición (`PositionSolverIterationCount = 16`) y amortiguamiento de $1.0$.
+* **Consecuencias:**
+  * *(Positivo)* Estabilidad absoluta de la torre en el arranque sin vibraciones ni derrumbes espontáneos.
+  * *(Positivo)* Colapso por gravedad 100% natural y realista al extraer piezas de soporte.
+
+---
+
+### ADR-007: Modelo 3D de Mano Articulada con Shader VR y Manipulación por Physics Handle en PC
+* **Fecha:** 2026-08-22
+* **Estado:** Aceptado
+* **Contexto:** El avatar del jugador requería una representación estética clara (en lugar de figuras primitivas o esferas) y una mecánica de extracción física fluida para jugadores de ratón y teclado.
+* **Decisión:**
+  * Construir un avatar de mano 3D proporcional con nodo raíz neutro (`HandRoot`), palma ($6\text{ cm} \times 5\text{ cm} \times 2\text{ cm}$) y 5 dedos articulados con cinemática de flexión en pinza/agarre al accionar el clic.
+  * Asignar material dinámico de guante VR en color azul cian eléctrico con brillo metálico/especular.
+  * Implementar manipulación física asistida por `UPhysicsHandleComponent` para arrastrar bloques suavemente con el ratón respetando la fricción y el peso de las capas superiores.
+* **Consecuencias:**
+  * *(Positivo)* Identidad visual atractiva e inmersiva.
+  * *(Positivo)* Extracción precisa de piezas con física continua y control intuitivo en pantalla plana.
 
 ---
 

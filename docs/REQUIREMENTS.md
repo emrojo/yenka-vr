@@ -20,9 +20,10 @@ Este apartado mantiene el historial inmutable de todos los requisitos definidos 
 | Versión | Fecha | Autor / Stakeholder | Descripción del Cambio / Hitos Acordados |
 | :--- | :--- | :--- | :--- |
 | **v1.0.0** | 2026-08-21 | Usuario & Antigravity | Definición inicial de requisitos: UE5 + Chaos Physics, autoridad de físicas por turno, MR Passthrough con calibración doble (auto/manual), soporte No-VR con mano virtual, espectador con manipulación de zoom bimanual/drag, Lobbies de Steam + Códigos y VoIP 3D. |
+| **v1.1.0** | 2026-08-22 | Usuario & Antigravity | Estabilización física de la torre con micro-holgura lateral de $0.3\text{ mm}$, configuración de Chaos Solver (16 iteraciones), extracción por `PhysicsHandle`, materiales dinámicos de madera realista para bloques/mesa y avatar 3D de mano articulada con cinemática de agarre. |
 
 > [!NOTE]
-> Cualquier nuevo requisito o modificación que se acuerde en el futuro deberá añadirse a esta tabla con una versión incremental (`v1.1.0`, etc.) y referenciarse en el archivo [`docs/DECISION_LOG.md`](DECISION_LOG.md).
+> Cualquier nuevo requisito o modificación que se acuerde en el futuro deberá añadirse a esta tabla con una versión incremental (`v1.2.0`, etc.) y referenciarse en el archivo [`docs/DECISION_LOG.md`](DECISION_LOG.md).
 
 ---
 
@@ -51,13 +52,19 @@ Este apartado mantiene el historial inmutable de todos los requisitos definidos 
 
 * **`[REQ-PHYS-01]` Simulación Chaos Physics:**
   * La torre constará de 54 bloques individuales simulados mediante Chaos Rigid Bodies con Continuous Collision Detection (CCD).
-  * Material físico de madera realista con fricción estática ($\approx 0.65$), fricción dinámica ($\approx 0.45$) y amortiguación de colisión.
+  * Dimensiones reglamentarias de bloque de Yenka: $7.5\text{ cm} \times 2.5\text{ cm} \times 1.5\text{ cm}$ con masa de $85\text{ g}$.
+  * Material físico de madera realista con fricción estática ($\approx 0.65$), fricción dinámica ($\approx 0.45$) y amortiguación física (`LinearDamping 1.0`, `AngularDamping 1.0`).
 * **`[REQ-PHYS-02]` Modelo de Autoridad de Físicas Transferible (*Turn-Owner Authority*):**
   * El cliente del jugador cuyo turno está activo posee la autoridad física (`Network Ownership`) sobre los bloques de la torre para garantizar manipulación a 0 ms de lag.
   * El jugador activo replica periódicamente (30-60 Hz) las posiciones, rotaciones y velocidades lineales/angulares al servidor/host.
   * Los demás clientes interpolan suavemente el estado cinemático de los bloques.
 * **`[REQ-PHYS-03]` Congelación de Reposo (*Sleep State Stabilization*):**
-  * Al finalizar cada turno y confirmarse el equilibrio de la torre, los bloques entran en estado *Sleep/Kinematic Freeze* en todos los clientes para evitar la deriva acumulativa de coma flotante.
+  * Al nacer la torre y al finalizar cada turno tras confirmarse el equilibrio, los bloques entran en estado *Sleep* con simulación física y gravedad siempre habilitadas para eliminar derivas de coma flotante.
+* **`[REQ-PHYS-04]` Micro-Holgura y Solucionador de Contactos:**
+  * Separación lateral de seguridad de $0.3\text{ mm}$ entre los 3 bloques de cada piso (`Offset = (i - 1) * 2.53f`) para impedir tensiones o impulsos expansivos en el frame 0.
+  * Separación vertical de $0.3\text{ mm}$ por piso (`CurrentZ = BaseZ + Layer * 1.503f + 0.75f`).
+  * Solucionador Chaos calibrado a 16 iteraciones de posición y 8 iteraciones de velocidad (`PositionSolverIterationCount = 16`, `VelocitySolverIterationCount = 8`).
+  * Despertar dinámico y colapso por gravedad: al retirar un bloque de apoyo o despejar un piso, los bloques superiores caen y se derrumban por física y peso natural.
 
 ---
 
@@ -79,26 +86,41 @@ Este apartado mantiene el historial inmutable de todos los requisitos definidos 
 * **`[REQ-CROSS-01]` Renderizado de Entorno No-VR:**
   * En modo pantalla plana (teclado/ratón), el juego siempre renderiza la habitación virtual fotorrealista.
 * **`[REQ-CROSS-02]` Avatar de Mano Virtual Replicada:**
-  * Cada jugador (tanto VR como No-VR) cuenta con una representación visual de su mano/cursor 3D.
-  * Cuando el jugador de No-VR interactúa con un bloque, la mano virtual se mueve hacia el bloque, reflejando sus acciones para que los demás jugadores en VR lo vean con naturalidad.
-* **`[REQ-CROSS-03]` Controles de Manipulación No-VR:**
-  * Puntero con raycast para seleccionar el bloque.
-  * Modos de empuje y extracción fina con movimiento de ratón y rueda para profundidad/ángulo.
+  * Mano 3D proporcional y articulada (palma de $6\text{ cm} \times 5\text{ cm} \times 2\text{ cm}$ + pulgar y 4 dedos articulados).
+  * Visibilidad contextual inteligente: la mano se oculta en el aire y se posiciona automáticamente sobre el bloque o la mesa al apuntar con el ratón.
+  * Cinemática de flexión en pinza/agarre (*grasping pose*) al presionar el clic de agarre.
+* **`[REQ-CROSS-03]` Manipulación Física Asistida por Ratón (*Physics Handle*):**
+  * **Clic Izquierdo (Mantener):** Engancha el bloque seleccionado con un `UPhysicsHandleComponent` en el punto de contacto exacto.
+  * **Arrastre:** Al mover el ratón hacia afuera, el bloque se extrae suavemente respondiendo a la fricción y el peso de los pisos superiores.
+  * **Clic Izquierdo (Soltar):** Libera el asa física para dejar caer o asentar el bloque.
+  * **Clic Derecho (Arrastrar):** Rotación orbital libre en 360° alrededor de la torre.
+  * **Rueda de Ratón:** Zoom de cámara hacia la torre.
+  * **Teclas WASD:** Paneo y desplazamiento del punto focal de la cámara.
 
 ---
 
-### 3.5. Interacción y Modo Espectador (`[REQ-CAM]`)
+### 3.5. Arte, Materiales y Apariencia Visual (`[REQ-ART]`)
+
+* **`[REQ-ART-01]` Materiales Dinámicos de Madera Fotorrealista:**
+  * Cada bloque de la torre utiliza un sombreador dinámico de madera pulida (haya/roble) con brillo satinado (`Roughness = 0.32`) y variaciones procedurales de color únicas por bloque ($Var \pm 0.07$).
+  * Tablero de juego en acabado de madera oscura noble de nogal (`Roughness = 0.40`).
+* **`[REQ-ART-02]` Estilización de Avatar y Guante VR:**
+  * Acabado en guante de realidad virtual azul cian vibrante con propiedades reflectantes y metálicas para contraste óptimo contra la madera.
+
+---
+
+### 3.6. Interacción y Modo Espectador (`[REQ-CAM]`)
 
 * **`[REQ-CAM-01]` Manipulación Bimanual de Escala en VR (*Pinch Zoom*):**
   * Los jugadores fuera de turno pueden agarrar el espacio con ambas manos y acercar/separar los mandos para escalar el tamaño de la mesa/torre de forma fluida.
 * **`[REQ-CAM-02]` Paneo y Rotación del Tablero en VR:**
   * Agarre con una mano en el aire o borde de la mesa para rotar o desplazar el punto de vista sin desincronizar la posición real de la partida.
 * **`[REQ-CAM-03]` Cámara Orbital para No-VR:**
-  * Control de cámara orbital 360° con clic derecho, paneo con botón central y zoom con rueda de ratón.
+  * Control de cámara orbital 360° con clic derecho, paneo con botón central/WASD y zoom con rueda de ratón.
 
 ---
 
-### 3.6. Red, Lobbies y Comunicación (`[REQ-NET]`)
+### 3.7. Red, Lobbies y Comunicación (`[REQ-NET]`)
 
 * **`[REQ-NET-01]` Integración con Steam Lobbies:**
   * Soporte nativo de `OnlineSubsystemSteam` y `SteamSockets`.
@@ -117,7 +139,7 @@ Este apartado mantiene el historial inmutable de todos los requisitos definidos 
   * Mínimo **90 FPS** estables en VR en configuraciones recomendadas (evitar mareo por movimiento / *motion sickness*).
   * Mínimo **60 FPS** en modo No-VR con Lumen y gráficos fotorrealistas.
 * **`[NFR-LAT-02]` Latencia de Interacción Física:**
-  * La manipulación local en el turno activo debe tener latencia de respuesta inferior a **15 ms** en VR.
+  * La manipulación local en el turno activo debe tener latencia de respuesta inferior a **15 ms** en VR y PC.
 * **`[NFR-SEC-03]` Integridad de Red y P2P:**
   * Conexión a través de Steam Relay Sockets para evitar la exposición de direcciones IP públicas de los jugadores.
 * **`[NFR-MOD-04]` Modularidad de Código:**
@@ -132,11 +154,16 @@ Este apartado mantiene el historial inmutable de todos los requisitos definidos 
 | `[REQ-CORE-01]` | Temporizador Turno (45s) | `Source/YenkaVR/Core/YenkaGameMode.h` | Especificado |
 | `[REQ-CORE-02]` | Flujo de Jugada | `Source/YenkaVR/Core/YenkaGameState.h` | Especificado |
 | `[REQ-CORE-03]` | Puntuación Acumulativa | `Source/YenkaVR/Core/YenkaPlayerState.h` | Especificado |
-| `[REQ-PHYS-01]` | Chaos Physics 54 Bloques | `Source/YenkaVR/Physics/YenkaTowerManager.h` | Especificado |
-| `[REQ-PHYS-02]` | Autoridad por Turno | `Source/YenkaVR/Physics/YenkaBlock.h` | Especificado |
-| `[REQ-XR-01]` | Passthrough OpenXR | `Source/YenkaVR/Spatial/YenkaPassthroughManager.h` | Especificado |
-| `[REQ-XR-02]` | Calibración Mesa | `Source/YenkaVR/Spatial/YenkaSurfaceCalibrator.h` | Especificado |
-| `[REQ-CROSS-02]`| Mano Virtual Replicada | `Source/YenkaVR/Interaction/YenkaHandAvatar.h` | Especificado |
-| `[REQ-CAM-01]` | Pinch Zoom Bimanual | `Source/YenkaVR/Interaction/YenkaVRPawn.h` | Especificado |
-| `[REQ-NET-01]` | Steam Lobbies & Codes | `Source/YenkaVR/Network/YenkaSteamLobby.h` | Especificado |
-| `[REQ-NET-03]` | 3D Spatial Audio VoIP | `Source/YenkaVR/Network/YenkaVoiceComponent.h` | Especificado |
+| `[REQ-PHYS-01]` | Chaos Physics 54 Bloques | `Source/YenkaVR/Physics/YenkaTowerManager.h` | Implementado |
+| `[REQ-PHYS-02]` | Autoridad por Turno | `Source/YenkaVR/Physics/YenkaBlock.h` | Implementado |
+| `[REQ-PHYS-03]` | Congelación de Reposo | `Source/YenkaVR/Physics/YenkaTowerManager.cpp` | Implementado |
+| `[REQ-PHYS-04]` | Micro-Holgura & Gravity Collapse | `Source/YenkaVR/Physics/YenkaTowerManager.cpp` | Implementado |
+| `[REQ-CROSS-02]`| Mano 3D Articulada & Grip | `Source/YenkaVR/Interaction/YenkaHandAvatar.cpp` | Implementado |
+| `[REQ-CROSS-03]`| Extracción por PhysicsHandle | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implementado |
+| `[REQ-ART-01]`  | Shaders Madera Fotorrealista | `Source/YenkaVR/Physics/YenkaBlock.cpp` | Implementado |
+| `[REQ-XR-01]`   | Passthrough OpenXR | `Source/YenkaVR/Spatial/YenkaPassthroughManager.h` | Especificado |
+| `[REQ-XR-02]`   | Calibración Mesa | `Source/YenkaVR/Spatial/YenkaSurfaceCalibrator.h` | Especificado |
+| `[REQ-CAM-01]`  | Pinch Zoom Bimanual | `Source/YenkaVR/Interaction/YenkaVRPawn.h` | Especificado |
+| `[REQ-NET-01]`  | Steam Lobbies & Codes | `Source/YenkaVR/Network/YenkaSteamLobby.h` | Especificado |
+| `[REQ-NET-03]`  | 3D Spatial Audio VoIP | `Source/YenkaVR/Network/YenkaVoiceComponent.h` | Especificado |
+
