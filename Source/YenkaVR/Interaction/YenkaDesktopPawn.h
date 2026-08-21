@@ -44,6 +44,9 @@ protected:
 	AYenkaBlock* GrabbedBlock;
 
 	bool bIsOrbitingCamera;
+	float GrabDistance;
+	FVector LastHitLocation;
+
 	void HandleMouseTrace();
 	void OnPrimaryClickPressed();
 	void OnPrimaryClickReleased();

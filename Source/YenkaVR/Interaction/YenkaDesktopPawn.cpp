@@ -6,6 +6,8 @@
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 
+#include "PhysicsEngine/PhysicsHandleComponent.h"
+
 AYenkaDesktopPawn::AYenkaDesktopPawn()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -13,7 +15,7 @@ AYenkaDesktopPawn::AYenkaDesktopPawn()
 
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	RootComponent = CameraBoom;
-	CameraBoom->TargetArmLength = 120.0f;
+	CameraBoom->TargetArmLength = 65.0f;
 	CameraBoom->bUsePawnControlRotation = true;
 	CameraBoom->bDoCollisionTest = false;
 	CameraBoom->SetRelativeRotation(FRotator(-20.0f, 0.0f, 0.0f));
@@ -25,6 +27,8 @@ AYenkaDesktopPawn::AYenkaDesktopPawn()
 	HoveredBlock = nullptr;
 	GrabbedBlock = nullptr;
 	bIsOrbitingCamera = false;
+	GrabDistance = 65.0f;
+	LastHitLocation = FVector::ZeroVector;
 }
 
 #include "YenkaVR/Physics/YenkaTowerManager.h"
@@ -168,6 +172,17 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 	FVector WorldLocation, WorldDirection;
 	if (PC->DeprojectMousePositionToWorld(WorldLocation, WorldDirection))
 	{
+		// 1. If currently dragging a block with Physics Handle
+		if (GrabbedBlock && VirtualHand && VirtualHand->PhysicsHandle)
+		{
+			FVector DragTargetLocation = WorldLocation + (WorldDirection * GrabDistance);
+			VirtualHand->PhysicsHandle->SetTargetLocation(DragTargetLocation);
+			FTransform HandTarget(FRotationMatrix::MakeFromX(WorldDirection).ToQuat(), DragTargetLocation);
+			VirtualHand->SetTargetHandTransform(HandTarget, 1.0f);
+			return;
+		}
+
+		// 2. Normal cursor hovering trace
 		FHitResult HitResult;
 		FVector TraceEnd = WorldLocation + (WorldDirection * 500.0f);
 		FCollisionQueryParams QueryParams;
@@ -178,6 +193,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 		{
 			AYenkaBlock* HitBlock = Cast<AYenkaBlock>(HitResult.GetActor());
 			HoveredBlock = HitBlock;
+			LastHitLocation = HitResult.ImpactPoint;
 
 			if (VirtualHand)
 			{
@@ -185,7 +201,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 				FTransform HandTarget;
 				HandTarget.SetLocation(HitResult.ImpactPoint + (HitResult.ImpactNormal * 3.0f));
 				HandTarget.SetRotation(FRotationMatrix::MakeFromX(-HitResult.ImpactNormal).ToQuat());
-				VirtualHand->SetTargetHandTransform(HandTarget, GrabbedBlock ? 1.0f : 0.0f);
+				VirtualHand->SetTargetHandTransform(HandTarget, 0.0f);
 			}
 		}
 		else
@@ -201,13 +217,44 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 
 void AYenkaDesktopPawn::OnPrimaryClickPressed()
 {
-	if (HoveredBlock)
+	if (HoveredBlock && VirtualHand && VirtualHand->PhysicsHandle)
 	{
+		APlayerController* PC = Cast<APlayerController>(GetController());
+		if (PC)
+		{
+			FVector WorldLocation, WorldDirection;
+			if (PC->DeprojectMousePositionToWorld(WorldLocation, WorldDirection))
+			{
+				GrabDistance = FMath::Clamp((LastHitLocation - WorldLocation).Size(), 20.0f, 250.0f);
+			}
+		}
+
 		GrabbedBlock = HoveredBlock;
+		GrabbedBlock->SetPhysicsActive(true);
+		GrabbedBlock->BlockMesh->WakeRigidBody();
+
+		VirtualHand->PhysicsHandle->GrabComponentAtLocationWithRotation(
+			GrabbedBlock->BlockMesh,
+			NAME_None,
+			LastHitLocation,
+			GrabbedBlock->GetActorRotation()
+		);
+		VirtualHand->SetTargetHandTransform(VirtualHand->GetActorTransform(), 1.0f);
 	}
 }
 
 void AYenkaDesktopPawn::OnPrimaryClickReleased()
 {
-	GrabbedBlock = nullptr;
+	if (GrabbedBlock)
+	{
+		if (VirtualHand && VirtualHand->PhysicsHandle)
+		{
+			VirtualHand->PhysicsHandle->ReleaseComponent();
+		}
+		GrabbedBlock = nullptr;
+		if (VirtualHand)
+		{
+			VirtualHand->SetTargetHandTransform(VirtualHand->GetActorTransform(), 0.0f);
+		}
+	}
 }
