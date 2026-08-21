@@ -59,6 +59,7 @@ protected:
 	void OnPokeKeyReleased();
 	void OnTogglePokeMode();
 	void PerformLongitudinalPush(AYenkaBlock* Block, const FVector& DirectionNormal);
+	FRotator GetHorizontalFacingRotation(const FVector& TargetLocation) const;
 	void OnMouseX(float Val);
 	void OnMouseY(float Val);
 	void OnMouseWheel(float Val);

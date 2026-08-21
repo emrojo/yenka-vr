@@ -171,6 +171,25 @@ void AYenkaDesktopPawn::PerformLongitudinalPush(AYenkaBlock* Block, const FVecto
 	Block->BlockMesh->AddImpulse(PushAxis * 0.05f, NAME_None, true);
 }
 
+FRotator AYenkaDesktopPawn::GetHorizontalFacingRotation(const FVector& TargetLocation) const
+{
+	AActor* TowerActor = UGameplayStatics::GetActorOfClass(GetWorld(), AYenkaTowerManager::StaticClass());
+	FVector TowerCenter = TowerActor ? TowerActor->GetActorLocation() : FVector(0.0f, 0.0f, 85.0f);
+	FVector FacingDir = (TowerCenter - TargetLocation);
+	FacingDir.Z = 0.0f; // strictly on XY horizontal plane
+
+	if (FacingDir.IsNearlyZero(0.1f))
+	{
+		FacingDir = FollowCamera ? FollowCamera->GetForwardVector() : FVector::ForwardVector;
+		FacingDir.Z = 0.0f;
+	}
+
+	FRotator FacingRot = FacingDir.GetSafeNormal().Rotation();
+	FacingRot.Pitch = 0.0f; // strictly horizontal
+	FacingRot.Roll = 0.0f;  // strictly level
+	return FacingRot;
+}
+
 void AYenkaDesktopPawn::OnMouseX(float Val)
 {
 	if (bIsOrbitingCamera && FMath::Abs(Val) > 0.001f)
@@ -228,7 +247,8 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 		{
 			FVector DragTargetLocation = WorldLocation + (WorldDirection * GrabDistance);
 			VirtualHand->PhysicsHandle->SetTargetLocation(DragTargetLocation);
-			FTransform HandTarget(FRotationMatrix::MakeFromX(WorldDirection).ToQuat(), DragTargetLocation);
+			FRotator HandRot = GetHorizontalFacingRotation(DragTargetLocation);
+			FTransform HandTarget(HandRot.Quaternion(), DragTargetLocation);
 			VirtualHand->SetHandPoseMode(EHandPoseMode::GrabPinch);
 			VirtualHand->SetTargetHandTransform(HandTarget, 1.0f);
 			return;
@@ -251,13 +271,16 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 			if (VirtualHand)
 			{
 				VirtualHand->SetActorHiddenInGame(false);
+				FRotator HandRot = GetHorizontalFacingRotation(HitResult.ImpactPoint);
+				FVector FacingForward = HandRot.Vector(); // Points horizontally towards tower center
+				FVector HandOffset = -FacingForward;     // Outside the tower facing inward
 
 				if (bIsPokeModeActive || bIsPushingBlock)
 				{
 					VirtualHand->SetHandPoseMode(EHandPoseMode::FingerPoke);
-					FTransform HandTarget;
-					HandTarget.SetLocation(HitResult.ImpactPoint + (HitResult.ImpactNormal * 1.5f));
-					HandTarget.SetRotation(FRotationMatrix::MakeFromX(-HitResult.ImpactNormal).ToQuat());
+					// Tip of the index finger positioned horizontally at impact point
+					FVector HandPos = HitResult.ImpactPoint + (HandOffset * 2.0f);
+					FTransform HandTarget(HandRot.Quaternion(), HandPos);
 					VirtualHand->SetTargetHandTransform(HandTarget, 0.0f);
 
 					if (bIsPushingBlock && HoveredBlock)
@@ -268,9 +291,9 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 				else
 				{
 					VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
-					FTransform HandTarget;
-					HandTarget.SetLocation(HitResult.ImpactPoint + (HitResult.ImpactNormal * 3.0f));
-					HandTarget.SetRotation(FRotationMatrix::MakeFromX(-HitResult.ImpactNormal).ToQuat());
+					// Palm positioned horizontally approaching block
+					FVector HandPos = HitResult.ImpactPoint + (HandOffset * 3.5f);
+					FTransform HandTarget(HandRot.Quaternion(), HandPos);
 					VirtualHand->SetTargetHandTransform(HandTarget, 0.0f);
 				}
 			}
@@ -321,7 +344,9 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 			LastHitLocation,
 			GrabbedBlock->GetActorRotation()
 		);
-		VirtualHand->SetTargetHandTransform(VirtualHand->GetActorTransform(), 1.0f);
+		FRotator HandRot = GetHorizontalFacingRotation(LastHitLocation);
+		FTransform HandTarget(HandRot.Quaternion(), LastHitLocation);
+		VirtualHand->SetTargetHandTransform(HandTarget, 1.0f);
 	}
 }
 
@@ -339,7 +364,9 @@ void AYenkaDesktopPawn::OnPrimaryClickReleased()
 		if (VirtualHand)
 		{
 			VirtualHand->SetHandPoseMode(bIsPokeModeActive ? EHandPoseMode::FingerPoke : EHandPoseMode::OpenHand);
-			VirtualHand->SetTargetHandTransform(VirtualHand->GetActorTransform(), 0.0f);
+			FRotator HandRot = GetHorizontalFacingRotation(LastHitLocation);
+			FTransform HandTarget(HandRot.Quaternion(), LastHitLocation);
+			VirtualHand->SetTargetHandTransform(HandTarget, 0.0f);
 		}
 	}
 }
