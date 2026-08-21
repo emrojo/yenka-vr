@@ -30,13 +30,15 @@ AYenkaBlock::AYenkaBlock()
 	// Dimensions: Standard Jenga block ~ 7.5cm x 2.5cm x 1.5cm (Cube is 100x100x100 cm)
 	SetActorScale3D(FVector(0.075f, 0.025f, 0.015f));
 	BlockMesh->SetRelativeScale3D(FVector(0.075f, 0.025f, 0.015f));
-	BlockMesh->SetSimulatePhysics(false); // Initially kinematic to prevent spawn explosion
+	BlockMesh->SetSimulatePhysics(true);
 	BlockMesh->SetEnableGravity(true);
 	BlockMesh->SetCollisionProfileName(TEXT("BlockAllDynamic"));
 	BlockMesh->BodyInstance.bUseCCD = true; // Continuous Collision Detection
+	BlockMesh->BodyInstance.PositionSolverIterationCount = 16;
+	BlockMesh->BodyInstance.VelocitySolverIterationCount = 8;
 	BlockMesh->SetMassOverrideInKg(NAME_None, 0.085f, true); // ~85g per block
-	BlockMesh->SetLinearDamping(0.8f);
-	BlockMesh->SetAngularDamping(0.8f);
+	BlockMesh->SetLinearDamping(1.0f);
+	BlockMesh->SetAngularDamping(1.0f);
 
 	LayerIndex = 0;
 	bIsPlacedOnTop = false;

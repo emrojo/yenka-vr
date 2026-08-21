@@ -101,12 +101,13 @@ void AYenkaTowerManager::SpawnTower()
 	for (int32 Layer = 0; Layer < TotalLayers; ++Layer)
 	{
 		bool bIsEvenLayer = (Layer % 2 == 0);
-		// 0.05mm micro-clearance between layers prevents physics overlap explosion
-		float CurrentZ = BaseZ + (Layer * 1.505f) + 0.75f;
+		// 0.3mm vertical clearance per layer prevents physics penetration impulse
+		float CurrentZ = BaseZ + (Layer * 1.503f) + 0.75f;
 
 		for (int32 i = 0; i < BlocksPerLayer; ++i)
 		{
-			float Offset = (i - 1) * 2.505f;
+			// 0.3mm lateral spacing between adjacent blocks prevents lateral pinching
+			float Offset = (i - 1) * 2.53f;
 			FVector BlockPos;
 			FRotator BlockRot;
 
@@ -132,9 +133,9 @@ void AYenkaTowerManager::SpawnTower()
 		}
 	}
 
-	// Activate full physics simulation with Chaos dynamics and gravity
-	WakeTowerForPlayer(nullptr);
-	UE_LOG(LogYenkaVR, Log, TEXT("Spawned 54-block Yenka tower successfully with full dynamic physics."));
+	// Keep all 54 blocks in stable sleep state on spawn until player touches them
+	FreezeTowerPhysics();
+	UE_LOG(LogYenkaVR, Log, TEXT("Spawned 54-block Yenka tower with lateral clearance in stable sleep state."));
 }
 
 void AYenkaTowerManager::ResetTower()
