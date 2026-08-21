@@ -18,6 +18,7 @@ class YENKAVR_API AYenkaHandAvatar : public AActor
 public:	
 	AYenkaHandAvatar();
 
+	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
@@ -26,13 +27,28 @@ public:
 	void SetTargetHandTransform(const FTransform& InTransform, float InGripStrength);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	USkeletalMeshComponent* HandMesh;
+	UStaticMeshComponent* PalmMesh;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	UStaticMeshComponent* HandVisual;
+	UStaticMeshComponent* ThumbMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* IndexFinger;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* MiddleFinger;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* RingFinger;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* PinkyFinger;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UPhysicsHandleComponent* PhysicsHandle;
+
+	UFUNCTION(BlueprintCallable, Category = "Yenka|Hand")
+	void UpdateFingerPoses(float GripStrength);
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Yenka|Hand")
 	FTransform ReplicatedHandTransform;
