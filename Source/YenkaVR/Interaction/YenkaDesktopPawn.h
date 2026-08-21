@@ -49,8 +49,9 @@ protected:
 	void OnPrimaryClickReleased();
 	void OnSecondaryClickPressed();
 	void OnSecondaryClickReleased();
-	void AddOrbitYaw(float Val);
-	void AddOrbitPitch(float Val);
-	void OnZoomIn();
-	void OnZoomOut();
+	void OnMouseX(float Val);
+	void OnMouseY(float Val);
+	void OnMouseWheel(float Val);
+	void MoveForward(float Val);
+	void MoveRight(float Val);
 };

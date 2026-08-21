@@ -78,11 +78,12 @@ void AYenkaTowerManager::SpawnTower()
 	for (int32 Layer = 0; Layer < TotalLayers; ++Layer)
 	{
 		bool bIsEvenLayer = (Layer % 2 == 0);
-		float CurrentZ = BaseZ + (Layer * BlockDimensions.Z) + (BlockDimensions.Z * 0.5f);
+		// 0.05mm micro-clearance between layers prevents physics overlap explosion
+		float CurrentZ = BaseZ + (Layer * 1.505f) + 0.75f;
 
 		for (int32 i = 0; i < BlocksPerLayer; ++i)
 		{
-			float Offset = (i - 1) * BlockDimensions.Y;
+			float Offset = (i - 1) * 2.505f;
 			FVector BlockPos;
 			FRotator BlockRot;
 
@@ -108,8 +109,9 @@ void AYenkaTowerManager::SpawnTower()
 		}
 	}
 
-	WakeTowerForPlayer(nullptr);
-	UE_LOG(LogYenkaVR, Log, TEXT("Spawned 54-block Yenka tower successfully on table."));
+	// Keep the tower asleep on start until player interacts
+	FreezeTowerPhysics();
+	UE_LOG(LogYenkaVR, Log, TEXT("Spawned 54-block Yenka tower successfully on table in stable sleep state."));
 }
 
 void AYenkaTowerManager::ResetTower()

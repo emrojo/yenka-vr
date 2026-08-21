@@ -77,56 +77,82 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 	if (PlayerInputComponent)
 	{
-		PlayerInputComponent->BindAction("PrimaryClick", IE_Pressed, this, &AYenkaDesktopPawn::OnPrimaryClickPressed);
-		PlayerInputComponent->BindAction("PrimaryClick", IE_Released, this, &AYenkaDesktopPawn::OnPrimaryClickReleased);
-		PlayerInputComponent->BindAction("SecondaryClick", IE_Pressed, this, &AYenkaDesktopPawn::OnSecondaryClickPressed);
-		PlayerInputComponent->BindAction("SecondaryClick", IE_Released, this, &AYenkaDesktopPawn::OnSecondaryClickReleased);
-		PlayerInputComponent->BindAxis("Turn", this, &AYenkaDesktopPawn::AddOrbitYaw);
-		PlayerInputComponent->BindAxis("LookUp", this, &AYenkaDesktopPawn::AddOrbitPitch);
-		PlayerInputComponent->BindAction("ZoomIn", IE_Pressed, this, &AYenkaDesktopPawn::OnZoomIn);
-		PlayerInputComponent->BindAction("ZoomOut", IE_Pressed, this, &AYenkaDesktopPawn::OnZoomOut);
+		// Direct Key Bindings (guaranteed to work immediately without Project Settings)
+		PlayerInputComponent->BindKey(EKeys::LeftMouseButton, IE_Pressed, this, &AYenkaDesktopPawn::OnPrimaryClickPressed);
+		PlayerInputComponent->BindKey(EKeys::LeftMouseButton, IE_Released, this, &AYenkaDesktopPawn::OnPrimaryClickReleased);
+		PlayerInputComponent->BindKey(EKeys::RightMouseButton, IE_Pressed, this, &AYenkaDesktopPawn::OnSecondaryClickPressed);
+		PlayerInputComponent->BindKey(EKeys::RightMouseButton, IE_Released, this, &AYenkaDesktopPawn::OnSecondaryClickReleased);
+		PlayerInputComponent->BindKey(EKeys::MouseX, this, &AYenkaDesktopPawn::OnMouseX);
+		PlayerInputComponent->BindKey(EKeys::MouseY, this, &AYenkaDesktopPawn::OnMouseY);
+		PlayerInputComponent->BindKey(EKeys::MouseWheelAxis, this, &AYenkaDesktopPawn::OnMouseWheel);
+		PlayerInputComponent->BindKey(EKeys::W, this, &AYenkaDesktopPawn::MoveForward);
+		PlayerInputComponent->BindKey(EKeys::S, this, &AYenkaDesktopPawn::MoveForward);
+		PlayerInputComponent->BindKey(EKeys::D, this, &AYenkaDesktopPawn::MoveRight);
+		PlayerInputComponent->BindKey(EKeys::A, this, &AYenkaDesktopPawn::MoveRight);
 	}
 }
 
 void AYenkaDesktopPawn::OnSecondaryClickPressed()
 {
 	bIsOrbitingCamera = true;
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC)
+	{
+		PC->bShowMouseCursor = false;
+	}
 }
 
 void AYenkaDesktopPawn::OnSecondaryClickReleased()
 {
 	bIsOrbitingCamera = false;
-}
-
-void AYenkaDesktopPawn::AddOrbitYaw(float Val)
-{
-	if (bIsOrbitingCamera && FMath::Abs(Val) > 0.01f)
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC)
 	{
-		AddControllerYawInput(Val);
+		PC->bShowMouseCursor = true;
 	}
 }
 
-void AYenkaDesktopPawn::AddOrbitPitch(float Val)
+void AYenkaDesktopPawn::OnMouseX(float Val)
 {
-	if (bIsOrbitingCamera && FMath::Abs(Val) > 0.01f)
+	if (bIsOrbitingCamera && FMath::Abs(Val) > 0.001f)
 	{
-		AddControllerPitchInput(-Val);
+		AddControllerYawInput(Val * 2.5f);
 	}
 }
 
-void AYenkaDesktopPawn::OnZoomIn()
+void AYenkaDesktopPawn::OnMouseY(float Val)
 {
-	if (CameraBoom)
+	if (bIsOrbitingCamera && FMath::Abs(Val) > 0.001f)
 	{
-		CameraBoom->TargetArmLength = FMath::Clamp(CameraBoom->TargetArmLength - 10.0f, 40.0f, 300.0f);
+		AddControllerPitchInput(-Val * 2.5f);
 	}
 }
 
-void AYenkaDesktopPawn::OnZoomOut()
+void AYenkaDesktopPawn::OnMouseWheel(float Val)
 {
-	if (CameraBoom)
+	if (CameraBoom && FMath::Abs(Val) > 0.001f)
 	{
-		CameraBoom->TargetArmLength = FMath::Clamp(CameraBoom->TargetArmLength + 10.0f, 40.0f, 300.0f);
+		CameraBoom->TargetArmLength = FMath::Clamp(CameraBoom->TargetArmLength - (Val * 8.0f), 30.0f, 250.0f);
+	}
+}
+
+void AYenkaDesktopPawn::MoveForward(float Val)
+{
+	if (FMath::Abs(Val) > 0.01f)
+	{
+		FVector Forward = FollowCamera ? FollowCamera->GetForwardVector() : GetActorForwardVector();
+		Forward.Z = 0.0f;
+		AddActorWorldOffset(Forward.GetSafeNormal() * (Val * 2.0f));
+	}
+}
+
+void AYenkaDesktopPawn::MoveRight(float Val)
+{
+	if (FMath::Abs(Val) > 0.01f)
+	{
+		FVector Right = FollowCamera ? FollowCamera->GetRightVector() : GetActorRightVector();
+		Right.Z = 0.0f;
+		AddActorWorldOffset(Right.GetSafeNormal() * (Val * 2.0f));
 	}
 }
 

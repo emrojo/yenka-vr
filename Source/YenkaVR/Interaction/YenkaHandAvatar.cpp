@@ -27,6 +27,7 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 
 	PhysicsHandle = CreateDefaultSubobject<UPhysicsHandleComponent>(TEXT("PhysicsHandle"));
 
+	HandVisual->SetVisibility(false);
 	ReplicatedGripStrength = 0.0f;
 	bIsLeftHand = false;
 }
@@ -45,6 +46,10 @@ void AYenkaHandAvatar::SetTargetHandTransform(const FTransform& InTransform, flo
 	ReplicatedHandTransform = InTransform;
 	ReplicatedGripStrength = InGripStrength;
 	SetActorTransform(InTransform);
+	if (HandVisual)
+	{
+		HandVisual->SetVisibility(true);
+	}
 }
 
 void AYenkaHandAvatar::Tick(float DeltaTime)

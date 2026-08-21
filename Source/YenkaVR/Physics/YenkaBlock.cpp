@@ -29,6 +29,8 @@ AYenkaBlock::AYenkaBlock()
 	BlockMesh->SetCollisionProfileName(TEXT("BlockAllDynamic"));
 	BlockMesh->BodyInstance.bUseCCD = true; // Continuous Collision Detection
 	BlockMesh->SetMassOverrideInKg(NAME_None, 0.085f, true); // ~85g per block
+	BlockMesh->SetLinearDamping(0.8f);
+	BlockMesh->SetAngularDamping(0.8f);
 
 	LayerIndex = 0;
 	bIsPlacedOnTop = false;

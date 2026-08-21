@@ -38,7 +38,7 @@ void AYenkaGameMode::BeginPlay()
 
 UClass* AYenkaGameMode::GetDefaultPawnClassForController_Implementation(AController* InController)
 {
-	if (GEngine && GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowed())
+	if (GEngine && GEngine->XRSystem.IsValid() && GEngine->XRSystem->GetHMDDevice() && GEngine->XRSystem->GetHMDDevice()->IsHMDEnabled())
 	{
 		return AYenkaVRPawn::StaticClass();
 	}
