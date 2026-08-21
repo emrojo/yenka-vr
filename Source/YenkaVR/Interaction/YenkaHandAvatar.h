@@ -7,6 +7,14 @@
 class USkeletalMeshComponent;
 class UPhysicsHandleComponent;
 
+UENUM(BlueprintType)
+enum class EHandPoseMode : uint8
+{
+	OpenHand,
+	GrabPinch,
+	FingerPoke
+};
+
 /**
  * Replicated visual representation of a player's hand in 3D space, visible to all users.
  */
@@ -25,6 +33,9 @@ public:
 	/** Updates target transform from local input (VR or Desktop mouse target) */
 	UFUNCTION(BlueprintCallable, Category = "Yenka|Hand")
 	void SetTargetHandTransform(const FTransform& InTransform, float InGripStrength);
+
+	UFUNCTION(BlueprintCallable, Category = "Yenka|Hand")
+	void SetHandPoseMode(EHandPoseMode NewPoseMode);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	USceneComponent* HandRoot;
@@ -52,6 +63,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Yenka|Hand")
 	void UpdateFingerPoses(float GripStrength);
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Yenka|Hand")
+	EHandPoseMode CurrentPoseMode;
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Yenka|Hand")
 	FTransform ReplicatedHandTransform;

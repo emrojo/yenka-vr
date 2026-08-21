@@ -141,6 +141,7 @@ void AYenkaHandAvatar::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
+	DOREPLIFETIME(AYenkaHandAvatar, CurrentPoseMode);
 	DOREPLIFETIME(AYenkaHandAvatar, ReplicatedHandTransform);
 	DOREPLIFETIME(AYenkaHandAvatar, ReplicatedGripStrength);
 	DOREPLIFETIME(AYenkaHandAvatar, bIsLeftHand);
@@ -154,29 +155,63 @@ void AYenkaHandAvatar::SetTargetHandTransform(const FTransform& InTransform, flo
 	UpdateFingerPoses(InGripStrength);
 }
 
+void AYenkaHandAvatar::SetHandPoseMode(EHandPoseMode NewPoseMode)
+{
+	CurrentPoseMode = NewPoseMode;
+	UpdateFingerPoses(ReplicatedGripStrength);
+}
+
 void AYenkaHandAvatar::UpdateFingerPoses(float GripStrength)
 {
-	const float GripAngle = FMath::Clamp(GripStrength, 0.0f, 1.0f) * 45.0f;
+	if (CurrentPoseMode == EHandPoseMode::FingerPoke)
+	{
+		// Finger Poke: Index finger fully extended, others curled into a fist
+		if (IndexFinger)
+		{
+			IndexFinger->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f));
+		}
+		if (ThumbMesh)
+		{
+			ThumbMesh->SetRelativeRotation(FRotator(30.0f, -20.0f, 0.0f));
+		}
+		if (MiddleFinger)
+		{
+			MiddleFinger->SetRelativeRotation(FRotator(35.0f, 0.0f, 0.0f));
+		}
+		if (RingFinger)
+		{
+			RingFinger->SetRelativeRotation(FRotator(35.0f, 0.0f, 0.0f));
+		}
+		if (PinkyFinger)
+		{
+			PinkyFinger->SetRelativeRotation(FRotator(35.0f, 0.0f, 0.0f));
+		}
+	}
+	else
+	{
+		// Open / Grip mode
+		const float GripAngle = FMath::Clamp(GripStrength, 0.0f, 1.0f) * 45.0f;
 
-	if (IndexFinger)
-	{
-		IndexFinger->SetRelativeRotation(FRotator(90.0f - GripAngle, 0.0f, 0.0f));
-	}
-	if (MiddleFinger)
-	{
-		MiddleFinger->SetRelativeRotation(FRotator(90.0f - GripAngle, 0.0f, 0.0f));
-	}
-	if (RingFinger)
-	{
-		RingFinger->SetRelativeRotation(FRotator(90.0f - GripAngle, 0.0f, 0.0f));
-	}
-	if (PinkyFinger)
-	{
-		PinkyFinger->SetRelativeRotation(FRotator(90.0f - GripAngle, 0.0f, 0.0f));
-	}
-	if (ThumbMesh)
-	{
-		ThumbMesh->SetRelativeRotation(FRotator(GripAngle * 0.5f, -45.0f + (GripAngle * 0.5f), 0.0f));
+		if (IndexFinger)
+		{
+			IndexFinger->SetRelativeRotation(FRotator(90.0f - GripAngle, 0.0f, 0.0f));
+		}
+		if (MiddleFinger)
+		{
+			MiddleFinger->SetRelativeRotation(FRotator(90.0f - GripAngle, 0.0f, 0.0f));
+		}
+		if (RingFinger)
+		{
+			RingFinger->SetRelativeRotation(FRotator(90.0f - GripAngle, 0.0f, 0.0f));
+		}
+		if (PinkyFinger)
+		{
+			PinkyFinger->SetRelativeRotation(FRotator(90.0f - GripAngle, 0.0f, 0.0f));
+		}
+		if (ThumbMesh)
+		{
+			ThumbMesh->SetRelativeRotation(FRotator(GripAngle * 0.5f, -45.0f + (GripAngle * 0.5f), 0.0f));
+		}
 	}
 }
 

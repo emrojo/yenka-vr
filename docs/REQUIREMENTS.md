@@ -96,6 +96,13 @@ Este apartado mantiene el historial inmutable de todos los requisitos definidos 
   * **Clic Derecho (Arrastrar):** Rotación orbital libre en 360° alrededor de la torre.
   * **Rueda de Ratón:** Zoom de cámara hacia la torre.
   * **Teclas WASD:** Paneo y desplazamiento del punto focal de la cámara.
+* **`[REQ-CROSS-04]` Modo Empuje con Dedo Índice (*Finger Poke Mode*):**
+  * **Pose de Dedo Índice Extendido:** Al pulsar o mantener la tecla **`E`** (o alternar con **`F`**), la mano 3D adopta la pose de dedo índice totalmente extendido con el pulgar y el resto de dedos cerrados en puño.
+  * **Alineación de Contacto:** La punta del dedo índice se coloca de forma precisa sobre el punto de impacto de la cara del bloque apuntado.
+* **`[REQ-CROSS-05]` Empuje Longitudinal Guiado de Bloques (*Precision Longitudinal Push*):**
+  * Al presionar la acción de empuje (`E` o `Clic Izquierdo` en modo dedo), se calcula el eje longitudinal del bloque.
+  * Se aplica un empuje físico guiado en la dirección contraria a la cara presionada, haciendo que el bloque se deslice suavemente hacia adelante y asome por el lado opuesto de la torre ($1$ a $3\text{ cm}$) sin rozar ni desestabilizar los bloques laterales.
+  * Permite al jugador rotar la cámara y extraer la pieza cómodamente por el lado opuesto.
 
 ---
 
@@ -160,6 +167,8 @@ Este apartado mantiene el historial inmutable de todos los requisitos definidos 
 | `[REQ-PHYS-04]` | Micro-Holgura & Gravity Collapse | `Source/YenkaVR/Physics/YenkaTowerManager.cpp` | Implementado |
 | `[REQ-CROSS-02]`| Mano 3D Articulada & Grip | `Source/YenkaVR/Interaction/YenkaHandAvatar.cpp` | Implementado |
 | `[REQ-CROSS-03]`| Extracción por PhysicsHandle | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implementado |
+| `[REQ-CROSS-04]`| Modo Dedo Índice Extendido | `Source/YenkaVR/Interaction/YenkaHandAvatar.cpp` | Implementado |
+| `[REQ-CROSS-05]`| Empuje Longitudinal Guiado | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implementado |
 | `[REQ-ART-01]`  | Shaders Madera Fotorrealista | `Source/YenkaVR/Physics/YenkaBlock.cpp` | Implementado |
 | `[REQ-XR-01]`   | Passthrough OpenXR | `Source/YenkaVR/Spatial/YenkaPassthroughManager.h` | Especificado |
 | `[REQ-XR-02]`   | Calibración Mesa | `Source/YenkaVR/Spatial/YenkaSurfaceCalibrator.h` | Especificado |

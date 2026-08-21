@@ -44,14 +44,21 @@ protected:
 	AYenkaBlock* GrabbedBlock;
 
 	bool bIsOrbitingCamera;
+	bool bIsPokeModeActive;
+	bool bIsPushingBlock;
 	float GrabDistance;
 	FVector LastHitLocation;
+	FVector LastHitNormal;
 
 	void HandleMouseTrace();
 	void OnPrimaryClickPressed();
 	void OnPrimaryClickReleased();
 	void OnSecondaryClickPressed();
 	void OnSecondaryClickReleased();
+	void OnPokeKeyPressed();
+	void OnPokeKeyReleased();
+	void OnTogglePokeMode();
+	void PerformLongitudinalPush(AYenkaBlock* Block, const FVector& DirectionNormal);
 	void OnMouseX(float Val);
 	void OnMouseY(float Val);
 	void OnMouseWheel(float Val);

@@ -13,6 +13,7 @@ Este documento registra todas las decisiones de arquitectura, diseño técnico y
 * [ADR-005: Sistema de Conectividad mediante Steam Lobbies, Códigos Alfanuméricos y VoIP 3D](#adr-005-sistema-de-conectividad-mediante-steam-lobbies-códigos-alfanuméricos-y-voip-3d)
 * [ADR-006: Estabilización de Torre Chaos Physics mediante Micro-Holgura, Sleep Inicial y Despertar Selectivo](#adr-006-estabilización-de-torre-chaos-physics-mediante-micro-holgura-sleep-inicial-y-despertar-selectivo)
 * [ADR-007: Modelo 3D de Mano Articulada con Shader VR y Manipulación por Physics Handle en PC](#adr-007-modelo-3d-de-mano-articulada-con-shader-vr-y-manipulación-por-physics-handle-en-pc)
+* [ADR-008: Pose de Dedo Índice y Empuje Longitudinal Guiado de Bloques](#adr-008-pose-de-dedo-índice-y-empuje-longitudinal-guiado-de-bloques)
 
 ---
 
@@ -107,6 +108,18 @@ Este documento registra todas las decisiones de arquitectura, diseño técnico y
 * **Consecuencias:**
   * *(Positivo)* Identidad visual atractiva e inmersiva.
   * *(Positivo)* Extracción precisa de piezas con física continua y control intuitivo en pantalla plana.
+
+### ADR-008: Pose de Dedo Índice y Empuje Longitudinal Guiado de Bloques
+* **Fecha:** 2026-08-22
+* **Estado:** Aceptado
+* **Contexto:** En situaciones donde una pieza de los pisos inferiores está muy ajustada por el peso de la torre, los jugadores necesitan asomar la pieza suavemente desde un lado usando un único dedo para luego poder cogerla y extraerla por el lado contrario sin tirar la torre ni rozar bloques adyacentes.
+* **Decisión:**
+  * Crear la pose `EHandPoseMode::FingerPoke` en `AYenkaHandAvatar`, extendiendo únicamente el dedo índice y replegando el pulgar y el resto de dedos en puño.
+  * Implementar el modo empuje (`bIsPokeModeActive` / `bIsPushingBlock`) activado mediante la tecla `E` (mantener) o `F` (alternar) en `AYenkaDesktopPawn`.
+  * Calcular dinámicamente el eje longitudinal de la capa del bloque y aplicar un empuje físico guiado (`AddImpulse`) en la dirección contraria a la cara presionada, haciendo que el bloque sobresalga limpiamente por el lado opuesto.
+* **Consecuencias:**
+  * *(Positivo)* Reproducción fiel de la técnica real de juego en Jenga (empujar con un dedo y agarrar por el otro lado).
+  * *(Positivo)* Control de máxima precisión en pisos inferiores con alta carga de peso.
 
 ---
 

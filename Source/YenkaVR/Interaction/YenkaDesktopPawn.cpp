@@ -27,8 +27,11 @@ AYenkaDesktopPawn::AYenkaDesktopPawn()
 	HoveredBlock = nullptr;
 	GrabbedBlock = nullptr;
 	bIsOrbitingCamera = false;
+	bIsPokeModeActive = false;
+	bIsPushingBlock = false;
 	GrabDistance = 65.0f;
 	LastHitLocation = FVector::ZeroVector;
+	LastHitNormal = FVector::UpVector;
 }
 
 #include "YenkaVR/Physics/YenkaTowerManager.h"
@@ -90,6 +93,9 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		PlayerInputComponent->BindKey(EKeys::LeftMouseButton, IE_Released, this, &AYenkaDesktopPawn::OnPrimaryClickReleased);
 		PlayerInputComponent->BindKey(EKeys::RightMouseButton, IE_Pressed, this, &AYenkaDesktopPawn::OnSecondaryClickPressed);
 		PlayerInputComponent->BindKey(EKeys::RightMouseButton, IE_Released, this, &AYenkaDesktopPawn::OnSecondaryClickReleased);
+		PlayerInputComponent->BindKey(EKeys::E, IE_Pressed, this, &AYenkaDesktopPawn::OnPokeKeyPressed);
+		PlayerInputComponent->BindKey(EKeys::E, IE_Released, this, &AYenkaDesktopPawn::OnPokeKeyReleased);
+		PlayerInputComponent->BindKey(EKeys::F, IE_Pressed, this, &AYenkaDesktopPawn::OnTogglePokeMode);
 		PlayerInputComponent->BindAxisKey(EKeys::MouseX, this, &AYenkaDesktopPawn::OnMouseX);
 		PlayerInputComponent->BindAxisKey(EKeys::MouseY, this, &AYenkaDesktopPawn::OnMouseY);
 		PlayerInputComponent->BindAxisKey(EKeys::MouseWheelAxis, this, &AYenkaDesktopPawn::OnMouseWheel);
@@ -118,6 +124,51 @@ void AYenkaDesktopPawn::OnSecondaryClickReleased()
 	{
 		PC->bShowMouseCursor = true;
 	}
+}
+
+void AYenkaDesktopPawn::OnPokeKeyPressed()
+{
+	bIsPushingBlock = true;
+	if (HoveredBlock)
+	{
+		PerformLongitudinalPush(HoveredBlock, LastHitNormal);
+	}
+}
+
+void AYenkaDesktopPawn::OnPokeKeyReleased()
+{
+	bIsPushingBlock = false;
+}
+
+void AYenkaDesktopPawn::OnTogglePokeMode()
+{
+	bIsPokeModeActive = !bIsPokeModeActive;
+}
+
+void AYenkaDesktopPawn::PerformLongitudinalPush(AYenkaBlock* Block, const FVector& DirectionNormal)
+{
+	if (!Block || !Block->BlockMesh) return;
+
+	// Calculate longitudinal axis of the block
+	FVector ForwardVec = Block->GetActorForwardVector();
+	FVector RightVec = Block->GetActorRightVector();
+
+	float DotForward = FVector::DotProduct(-DirectionNormal, ForwardVec);
+	float DotRight = FVector::DotProduct(-DirectionNormal, RightVec);
+
+	FVector PushAxis;
+	if (FMath::Abs(DotForward) >= FMath::Abs(DotRight))
+	{
+		PushAxis = ForwardVec * FMath::Sign(DotForward);
+	}
+	else
+	{
+		PushAxis = RightVec * FMath::Sign(DotRight);
+	}
+
+	Block->SetPhysicsActive(true);
+	Block->BlockMesh->WakeRigidBody();
+	Block->BlockMesh->AddImpulse(PushAxis * 0.05f, NAME_None, true);
 }
 
 void AYenkaDesktopPawn::OnMouseX(float Val)
@@ -178,6 +229,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 			FVector DragTargetLocation = WorldLocation + (WorldDirection * GrabDistance);
 			VirtualHand->PhysicsHandle->SetTargetLocation(DragTargetLocation);
 			FTransform HandTarget(FRotationMatrix::MakeFromX(WorldDirection).ToQuat(), DragTargetLocation);
+			VirtualHand->SetHandPoseMode(EHandPoseMode::GrabPinch);
 			VirtualHand->SetTargetHandTransform(HandTarget, 1.0f);
 			return;
 		}
@@ -194,14 +246,33 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 			AYenkaBlock* HitBlock = Cast<AYenkaBlock>(HitResult.GetActor());
 			HoveredBlock = HitBlock;
 			LastHitLocation = HitResult.ImpactPoint;
+			LastHitNormal = HitResult.ImpactNormal;
 
 			if (VirtualHand)
 			{
 				VirtualHand->SetActorHiddenInGame(false);
-				FTransform HandTarget;
-				HandTarget.SetLocation(HitResult.ImpactPoint + (HitResult.ImpactNormal * 3.0f));
-				HandTarget.SetRotation(FRotationMatrix::MakeFromX(-HitResult.ImpactNormal).ToQuat());
-				VirtualHand->SetTargetHandTransform(HandTarget, 0.0f);
+
+				if (bIsPokeModeActive || bIsPushingBlock)
+				{
+					VirtualHand->SetHandPoseMode(EHandPoseMode::FingerPoke);
+					FTransform HandTarget;
+					HandTarget.SetLocation(HitResult.ImpactPoint + (HitResult.ImpactNormal * 1.5f));
+					HandTarget.SetRotation(FRotationMatrix::MakeFromX(-HitResult.ImpactNormal).ToQuat());
+					VirtualHand->SetTargetHandTransform(HandTarget, 0.0f);
+
+					if (bIsPushingBlock && HoveredBlock)
+					{
+						PerformLongitudinalPush(HoveredBlock, LastHitNormal);
+					}
+				}
+				else
+				{
+					VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
+					FTransform HandTarget;
+					HandTarget.SetLocation(HitResult.ImpactPoint + (HitResult.ImpactNormal * 3.0f));
+					HandTarget.SetRotation(FRotationMatrix::MakeFromX(-HitResult.ImpactNormal).ToQuat());
+					VirtualHand->SetTargetHandTransform(HandTarget, 0.0f);
+				}
 			}
 		}
 		else
@@ -217,6 +288,14 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 
 void AYenkaDesktopPawn::OnPrimaryClickPressed()
 {
+	if (bIsPokeModeActive && HoveredBlock)
+	{
+		// In poke mode, clicking directly pushes the block
+		bIsPushingBlock = true;
+		PerformLongitudinalPush(HoveredBlock, LastHitNormal);
+		return;
+	}
+
 	if (HoveredBlock && VirtualHand && VirtualHand->PhysicsHandle)
 	{
 		APlayerController* PC = Cast<APlayerController>(GetController());
@@ -235,6 +314,7 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 			GrabbedBlock->BlockMesh->WakeRigidBody();
 		}
 
+		VirtualHand->SetHandPoseMode(EHandPoseMode::GrabPinch);
 		VirtualHand->PhysicsHandle->GrabComponentAtLocationWithRotation(
 			GrabbedBlock->BlockMesh,
 			NAME_None,
@@ -247,6 +327,8 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 
 void AYenkaDesktopPawn::OnPrimaryClickReleased()
 {
+	bIsPushingBlock = false;
+
 	if (GrabbedBlock)
 	{
 		if (VirtualHand && VirtualHand->PhysicsHandle)
@@ -256,6 +338,7 @@ void AYenkaDesktopPawn::OnPrimaryClickReleased()
 		GrabbedBlock = nullptr;
 		if (VirtualHand)
 		{
+			VirtualHand->SetHandPoseMode(bIsPokeModeActive ? EHandPoseMode::FingerPoke : EHandPoseMode::OpenHand);
 			VirtualHand->SetTargetHandTransform(VirtualHand->GetActorTransform(), 0.0f);
 		}
 	}
