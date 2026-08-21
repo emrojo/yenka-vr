@@ -1,6 +1,8 @@
 #include "YenkaGameMode.h"
 #include "YenkaGameState.h"
 #include "YenkaPlayerState.h"
+#include "YenkaVR/Physics/YenkaTowerManager.h"
+#include "YenkaVR/Interaction/YenkaVRPawn.h"
 #include "YenkaVR.h"
 #include "TimerManager.h"
 #include "Kismet/GameplayStatics.h"
@@ -10,6 +12,7 @@ AYenkaGameMode::AYenkaGameMode()
 	PrimaryActorTick.bCanEverTick = true;
 	GameStateClass = AYenkaGameState::StaticClass();
 	PlayerStateClass = AYenkaPlayerState::StaticClass();
+	DefaultPawnClass = AYenkaVRPawn::StaticClass();
 
 	MaxTurnTimeSeconds = 45.0f;
 	StabilizationWaitSeconds = 3.0f;
@@ -21,6 +24,14 @@ void AYenkaGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 	UE_LOG(LogYenkaVR, Log, TEXT("AYenkaGameMode initialized. Ready for players."));
+
+	// Auto-spawn Tower Manager if not already placed in the level
+	if (!UGameplayStatics::GetActorOfClass(GetWorld(), AYenkaTowerManager::StaticClass()))
+	{
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = this;
+		GetWorld()->SpawnActor<AYenkaTowerManager>(AYenkaTowerManager::StaticClass(), FVector(80.0f, 0.0f, 70.0f), FRotator::ZeroRotator, SpawnParams);
+	}
 }
 
 void AYenkaGameMode::PostLogin(APlayerController* NewPlayer)

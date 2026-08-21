@@ -8,6 +8,7 @@ AYenkaTowerManager::AYenkaTowerManager()
 	PrimaryActorTick.bCanEverTick = true;
 	bReplicates = true;
 
+	BlockClass = AYenkaBlock::StaticClass();
 	BlockDimensions = FVector(7.5f, 2.5f, 1.5f);
 	TableSurfaceZ = 0.0f;
 }
@@ -16,6 +17,11 @@ void AYenkaTowerManager::BeginPlay()
 {
 	Super::BeginPlay();
 	TableSurfaceZ = GetActorLocation().Z;
+
+	if (HasAuthority())
+	{
+		SpawnTower();
+	}
 }
 
 void AYenkaTowerManager::Tick(float DeltaTime)

@@ -29,6 +29,9 @@ public:
 	USkeletalMeshComponent* HandMesh;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* HandVisual;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UPhysicsHandleComponent* PhysicsHandle;
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Yenka|Hand")

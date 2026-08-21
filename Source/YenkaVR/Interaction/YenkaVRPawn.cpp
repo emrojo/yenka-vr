@@ -23,6 +23,7 @@ AYenkaVRPawn::AYenkaVRPawn()
 	RightController->SetupAttachment(VROrigin);
 	RightController->SetTrackingMotionSource(FName("Right"));
 
+	HandAvatarClass = AYenkaHandAvatar::StaticClass();
 	bIsLeftGrabbingSpace = false;
 	bIsRightGrabbingSpace = false;
 	InitialPinchDistance = 1.0f;
