@@ -14,72 +14,77 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMeshAsset(TEXT("/Engine/BasicShapes/Cube.Cube"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylinderMeshAsset(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
 
-	// 1. Palm
+	// 0. Hand Root (holds actor transform without scaling)
+	HandRoot = CreateDefaultSubobject<USceneComponent>(TEXT("HandRoot"));
+	RootComponent = HandRoot;
+
+	// 1. Palm (6cm x 5cm x 2cm)
 	PalmMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PalmMesh"));
-	RootComponent = PalmMesh;
+	PalmMesh->SetupAttachment(HandRoot);
 	if (CubeMeshAsset.Succeeded())
 	{
 		PalmMesh->SetStaticMesh(CubeMeshAsset.Object);
-		PalmMesh->SetRelativeScale3D(FVector(0.045f, 0.04f, 0.015f));
+		PalmMesh->SetRelativeScale3D(FVector(0.06f, 0.05f, 0.02f));
+		PalmMesh->SetRelativeLocation(FVector(0.0f, 0.0f, 0.0f));
 	}
 	PalmMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	// 2. Thumb
 	ThumbMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ThumbMesh"));
-	ThumbMesh->SetupAttachment(PalmMesh);
+	ThumbMesh->SetupAttachment(HandRoot);
 	if (CylinderMeshAsset.Succeeded())
 	{
 		ThumbMesh->SetStaticMesh(CylinderMeshAsset.Object);
-		ThumbMesh->SetRelativeScale3D(FVector(0.012f, 0.012f, 0.025f));
-		ThumbMesh->SetRelativeLocation(FVector(-1.2f, -2.5f, 0.0f));
-		ThumbMesh->SetRelativeRotation(FRotator(0.0f, -45.0f, 0.0f));
+		ThumbMesh->SetRelativeScale3D(FVector(0.014f, 0.014f, 0.035f));
+		ThumbMesh->SetRelativeLocation(FVector(-1.0f, -3.2f, 0.0f));
+		ThumbMesh->SetRelativeRotation(FRotator(0.0f, -40.0f, 0.0f));
 	}
 	ThumbMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	// 3. Index Finger
 	IndexFinger = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("IndexFinger"));
-	IndexFinger->SetupAttachment(PalmMesh);
+	IndexFinger->SetupAttachment(HandRoot);
 	if (CylinderMeshAsset.Succeeded())
 	{
 		IndexFinger->SetStaticMesh(CylinderMeshAsset.Object);
-		IndexFinger->SetRelativeScale3D(FVector(0.01f, 0.01f, 0.03f));
-		IndexFinger->SetRelativeLocation(FVector(2.8f, -1.4f, 0.0f));
+		IndexFinger->SetRelativeScale3D(FVector(0.012f, 0.012f, 0.042f));
+		IndexFinger->SetRelativeLocation(FVector(4.2f, -1.8f, 0.0f));
 		IndexFinger->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f));
 	}
 	IndexFinger->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	// 4. Middle Finger
 	MiddleFinger = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MiddleFinger"));
-	MiddleFinger->SetupAttachment(PalmMesh);
+	MiddleFinger->SetupAttachment(HandRoot);
 	if (CylinderMeshAsset.Succeeded())
 	{
 		MiddleFinger->SetStaticMesh(CylinderMeshAsset.Object);
-		MiddleFinger->SetRelativeScale3D(FVector(0.01f, 0.01f, 0.034f));
-		MiddleFinger->SetRelativeLocation(FVector(3.0f, -0.4f, 0.0f));
+		MiddleFinger->SetRelativeScale3D(FVector(0.012f, 0.012f, 0.046f));
+		MiddleFinger->SetRelativeLocation(FVector(4.6f, -0.6f, 0.0f));
 		MiddleFinger->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f));
 	}
 	MiddleFinger->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	// 5. Ring Finger
 	RingFinger = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RingFinger"));
-	RingFinger->SetupAttachment(PalmMesh);
+	RingFinger->SetupAttachment(HandRoot);
 	if (CylinderMeshAsset.Succeeded())
 	{
 		RingFinger->SetStaticMesh(CylinderMeshAsset.Object);
-		RingFinger->SetRelativeScale3D(FVector(0.009f, 0.009f, 0.028f));
-		RingFinger->SetRelativeLocation(FVector(2.7f, 0.5f, 0.0f));
+		RingFinger->SetRelativeScale3D(FVector(0.011f, 0.011f, 0.040f));
+		RingFinger->SetRelativeLocation(FVector(4.2f, 0.6f, 0.0f));
 		RingFinger->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f));
 	}
 	RingFinger->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	// 6. Pinky Finger
 	PinkyFinger = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PinkyFinger"));
-	PinkyFinger->SetupAttachment(PalmMesh);
+	PinkyFinger->SetupAttachment(HandRoot);
 	if (CylinderMeshAsset.Succeeded())
 	{
 		PinkyFinger->SetStaticMesh(CylinderMeshAsset.Object);
-		PinkyFinger->SetRelativeScale3D(FVector(0.008f, 0.008f, 0.022f));
-		PinkyFinger->SetRelativeLocation(FVector(2.3f, 1.4f, 0.0f));
+		PinkyFinger->SetRelativeScale3D(FVector(0.010f, 0.010f, 0.032f));
+		PinkyFinger->SetRelativeLocation(FVector(3.6f, 1.8f, 0.0f));
 		PinkyFinger->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f));
 	}
 	PinkyFinger->SetCollisionEnabled(ECollisionEnabled::NoCollision);

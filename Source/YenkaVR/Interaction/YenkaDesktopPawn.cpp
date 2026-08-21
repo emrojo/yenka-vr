@@ -58,6 +58,10 @@ void AYenkaDesktopPawn::BeginPlay()
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.Owner = this;
 		VirtualHand = GetWorld()->SpawnActor<AYenkaHandAvatar>(HandAvatarClass, FVector(0.0f, 0.0f, -1000.0f), FRotator::ZeroRotator, SpawnParams);
+		if (VirtualHand)
+		{
+			VirtualHand->SetActorHiddenInGame(true);
+		}
 	}
 }
 
@@ -177,10 +181,19 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 
 			if (VirtualHand)
 			{
+				VirtualHand->SetActorHiddenInGame(false);
 				FTransform HandTarget;
-				HandTarget.SetLocation(HitResult.ImpactPoint + (HitResult.ImpactNormal * 5.0f));
+				HandTarget.SetLocation(HitResult.ImpactPoint + (HitResult.ImpactNormal * 3.0f));
 				HandTarget.SetRotation(FRotationMatrix::MakeFromX(-HitResult.ImpactNormal).ToQuat());
 				VirtualHand->SetTargetHandTransform(HandTarget, GrabbedBlock ? 1.0f : 0.0f);
+			}
+		}
+		else
+		{
+			HoveredBlock = nullptr;
+			if (VirtualHand)
+			{
+				VirtualHand->SetActorHiddenInGame(true);
 			}
 		}
 	}
