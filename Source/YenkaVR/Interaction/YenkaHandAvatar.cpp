@@ -39,7 +39,10 @@ void AYenkaHandAvatar::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	// Smoothly interpolate to target transform for remote spectators
-	if (!HasAuthority() && !IsLocallyControlled())
+	APawn* OwnerPawn = Cast<APawn>(GetOwner());
+	const bool bIsLocal = OwnerPawn ? OwnerPawn->IsLocallyControlled() : false;
+
+	if (!HasAuthority() && !bIsLocal)
 	{
 		FTransform CurrentTransform = GetActorTransform();
 		FTransform NewTransform;

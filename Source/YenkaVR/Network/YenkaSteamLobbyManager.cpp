@@ -51,7 +51,7 @@ void UYenkaSteamLobbyManager::CreateLobby(int32 MaxPlayers)
 	SessionSettings.bAllowJoinInProgress = true;
 	SessionSettings.bAllowJoinViaPresence = true;
 	SessionSettings.NumPublicConnections = MaxPlayers;
-	SessionSettings.Set(SETTING_MAPNAME, FString(TEXT("YenkaGameMap")), EOnlineDataAdvertisementType::ViaOnlineService);
+	SessionSettings.Set(FName(TEXT("MAPNAME")), FString(TEXT("YenkaGameMap")), EOnlineDataAdvertisementType::ViaOnlineService);
 	SessionSettings.Set(FName(TEXT("ROOM_CODE")), CurrentRoomCode, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
 	SessionInterface->CreateSession(0, NAME_GameSession, SessionSettings);
