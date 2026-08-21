@@ -27,9 +27,23 @@ AYenkaDesktopPawn::AYenkaDesktopPawn()
 	bIsOrbitingCamera = false;
 }
 
+#include "YenkaVR/Physics/YenkaTowerManager.h"
+
 void AYenkaDesktopPawn::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// Center camera target on the Yenka Tower
+	AActor* TowerActor = UGameplayStatics::GetActorOfClass(GetWorld(), AYenkaTowerManager::StaticClass());
+	if (TowerActor)
+	{
+		SetActorLocation(TowerActor->GetActorLocation() + FVector(0.0f, 0.0f, 15.0f));
+	}
+	else
+	{
+		SetActorLocation(FVector(0.0f, 0.0f, 85.0f));
+	}
+	CameraBoom->TargetArmLength = 65.0f;
 
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (PC && IsLocallyControlled())

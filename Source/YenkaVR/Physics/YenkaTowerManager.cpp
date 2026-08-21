@@ -3,10 +3,26 @@
 #include "YenkaVR.h"
 #include "Engine/World.h"
 
+#include "Components/StaticMeshComponent.h"
+#include "UObject/ConstructorHelpers.h"
+
 AYenkaTowerManager::AYenkaTowerManager()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	bReplicates = true;
+
+	TableMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TableMesh"));
+	RootComponent = TableMesh;
+
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylinderMeshAsset(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
+	if (CylinderMeshAsset.Succeeded())
+	{
+		TableMesh->SetStaticMesh(CylinderMeshAsset.Object);
+		TableMesh->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.05f)); // 50cm diameter, 5cm thick
+	}
+	TableMesh->SetCollisionProfileName(TEXT("BlockAll"));
+	TableMesh->SetSimulatePhysics(false);
+	TableMesh->SetEnableGravity(false);
 
 	BlockClass = AYenkaBlock::StaticClass();
 	BlockDimensions = FVector(7.5f, 2.5f, 1.5f);
@@ -16,7 +32,7 @@ AYenkaTowerManager::AYenkaTowerManager()
 void AYenkaTowerManager::BeginPlay()
 {
 	Super::BeginPlay();
-	TableSurfaceZ = GetActorLocation().Z;
+	TableSurfaceZ = GetActorLocation().Z + (0.05f * 50.0f); // Top surface of table
 
 	if (HasAuthority())
 	{
@@ -33,7 +49,7 @@ void AYenkaTowerManager::Tick(float DeltaTime)
 		int32 FallenCount = 0;
 		for (AYenkaBlock* Block : ActiveBlocks)
 		{
-			if (Block && Block->HasFallen(TableSurfaceZ - 5.0f))
+			if (Block && Block->HasFallen(TableSurfaceZ - 50.0f))
 			{
 				FallenCount++;
 			}
@@ -56,11 +72,13 @@ void AYenkaTowerManager::SpawnTower()
 	const int32 TotalLayers = 18;
 	const int32 BlocksPerLayer = 3;
 	FVector Origin = GetActorLocation();
+	// Start placing blocks right on the top surface of the table
+	float BaseZ = TableSurfaceZ;
 
 	for (int32 Layer = 0; Layer < TotalLayers; ++Layer)
 	{
 		bool bIsEvenLayer = (Layer % 2 == 0);
-		float CurrentZ = Origin.Z + (Layer * BlockDimensions.Z) + (BlockDimensions.Z * 0.5f);
+		float CurrentZ = BaseZ + (Layer * BlockDimensions.Z) + (BlockDimensions.Z * 0.5f);
 
 		for (int32 i = 0; i < BlocksPerLayer; ++i)
 		{
@@ -70,12 +88,12 @@ void AYenkaTowerManager::SpawnTower()
 
 			if (bIsEvenLayer)
 			{
-				BlockPos = Origin + FVector(0.0f, Offset, CurrentZ - Origin.Z);
+				BlockPos = FVector(Origin.X, Origin.Y + Offset, CurrentZ);
 				BlockRot = FRotator(0.0f, 0.0f, 0.0f);
 			}
 			else
 			{
-				BlockPos = Origin + FVector(Offset, 0.0f, CurrentZ - Origin.Z);
+				BlockPos = FVector(Origin.X + Offset, Origin.Y, CurrentZ);
 				BlockRot = FRotator(0.0f, 90.0f, 0.0f);
 			}
 

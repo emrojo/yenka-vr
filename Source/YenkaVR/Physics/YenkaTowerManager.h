@@ -21,6 +21,9 @@ public:
 
 	virtual void BeginPlay() override;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* TableMesh;
+
 	/** Generates the 54 blocks on top of the calibrated table */
 	UFUNCTION(BlueprintCallable, Category = "Yenka|Tower")
 	void SpawnTower();

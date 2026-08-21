@@ -32,7 +32,7 @@ void AYenkaGameMode::BeginPlay()
 	{
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.Owner = this;
-		GetWorld()->SpawnActor<AYenkaTowerManager>(AYenkaTowerManager::StaticClass(), FVector(80.0f, 0.0f, 70.0f), FRotator::ZeroRotator, SpawnParams);
+		GetWorld()->SpawnActor<AYenkaTowerManager>(AYenkaTowerManager::StaticClass(), FVector(0.0f, 0.0f, 70.0f), FRotator::ZeroRotator, SpawnParams);
 	}
 }
 
