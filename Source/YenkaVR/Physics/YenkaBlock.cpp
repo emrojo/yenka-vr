@@ -2,6 +2,8 @@
 #include "Components/StaticMeshComponent.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
 #include "Net/UnrealNetwork.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "UObject/ConstructorHelpers.h"
 
 AYenkaBlock::AYenkaBlock()
 {
@@ -12,7 +14,7 @@ AYenkaBlock::AYenkaBlock()
 	BlockMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BlockMesh"));
 	RootComponent = BlockMesh;
 
-	// Assign default engine Cube mesh so blocks are immediately visible
+	// Assign default engine Cube mesh
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMeshAsset(TEXT("/Engine/BasicShapes/Cube.Cube"));
 	if (CubeMeshAsset.Succeeded())
 	{
@@ -20,8 +22,9 @@ AYenkaBlock::AYenkaBlock()
 	}
 
 	// Dimensions: Standard Jenga block ~ 7.5cm x 2.5cm x 1.5cm (Cube is 100x100x100 cm)
+	SetActorScale3D(FVector(0.075f, 0.025f, 0.015f));
 	BlockMesh->SetRelativeScale3D(FVector(0.075f, 0.025f, 0.015f));
-	BlockMesh->SetSimulatePhysics(true);
+	BlockMesh->SetSimulatePhysics(false); // Initially kinematic to prevent spawn explosion
 	BlockMesh->SetEnableGravity(true);
 	BlockMesh->SetCollisionProfileName(TEXT("BlockAllDynamic"));
 	BlockMesh->BodyInstance.bUseCCD = true; // Continuous Collision Detection
@@ -34,6 +37,20 @@ AYenkaBlock::AYenkaBlock()
 void AYenkaBlock::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// Apply realistic warm wood color dynamic material
+	UMaterialInterface* BaseMat = BlockMesh ? BlockMesh->GetMaterial(0) : nullptr;
+	if (BlockMesh && BaseMat)
+	{
+		UMaterialInstanceDynamic* DynMat = UMaterialInstanceDynamic::Create(BaseMat, this);
+		if (DynMat)
+		{
+			DynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.85f, 0.62f, 0.38f, 1.0f));
+			DynMat->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.85f, 0.62f, 0.38f, 1.0f));
+			BlockMesh->SetMaterial(0, DynMat);
+		}
+	}
+
 	if (WoodPhysicalMaterial && BlockMesh)
 	{
 		BlockMesh->SetPhysMaterialOverride(WoodPhysicalMaterial);

@@ -14,11 +14,12 @@ AYenkaTowerManager::AYenkaTowerManager()
 	TableMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TableMesh"));
 	RootComponent = TableMesh;
 
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylinderMeshAsset(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
-	if (CylinderMeshAsset.Succeeded())
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMeshAsset(TEXT("/Engine/BasicShapes/Cube.Cube"));
+	if (CubeMeshAsset.Succeeded())
 	{
-		TableMesh->SetStaticMesh(CylinderMeshAsset.Object);
-		TableMesh->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.05f)); // 50cm diameter, 5cm thick
+		TableMesh->SetStaticMesh(CubeMeshAsset.Object);
+		TableMesh->SetRelativeScale3D(FVector(0.35f, 0.35f, 0.04f)); // 35cm x 35cm board, 4cm thick
+		TableMesh->SetRelativeLocation(FVector(0.0f, 0.0f, -2.0f)); // Top surface at Z = 0
 	}
 	TableMesh->SetCollisionProfileName(TEXT("BlockAll"));
 	TableMesh->SetSimulatePhysics(false);
@@ -32,7 +33,7 @@ AYenkaTowerManager::AYenkaTowerManager()
 void AYenkaTowerManager::BeginPlay()
 {
 	Super::BeginPlay();
-	TableSurfaceZ = GetActorLocation().Z + (0.05f * 50.0f); // Top surface of table
+	TableSurfaceZ = GetActorLocation().Z;
 
 	if (HasAuthority())
 	{
@@ -72,7 +73,6 @@ void AYenkaTowerManager::SpawnTower()
 	const int32 TotalLayers = 18;
 	const int32 BlocksPerLayer = 3;
 	FVector Origin = GetActorLocation();
-	// Start placing blocks right on the top surface of the table
 	float BaseZ = TableSurfaceZ;
 
 	for (int32 Layer = 0; Layer < TotalLayers; ++Layer)
@@ -108,8 +108,8 @@ void AYenkaTowerManager::SpawnTower()
 		}
 	}
 
-	FreezeTowerPhysics();
-	UE_LOG(LogYenkaVR, Log, TEXT("Spawned 54-block Yenka tower successfully."));
+	WakeTowerForPlayer(nullptr);
+	UE_LOG(LogYenkaVR, Log, TEXT("Spawned 54-block Yenka tower successfully on table."));
 }
 
 void AYenkaTowerManager::ResetTower()
