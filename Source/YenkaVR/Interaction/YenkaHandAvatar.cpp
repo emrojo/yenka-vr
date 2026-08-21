@@ -89,6 +89,17 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 	}
 	PinkyFinger->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> GloveBaseMatAsset(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+	if (GloveBaseMatAsset.Succeeded())
+	{
+		PalmMesh->SetMaterial(0, GloveBaseMatAsset.Object);
+		ThumbMesh->SetMaterial(0, GloveBaseMatAsset.Object);
+		IndexFinger->SetMaterial(0, GloveBaseMatAsset.Object);
+		MiddleFinger->SetMaterial(0, GloveBaseMatAsset.Object);
+		RingFinger->SetMaterial(0, GloveBaseMatAsset.Object);
+		PinkyFinger->SetMaterial(0, GloveBaseMatAsset.Object);
+	}
+
 	PhysicsHandle = CreateDefaultSubobject<UPhysicsHandleComponent>(TEXT("PhysicsHandle"));
 
 	ReplicatedGripStrength = 0.0f;
@@ -110,12 +121,10 @@ void AYenkaHandAvatar::BeginPlay()
 		UMaterialInstanceDynamic* GloveMat = UMaterialInstanceDynamic::Create(BaseMat, this);
 		if (GloveMat)
 		{
-			FLinearColor GloveColor(0.2f, 0.58f, 0.92f, 1.0f);
+			FLinearColor GloveColor(0.12f, 0.65f, 0.98f, 1.0f); // Sleek cyan-blue VR glove
 			GloveMat->SetVectorParameterValue(TEXT("Color"), GloveColor);
-			GloveMat->SetVectorParameterValue(TEXT("BaseColor"), GloveColor);
-			GloveMat->SetScalarParameterValue(TEXT("Roughness"), 0.25f);
-			GloveMat->SetScalarParameterValue(TEXT("Metallic"), 0.2f);
-			GloveMat->SetScalarParameterValue(TEXT("Specular"), 0.6f);
+			GloveMat->SetScalarParameterValue(TEXT("Roughness"), 0.2f);
+			GloveMat->SetScalarParameterValue(TEXT("Metallic"), 0.3f);
 
 			for (UStaticMeshComponent* Part : HandParts)
 			{

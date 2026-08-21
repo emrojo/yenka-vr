@@ -14,11 +14,17 @@ AYenkaBlock::AYenkaBlock()
 	BlockMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BlockMesh"));
 	RootComponent = BlockMesh;
 
-	// Assign default engine Cube mesh
+	// Assign default engine Cube mesh and BasicShapeMaterial with color parameter
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMeshAsset(TEXT("/Engine/BasicShapes/Cube.Cube"));
 	if (CubeMeshAsset.Succeeded())
 	{
 		BlockMesh->SetStaticMesh(CubeMeshAsset.Object);
+	}
+
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> WoodBaseMatAsset(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+	if (WoodBaseMatAsset.Succeeded())
+	{
+		BlockMesh->SetMaterial(0, WoodBaseMatAsset.Object);
 	}
 
 	// Dimensions: Standard Jenga block ~ 7.5cm x 2.5cm x 1.5cm (Cube is 100x100x100 cm)
@@ -47,15 +53,14 @@ void AYenkaBlock::BeginPlay()
 		UMaterialInstanceDynamic* DynMat = UMaterialInstanceDynamic::Create(BaseMat, this);
 		if (DynMat)
 		{
-			// Natural polished birch / oak wood color variation
-			float Var = (static_cast<float>(GetTypeHash(GetActorLocation().ToString()) % 100) / 100.0f) * 0.12f - 0.06f;
-			FLinearColor WoodTone(0.82f + Var, 0.58f + (Var * 0.8f), 0.36f + (Var * 0.5f), 1.0f);
+			// Natural polished beech / oak wood tone variation
+			float HashVal = static_cast<float>(GetTypeHash(GetActorLocation().ToString()) % 100);
+			float Var = (HashVal / 100.0f) * 0.14f - 0.07f;
+			FLinearColor WoodTone(0.84f + Var, 0.58f + (Var * 0.75f), 0.33f + (Var * 0.5f), 1.0f);
 
 			DynMat->SetVectorParameterValue(TEXT("Color"), WoodTone);
-			DynMat->SetVectorParameterValue(TEXT("BaseColor"), WoodTone);
-			DynMat->SetScalarParameterValue(TEXT("Roughness"), 0.35f);
+			DynMat->SetScalarParameterValue(TEXT("Roughness"), 0.32f);
 			DynMat->SetScalarParameterValue(TEXT("Metallic"), 0.0f);
-			DynMat->SetScalarParameterValue(TEXT("Specular"), 0.45f);
 			BlockMesh->SetMaterial(0, DynMat);
 		}
 	}

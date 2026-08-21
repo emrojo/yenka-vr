@@ -21,6 +21,13 @@ AYenkaTowerManager::AYenkaTowerManager()
 		TableMesh->SetRelativeScale3D(FVector(0.35f, 0.35f, 0.04f)); // 35cm x 35cm board, 4cm thick
 		TableMesh->SetRelativeLocation(FVector(0.0f, 0.0f, -2.0f)); // Top surface at Z = 0
 	}
+
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> TableBaseMatAsset(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+	if (TableBaseMatAsset.Succeeded())
+	{
+		TableMesh->SetMaterial(0, TableBaseMatAsset.Object);
+	}
+
 	TableMesh->SetCollisionProfileName(TEXT("BlockAll"));
 	TableMesh->SetSimulatePhysics(false);
 	TableMesh->SetEnableGravity(false);
@@ -30,10 +37,26 @@ AYenkaTowerManager::AYenkaTowerManager()
 	TableSurfaceZ = 0.0f;
 }
 
+#include "Materials/MaterialInstanceDynamic.h"
+
 void AYenkaTowerManager::BeginPlay()
 {
 	Super::BeginPlay();
 	TableSurfaceZ = GetActorLocation().Z;
+
+	// Apply dark walnut wood material to the table board
+	UMaterialInterface* BaseMat = TableMesh ? TableMesh->GetMaterial(0) : nullptr;
+	if (BaseMat)
+	{
+		UMaterialInstanceDynamic* DynMat = UMaterialInstanceDynamic::Create(BaseMat, this);
+		if (DynMat)
+		{
+			DynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.24f, 0.15f, 0.08f, 1.0f));
+			DynMat->SetScalarParameterValue(TEXT("Roughness"), 0.4f);
+			DynMat->SetScalarParameterValue(TEXT("Metallic"), 0.0f);
+			TableMesh->SetMaterial(0, DynMat);
+		}
+	}
 
 	if (HasAuthority())
 	{
