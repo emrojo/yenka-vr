@@ -77,18 +77,18 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 	if (PlayerInputComponent)
 	{
-		// Direct Key Bindings (guaranteed to work immediately without Project Settings)
+		// Direct Key Bindings
 		PlayerInputComponent->BindKey(EKeys::LeftMouseButton, IE_Pressed, this, &AYenkaDesktopPawn::OnPrimaryClickPressed);
 		PlayerInputComponent->BindKey(EKeys::LeftMouseButton, IE_Released, this, &AYenkaDesktopPawn::OnPrimaryClickReleased);
 		PlayerInputComponent->BindKey(EKeys::RightMouseButton, IE_Pressed, this, &AYenkaDesktopPawn::OnSecondaryClickPressed);
 		PlayerInputComponent->BindKey(EKeys::RightMouseButton, IE_Released, this, &AYenkaDesktopPawn::OnSecondaryClickReleased);
-		PlayerInputComponent->BindKey(EKeys::MouseX, this, &AYenkaDesktopPawn::OnMouseX);
-		PlayerInputComponent->BindKey(EKeys::MouseY, this, &AYenkaDesktopPawn::OnMouseY);
-		PlayerInputComponent->BindKey(EKeys::MouseWheelAxis, this, &AYenkaDesktopPawn::OnMouseWheel);
-		PlayerInputComponent->BindKey(EKeys::W, this, &AYenkaDesktopPawn::MoveForward);
-		PlayerInputComponent->BindKey(EKeys::S, this, &AYenkaDesktopPawn::MoveForward);
-		PlayerInputComponent->BindKey(EKeys::D, this, &AYenkaDesktopPawn::MoveRight);
-		PlayerInputComponent->BindKey(EKeys::A, this, &AYenkaDesktopPawn::MoveRight);
+		PlayerInputComponent->BindAxisKey(EKeys::MouseX, this, &AYenkaDesktopPawn::OnMouseX);
+		PlayerInputComponent->BindAxisKey(EKeys::MouseY, this, &AYenkaDesktopPawn::OnMouseY);
+		PlayerInputComponent->BindAxisKey(EKeys::MouseWheelAxis, this, &AYenkaDesktopPawn::OnMouseWheel);
+		PlayerInputComponent->BindAxisKey(EKeys::W, this, &AYenkaDesktopPawn::MoveForward);
+		PlayerInputComponent->BindAxisKey(EKeys::S, this, &AYenkaDesktopPawn::MoveForward);
+		PlayerInputComponent->BindAxisKey(EKeys::D, this, &AYenkaDesktopPawn::MoveRight);
+		PlayerInputComponent->BindAxisKey(EKeys::A, this, &AYenkaDesktopPawn::MoveRight);
 	}
 }
 

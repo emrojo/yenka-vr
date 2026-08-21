@@ -5,6 +5,7 @@
 #include "YenkaVR/Interaction/YenkaVRPawn.h"
 #include "YenkaVR/Interaction/YenkaDesktopPawn.h"
 #include "IXRTrackingSystem.h"
+#include "IHeadMountedDisplay.h"
 #include "YenkaVR.h"
 #include "TimerManager.h"
 #include "Kismet/GameplayStatics.h"
