@@ -230,8 +230,18 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 		}
 
 		GrabbedBlock = HoveredBlock;
-		GrabbedBlock->SetPhysicsActive(true);
-		GrabbedBlock->BlockMesh->WakeRigidBody();
+
+		// Wake all blocks in the tower so gravity naturally affects upper blocks
+		AYenkaTowerManager* TowerMgr = Cast<AYenkaTowerManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AYenkaTowerManager::StaticClass()));
+		if (TowerMgr)
+		{
+			TowerMgr->WakeTowerForPlayer(PC);
+		}
+		else
+		{
+			GrabbedBlock->SetPhysicsActive(true);
+			GrabbedBlock->BlockMesh->WakeRigidBody();
+		}
 
 		VirtualHand->PhysicsHandle->GrabComponentAtLocationWithRotation(
 			GrabbedBlock->BlockMesh,

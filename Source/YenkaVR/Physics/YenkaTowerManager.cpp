@@ -109,9 +109,9 @@ void AYenkaTowerManager::SpawnTower()
 		}
 	}
 
-	// Keep the tower asleep on start until player interacts
-	FreezeTowerPhysics();
-	UE_LOG(LogYenkaVR, Log, TEXT("Spawned 54-block Yenka tower successfully on table in stable sleep state."));
+	// Activate full physics simulation with Chaos dynamics and gravity
+	WakeTowerForPlayer(nullptr);
+	UE_LOG(LogYenkaVR, Log, TEXT("Spawned 54-block Yenka tower successfully with full dynamic physics."));
 }
 
 void AYenkaTowerManager::ResetTower()
@@ -130,9 +130,9 @@ void AYenkaTowerManager::FreezeTowerPhysics()
 {
 	for (AYenkaBlock* Block : ActiveBlocks)
 	{
-		if (Block)
+		if (Block && Block->BlockMesh)
 		{
-			Block->SetPhysicsActive(false);
+			Block->BlockMesh->PutRigidBodyToSleep();
 		}
 	}
 }
@@ -141,10 +141,12 @@ void AYenkaTowerManager::WakeTowerForPlayer(APlayerController* ActivePlayer)
 {
 	for (AYenkaBlock* Block : ActiveBlocks)
 	{
-		if (Block)
+		if (Block && Block->BlockMesh)
 		{
 			Block->AssignTurnAuthority(ActivePlayer);
-			Block->SetPhysicsActive(true);
+			Block->BlockMesh->SetSimulatePhysics(true);
+			Block->BlockMesh->SetEnableGravity(true);
+			Block->BlockMesh->WakeRigidBody();
 		}
 	}
 }

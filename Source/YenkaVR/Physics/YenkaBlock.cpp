@@ -78,9 +78,11 @@ void AYenkaBlock::SetPhysicsActive(bool bActive)
 {
 	if (!BlockMesh) return;
 
+	BlockMesh->SetSimulatePhysics(true);
+	BlockMesh->SetEnableGravity(true);
+
 	if (bActive)
 	{
-		BlockMesh->SetSimulatePhysics(true);
 		BlockMesh->WakeRigidBody();
 	}
 	else
