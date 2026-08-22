@@ -1,7 +1,7 @@
 # System Requirements Specification - YenkaVR
 
 **Project:** YenkaVR  
-**Version:** 1.1.0  
+**Version:** 1.2.0  
 **Status:** Approved  
 **Last Updated:** 2026-08-22  
 
@@ -21,6 +21,7 @@ This section maintains the immutable history of all requirements defined and agr
 | :--- | :--- | :--- | :--- |
 | **v1.0.0** | 2026-08-21 | User & Antigravity | Initial requirements baseline: UE5 + Chaos Physics, turn-owner physics authority, MR Passthrough with dual calibration (auto/manual), No-VR desktop support with virtual hand avatar, spectator bimanual zoom/drag gestures, Steam Lobbies + Room Codes, and 3D spatial VoIP. |
 | **v1.1.0** | 2026-08-22 | User & Antigravity | Physics stabilization via $0.3\text{ mm}$ lateral micro-clearance, Chaos solver configuration (16 position iterations), extraction via `PhysicsHandle`, dynamic procedural wood shaders for blocks and table, articulated 3D hand avatar with grasping kinematics, index finger poke mode, and strictly horizontal hand alignment. |
+| **v1.2.0** | 2026-08-22 | User & Antigravity | 7-color balanced wood-stain palette (`[REQ-ART-03]`), protrusion-only selective grabbing (`[REQ-CROSS-09]`), organic placement error ($\pm 0.2\text{ cm}$) with $\le 1.0\text{ cm}$ safety clamp (`[REQ-PHYS-05]`), sequential top-down FIFO construction with 1.0cm drop clearance and 0.05s interval (`[REQ-PHYS-06]`), non-slip high-friction table base (`[REQ-PHYS-07]`), and high-power $18.0\text{ cm/s}$ push mechanics (`[REQ-CROSS-10]`). |
 
 > [!NOTE]
 > Any new requirements or modifications agreed upon in the future must be added to this table with an incremental version tag (`v1.2.0`, etc.) and referenced in [`docs/DECISION_LOG.md`](DECISION_LOG.md).
@@ -53,18 +54,28 @@ This section maintains the immutable history of all requirements defined and agr
 * **`[REQ-PHYS-01]` Chaos Physics Simulation:**
   * The tower consists of 54 individual blocks simulated via Chaos Rigid Bodies with Continuous Collision Detection (CCD).
   * Standard official block dimensions: $7.5\text{ cm} \times 2.5\text{ cm} \times 1.5\text{ cm}$ with a mass of $85\text{ g}$.
-  * Realistic wood physical material with static friction ($\approx 0.65$), dynamic friction ($\approx 0.48$), and physical damping (`LinearDamping 1.0`, `AngularDamping 1.0`).
+  * Realistic wood physical material with static friction ($\approx 0.65$), dynamic friction ($\approx 0.48$), and physical damping (`LinearDamping 1.2`, `AngularDamping 1.8`).
 * **`[REQ-PHYS-02]` Transferable Turn-Owner Physics Authority:**
   * The client of the player whose turn is active holds physical authority (`Network Ownership`) over all tower blocks to guarantee 0 ms input lag during manipulation.
   * The active player periodically replicates (30-60 Hz) positions, rotations, and linear/angular velocities to the server/host.
   * Other clients smoothly interpolate the kinematic states of the blocks.
 * **`[REQ-PHYS-03]` Sleep State Stabilization:**
-  * Upon tower spawn and at the end of each turn after stability is confirmed, blocks enter a rigid body *Sleep* state with physics simulation and gravity permanently enabled to prevent floating-point drift.
+  * Upon turn completion and after stability is confirmed, blocks enter a rigid body *Sleep* state with physics simulation and gravity permanently enabled to prevent floating-point drift.
 * **`[REQ-PHYS-04]` Micro-Clearance & Contact Solver:**
-  * Lateral safety gap of $0.3\text{ mm}$ between the 3 adjacent blocks of each floor (`Offset = (i - 1) * 2.53f`) to prevent repulsive normal impulses on frame 0.
-  * Vertical layer spacing of $0.3\text{ mm}$ (`CurrentZ = BaseZ + Layer * 1.503f + 0.75f`).
-  * Chaos solver calibrated to 16 position iterations and 8 velocity iterations (`PositionSolverIterationCount = 16`, `VelocitySolverIterationCount = 8`).
+  * Lateral safety gap of $1.0\text{ mm} \sim 2.5\text{ mm}$ between adjacent blocks of each floor to prevent repulsive normal impulses on frame 0.
   * Dynamic wakeup and gravity collapse: when supporting blocks are extracted or a floor is cleared, upper blocks fall and collapse naturally under physical weight and gravity.
+* **`[REQ-PHYS-05]` Organic Placement Deviation & Safety Boundary Clamp:**
+  * Upper layers ($Layer \ge 1$) feature organic placement errors simulating human construction:
+    * Longitudinal shift between $-0.2\text{ cm}$ and $+0.2\text{ cm}$ ($\pm 2\text{ mm}$) relative to the base square perimeter ($7.5\text{ cm} \times 7.5\text{ cm}$).
+    * Random orientation jitter between $-1.0^\circ$ and $+1.0^\circ$.
+    * Inter-block spacing jitter between $1.0\text{ mm}$ and $2.5\text{ mm}$.
+  * **Safety Boundary Rule:** Placement offsets are automatically clamped so that no block ever exceeds the base perimeter by more than $+1.0\text{ cm}$, guaranteeing the tower never collapses upon initialization.
+* **`[REQ-PHYS-06]` Sequential Piece-by-Piece FIFO Construction with 1.0cm Drop:**
+  * Tower builds progressively one piece at a time using a FIFO spawn queue with a $0.05\text{ s}$ ($50\text{ ms}$) interval (~$2.7\text{ s}$ total build time).
+  * Each block spawns exactly **$1.0\text{ cm}$ above the top surface of the underlying layer** ($Z = \text{BaseZ} + (Layer \times 1.50\text{ cm}) + 1.75\text{ cm}$) and drops freely under gravity, landing and settling into physical equilibrium before higher blocks drop above it.
+* **`[REQ-PHYS-07]` Table Friction Material & Chaos Solver Hardening:**
+  * Dedicated `UPhysicalMaterial` assigned to the tabletop (`Friction = 0.60`, `StaticFriction = 0.65`, `Restitution = 0.0`) preventing base layer slipping.
+  * Chaos solver hardened to 24 position iterations and 12 velocity iterations (`PositionSolverIterationCount = 24`, `VelocitySolverIterationCount = 12`) and `MaxDepenetrationVelocity = 6.0`.
 
 ---
 
@@ -91,7 +102,7 @@ This section maintains the immutable history of all requirements defined and agr
   * Grasping kinematics (*pinch pose*) during drag interaction.
   * **Strictly Horizontal Alignment:** The hand is locked horizontal (`Pitch = 0°`, `Roll = 0°`) facing towards the tower center, eliminating vertical tilts.
 * **`[REQ-CROSS-03]` Mouse-Assisted Physics Handle Extraction:**
-  * **Left Click (Hold):** Grips the selected block with a `UPhysicsHandleComponent` at the exact raycast hit point.
+  * **Left Click (Hold):** Grips the selected block with a `UPhysicsHandleComponent` at the protruding edge.
   * **Drag:** Moving the mouse outward pulls the block smoothly against friction and the weight of upper floors.
   * **Left Click (Release):** Releases the physics handle to drop or settle the block.
   * **Right Click (Drag):** 360° orbital camera rotation around the tower.
@@ -101,7 +112,7 @@ This section maintains the immutable history of all requirements defined and agr
   * **Extended Index Finger Pose:** Holding **`E`** (or pressing **`F`** to toggle) switches the hand into poke mode (index finger fully extended, others closed in a fist).
   * **Contact Alignment:** The index fingertip places precisely against the target block face.
 * **`[REQ-CROSS-05]` Precision Longitudinal Block Push:**
-  * In poke mode, pressing the push action calculates the longitudinal axis of the block.
+  * In poke mode, clicking or pushing with the mouse calculates the longitudinal axis of the block.
 * **`[REQ-CROSS-06]` Proximity Horizontal Enforcement ($2\times \text{HandLength}$):**
   * Within a proximity radius of $2\times \text{HandLength}$ ($22.0\text{ cm}$ from the tower boundary), the hand orientation is strictly constrained to be horizontal (`Pitch = 0°`, `Roll = 0°`) facing the tower center.
   * Outside the proximity boundary, the hand moves freely in 3D space following the cursor ray.
@@ -109,19 +120,30 @@ This section maintains the immutable history of all requirements defined and agr
   * **Push Mode Lock:** In Poke/Push mode (`E` key or toggle `F`), mouse movement is locked strictly perpendicular (radial) to the tower face, allowing only inward push or outward retraction along the piece's longitudinal axis to prevent lateral disturbance of neighboring blocks.
   * **Inspection Mode Perimeter Lock:** In normal inspection/hover mode, inward radial motion is clamped to a safe perimeter ($R \ge \text{INSPECTION_SAFE_RADIUS} \approx 16.0\text{ cm}$), allowing only orbital/circumferential movement around the tower and vertical floor transitions, preventing accidental collision with or toppling of tower blocks.
 * **`[REQ-CROSS-08]` Assisted Stand-Off Proximity Snapping:**
-  * In both **Push Mode** and **Grab Mode**, the hand automatically approaches and aligns with the nearest Jenga block's accessible face at a calibrated safety stand-off clearance ($8\text{ mm}$).
+  * In both **Push Mode** and **Grab Mode**, the hand automatically approaches and aligns with the nearest Jenga block's accessible face at a calibrated safety stand-off clearance ($1.0\text{ cm}$).
   * The hand stops before contact, ensuring that aiming or activating modes never applies premature pressure or knocks over pieces.
-  * Physical pushing or extraction is only initiated upon deliberate forward mouse movement or left-click drag.
+* **`[REQ-CROSS-09]` Protrusion-Only Selective Grabbing:**
+  * In Grab Mode, the player can only pinch and extract blocks that protrude by at least $4\text{ mm}$ (`PROTRUSION_THRESHOLD = 4.15cm` from tower center) beyond the flush outer boundary.
+  * If a block is flush or recessed inside the tower, clicking does nothing, preventing accidental disruption of aligned structural columns.
+* **`[REQ-CROSS-10]` High-Power Active Longitudinal Push ($18.0\text{ cm/s}$ / $24.0\text{ cm/s}$):**
+  * In Push Mode (`E` / `F`), holding Left Click continuously drives the active block inward along its longitudinal axis at **$18.0\text{ cm/s}$**, easily overcoming heavy top-layer friction.
+  * Forward mouse motion dynamically scales the push velocity up to **$24.0\text{ cm/s}$**.
+* **`[REQ-CROSS-11]` Fingertip-Accurate Stand-Off Distance in Exploration Mode:**
+  * In inspection/exploration mode, safety clearance is measured strictly from the tip of the extended middle finger ($X = 6.4\text{ cm}$) to the tower surface, guaranteeing zero mesh clipping or collision when examining blocks.
 
 ---
 
 ### 3.5. Art, Materials & Visual Appearance (`[REQ-ART]`)
 
 * **`[REQ-ART-01]` Dynamic Photorealistic Wood Shaders:**
-  * Each tower block uses a dynamic polished wood shader (beech/oak) with satin sheen (`Roughness = 0.32`) and unique organic color variations per block ($Var \pm 0.07$).
+  * Each tower block uses a dynamic polished wood shader with satin sheen (`Roughness = 0.32`) and organic wood grain texture.
   * Game tabletop finished in noble dark walnut wood (`Roughness = 0.40`).
 * **`[REQ-ART-02]` VR Glove Avatar Styling:**
   * Articulated hand rendered with vibrant cyan-blue VR glove styling featuring metallic/specular highlights.
+* **`[REQ-ART-03]` 7-Color Balanced Wood-Stain Palette Distribution:**
+  * The 54 blocks are evenly partitioned across a 7-color palette: Red, Orange, Yellow, Green, Cyan, Blue, and Purple (5 groups of 8 blocks, 2 groups of 7 blocks).
+  * Colors are applied as dynamic translucent wood stains, preserving underlying wood grain, specular reflections, and normal maps.
+  * Color indices and linear colors replicate over the network (`OnRep_BlockColor`).
 
 ---
 
@@ -172,16 +194,23 @@ This section maintains the immutable history of all requirements defined and agr
 | `[REQ-CORE-03]` | Cumulative Score | `Source/YenkaVR/Core/YenkaPlayerState.h` | Specified |
 | `[REQ-PHYS-01]` | Chaos Physics 54 Blocks | `Source/YenkaVR/Physics/YenkaTowerManager.h` | Implemented |
 | `[REQ-PHYS-02]` | Turn-Owner Authority | `Source/YenkaVR/Physics/YenkaBlock.h` | Implemented |
-| `[REQ-PHYS-03]` | Sleep State Freeze | `Source/YenkaVR/Physics/YenkaTowerManager.cpp` | Implemented |
-| `[REQ-PHYS-04]` | Micro-Clearance & Gravity Collapse | `Source/YenkaVR/Physics/YenkaTowerManager.cpp` | Implemented |
+| `[REQ-PHYS-03]` | Sleep State Stabilization | `Source/YenkaVR/Physics/YenkaTowerManager.cpp` | Implemented |
+| `[REQ-PHYS-04]` | Inter-Block Spacing & Gravity Collapse | `Source/YenkaVR/Physics/YenkaTowerManager.cpp` | Implemented |
+| `[REQ-PHYS-05]` | Organic Placement Error & Boundary Clamp | `Source/YenkaVR/Physics/YenkaTowerManager.cpp` | Implemented |
+| `[REQ-PHYS-06]` | Sequential 1.0cm Drop FIFO Construction | `Source/YenkaVR/Physics/YenkaTowerManager.cpp` | Implemented |
+| `[REQ-PHYS-07]` | High-Friction Table & Solver Hardening | `Source/YenkaVR/Physics/YenkaTowerManager.cpp` | Implemented |
 | `[REQ-CROSS-02]`| Articulated 3D Hand & Horizontal Lock | `Source/YenkaVR/Interaction/YenkaHandAvatar.cpp` | Implemented |
 | `[REQ-CROSS-03]`| PhysicsHandle Mouse Extraction | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
 | `[REQ-CROSS-04]`| Extended Index Finger Mode | `Source/YenkaVR/Interaction/YenkaHandAvatar.cpp` | Implemented |
 | `[REQ-CROSS-05]`| Guided Longitudinal Push | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
 | `[REQ-CROSS-06]`| Proximity Horizontal Lock (2x Hand) | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
 | `[REQ-CROSS-07]`| Perpendicular & Perimeter Locks | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
-| `[REQ-CROSS-08]`| Assisted Stand-Off Snapping | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
+| `[REQ-CROSS-08]`| Assisted Stand-Off Snapping (1.0cm) | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
+| `[REQ-CROSS-09]`| Protrusion-Only Selective Grabbing | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
+| `[REQ-CROSS-10]`| High-Power Active Push (18.0 - 24.0 cm/s)| `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
+| `[REQ-CROSS-11]`| Fingertip-Accurate Stand-Off Distance | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
 | `[REQ-ART-01]`  | Photorealistic Wood Shaders | `Source/YenkaVR/Physics/YenkaBlock.cpp` | Implemented |
+| `[REQ-ART-03]`  | 7-Color Balanced Wood-Stain Palette | `Source/YenkaVR/Physics/YenkaTowerManager.cpp` | Implemented |
 | `[REQ-XR-01]`   | OpenXR Passthrough | `Source/YenkaVR/Spatial/YenkaPassthroughManager.h` | Specified |
 | `[REQ-XR-02]`   | Table Calibration | `Source/YenkaVR/Spatial/YenkaSurfaceCalibrator.h` | Specified |
 | `[REQ-CAM-01]`  | Bimanual Pinch Zoom | `Source/YenkaVR/Interaction/YenkaVRPawn.h` | Specified |

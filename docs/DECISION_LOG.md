@@ -16,6 +16,11 @@ This document records all architectural, technical design, and mechanics decisio
 * [ADR-008: Index Finger Poke Pose & Guided Longitudinal Block Pushing](#adr-008-index-finger-poke-pose--guided-longitudinal-block-pushing)
 * [ADR-009: Proximity Boundary Constraint, Perpendicular Push Lock & Inspection Perimeter Lock](#adr-009-proximity-boundary-constraint-perpendicular-push-lock--inspection-perimeter-lock)
 * [ADR-010: Assisted Stand-Off Proximity Snapping in Push and Grab Modes](#adr-010-assisted-stand-off-proximity-snapping-in-push-and-grab-modes)
+* [ADR-011: 7-Color Balanced Wood-Stain Palette Distribution](#adr-011-7-color-balanced-wood-stain-palette-distribution)
+* [ADR-012: Organic Placement Deviation ($\pm 0.2\text{ cm}$) and Safety Boundary Clamp](#adr-012-organic-placement-deviation-pm-02text-cm-and-safety-boundary-clamp)
+* [ADR-013: Sequential Piece-by-Piece FIFO Construction with 1.0cm Top-Down Drop](#adr-013-sequential-piece-by-piece-fifo-construction-with-10cm-top-down-drop)
+* [ADR-014: Protrusion-Only Selective Grabbing & Tower Structural Integrity Protection](#adr-014-protrusion-only-selective-grabbing--tower-structural-integrity-protection)
+* [ADR-015: High-Power Active Push Velocity ($18.0\text{ cm/s}$ - $24.0\text{ cm/s}$) for Lower-Layer Extraction](#adr-015-high-power-active-push-velocity-180text-cms---240text-cms-for-lower-layer-extraction)
 
 ---
 
@@ -143,12 +148,86 @@ This document records all architectural, technical design, and mechanics decisio
 * **Status:** Accepted
 * **Context:** Requiring pixel-perfect manual positioning of the virtual hand against target blocks caused accidental contact and premature force exertion, potentially toppling tower blocks before the player intended to push or grab.
 * **Decision:**
-  * Implement an automatic stand-off proximity snapping system (`GetBlockStandOffLocation`) with a calibrated safety clearance of $D_{clearance} = 8\text{ mm}$.
+  * Implement an automatic stand-off proximity snapping system (`GetBlockStandOffLocation`) with a calibrated safety clearance of $D_{clearance} = 1.0\text{ cm}$.
   * In **Push Mode**, the hand automatically snaps in front of the nearest piece's accessible face in `FingerPoke` posture without touching the piece. Force is only applied when the player deliberately moves the mouse forward past the stand-off clearance.
   * In **Grab Mode**, the open hand hovers at the stand-off distance facing the block end. Grasping and extraction occur exclusively upon pressing and dragging Left Mouse Button.
 * **Consequences:**
   * *(Positive)* Completely prevents accidental block collisions and premature forces during aiming or mode switching.
   * *(Positive)* High player control and tactile feedback when intentionally applying force or pulling pieces.
+
+---
+
+### ADR-011: 7-Color Balanced Wood-Stain Palette Distribution
+* **Date:** 2026-08-22
+* **Status:** Accepted
+* **Context:** The standard uncolored wood blocks lacked visual contrast and party-game vibrancy, making multi-block structure discernment difficult.
+* **Decision:**
+  * Define a 7-color palette of saturated wood-stain tones: Red, Orange, Yellow, Green, Cyan, Blue, and Purple.
+  * Distribute the 54 blocks evenly using modulo indexing ($54 \pmod 7$), yielding 5 groups of 8 blocks and 2 groups of 7 blocks.
+  * Apply tinting via dynamic material instances multiplying base albedo while keeping specular roughness ($0.32$) and micro-grain details intact.
+  * Replicate `ColorIndex` and `BlockColor` via `OnRep_BlockColor`.
+* **Consequences:**
+  * *(Positive)* Distinct, beautiful visual identification of pieces while maintaining photorealistic physical wood material properties.
+  * *(Positive)* Fully deterministic and network-replicated color assignments.
+
+---
+
+### ADR-012: Organic Placement Deviation ($\pm 0.2\text{ cm}$) and Safety Boundary Clamp
+* **Date:** 2026-08-22
+* **Status:** Accepted
+* **Context:** Perfectly mathematical $0.000\text{ mm}$ grid alignment produced an artificial, robotic tower appearance unlike real human-built Jenga towers, which naturally contain minor offsets and rotational misalignments.
+* **Decision:**
+  * Maintain Layer 0 as the strict reference base square ($7.5\text{ cm} \times 7.5\text{ cm}$).
+  * For Layers $1 \sim 17$, apply organic random displacement:
+    * Longitudinal shift between $-0.2\text{ cm}$ and $+0.2\text{ cm}$ ($\pm 2\text{ mm}$).
+    * Yaw rotation jitter between $-1.0^\circ$ and $+1.0^\circ$.
+    * Adjacent block gap between $1.0\text{ mm}$ and $2.5\text{ mm}$.
+  * Implement an automatic clamp rule: no block offset may ever exceed the base boundary by more than $+1.0\text{ cm}$.
+* **Consequences:**
+  * *(Positive)* Highly authentic, organic look and feel that realistically challenges players' balance strategies.
+  * *(Positive)* 100% stable initialization guaranteed by the $+1.0\text{ cm}$ safety perimeter clamp.
+
+---
+
+### ADR-013: Sequential Piece-by-Piece FIFO Construction with 1.0cm Top-Down Drop
+* **Date:** 2026-08-22
+* **Status:** Accepted
+* **Context:** Spawning 54 physics-simulating rigid bodies simultaneously on frame 0 caused collision solver penetration impulses and body-sleep cascades that led to sudden pops when players first touched the tower.
+* **Decision:**
+  * Queue all 54 blocks into a FIFO construction queue (`PendingSpawnQueue`) and spawn them sequentially from Layer 0 to 17 using a $0.05\text{ s}$ timer (~$2.7\text{ s}$ total).
+  * Spawn each block with a $1.0\text{ cm}$ clearance above the top of the underlying layer ($Z_{\text{spawn}} = \text{BaseZ} + (Layer \times 1.50\text{ cm}) + 1.75\text{ cm}$).
+  * Allow each piece to fall freely under gravity onto the stack, dampening impact energy and settling naturally into true physical contact equilibrium.
+* **Consequences:**
+  * *(Positive)* Zero penetration pops; natural physical resting contacts from creation.
+  * *(Positive)* Engaging, dynamic top-down tower building animation on game start.
+
+---
+
+### ADR-014: Protrusion-Only Selective Grabbing & Tower Structural Integrity Protection
+* **Date:** 2026-08-22
+* **Status:** Accepted
+* **Context:** In Grab Mode, accidentally clicking flush or deeply recessed blocks in load-bearing layers applied sudden lateral impulses that could collapse the tower unintentionally.
+* **Decision:**
+  * Evaluate block protrusion relative to the tower perimeter using `IsBlockProtruding()`.
+  * Only allow `UPhysicsHandleComponent` grasping if a block's longitudinal end extends at least $4\text{ mm}$ (`PROTRUSION_THRESHOLD = 4.15cm` from center) beyond the flush outer perimeter.
+  * If a block is flush or recessed, mouse clicking is ignored. Players must first push the block out in Push Mode before grabbing.
+* **Consequences:**
+  * *(Positive)* Eliminates accidental grabs that ruin games.
+  * *(Positive)* Rewards strategic two-step extraction (Push to reveal edge $\rightarrow$ Grab to extract).
+
+---
+
+### ADR-015: High-Power Active Push Velocity ($18.0\text{ cm/s}$ - $24.0\text{ cm/s}$) for Lower-Layer Extraction
+* **Date:** 2026-08-22
+* **Status:** Accepted
+* **Context:** In lower tower floors, the normal force $N$ exerted by 15+ overhead layers creates high frictional resistance ($\mu N \approx 7.2\text{ N}$), causing gentle pushes to stall or feel unresponsive.
+* **Decision:**
+  * Increase active longitudinal push velocity to **$18.0\text{ cm/s}$** when holding Left Click in Push Mode.
+  * Enable forward mouse motion (`OnMouseY`) to dynamically accelerate the push speed up to **$24.0\text{ cm/s}$**.
+  * Harden Chaos solver iterations (`PositionSolverIterationCount = 24`, `VelocitySolverIterationCount = 12`) and physical damping (`LinearDamping 1.2`, `AngularDamping 1.8`).
+* **Consequences:**
+  * *(Positive)* Authoritative, satisfying piece sliding through tight, heavily weighted layers without toppling adjacent columns.
+  * *(Positive)* Precise real-time control via mouse drag and click holding.
 
 ---
 
