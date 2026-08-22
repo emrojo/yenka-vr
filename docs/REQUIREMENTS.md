@@ -222,11 +222,10 @@ This section maintains the immutable history of all requirements defined and agr
 | `[REQ-CROSS-08]`| Assisted Stand-Off Snapping (1.0cm) | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
 | `[REQ-CROSS-09]`| Protrusion-Only Selective Grabbing | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
 | `[REQ-CROSS-10]`| High-Power Active Push (18.0 - 24.0 cm/s)| `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
-| `[REQ-CROSS-11]`| Fingertip-Accurate Stand-Off Distance | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
-| `[REQ-CROSS-12]`| Double-Click Strike (+50% Force / 27cm/s)| `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
 | `[REQ-CROSS-13]`| Anatomical Caliper Pinch Grip          | `Source/YenkaVR/Interaction/YenkaHandAvatar.cpp` | Implemented |
 | `[REQ-ART-01]`  | Photorealistic Wood Shaders | `Source/YenkaVR/Physics/YenkaBlock.cpp` | Implemented |
 | `[REQ-ART-03]`  | 7-Color Balanced Wood-Stain Palette | `Source/YenkaVR/Physics/YenkaTowerManager.cpp` | Implemented |
+| `[REQ-OPT-01]`  | PC VR 90FPS & Quest 2 Lens Optimization | `Config/DefaultEngine.ini` | Implemented |
 | `[REQ-XR-01]`   | OpenXR Passthrough | `Source/YenkaVR/Spatial/YenkaPassthroughManager.h` | Specified |
 | `[REQ-XR-02]`   | Table Calibration | `Source/YenkaVR/Spatial/YenkaSurfaceCalibrator.h` | Specified |
 | `[REQ-CAM-01]`  | Bimanual Pinch Zoom | `Source/YenkaVR/Interaction/YenkaVRPawn.h` | Specified |

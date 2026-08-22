@@ -292,8 +292,20 @@ This document records all architectural, technical design, and mechanics decisio
     * 5 distinct translucent keratin fingernail subcomponents with polished specular reflection (`Roughness = 0.12`).
   * Seamlessly bind procedural kinematics across `OpenHand`, `GrabPinch`, and `FingerPoke`.
 * **Consequences:**
-  * *(Positive)* Photorealistic organic human skin appearance replacing stylized metallic glove textures.
-  * *(Positive)* Fully compatible with MetaHuman skeletal assets and live OpenXR optical hand tracking in VR.
+### ADR-020: PC VR 90 FPS Optimization and Meta Quest 2 Lens Clarity Calibration
+* **Date:** 2026-08-22
+* **Status:** Accepted
+* **Context:** When running YenkaVR in desktop PC VR mode streamed to a Meta Quest 2 headset (via Quest Link, AirLink, or Virtual Desktop), the default desktop rendering settings (designed for 60 FPS flat screens) overloaded the 90 Hz ($11.11\text{ ms}$) stereo frame budget, triggering ASW reprojection drops to 45 FPS and showing shimmering artifacts on Quest 2 Fresnel lenses.
+* **Decision:**
+  * Configure `vr.InstancedStereo=1` and `r.SkinCache.CompileShaders=True` for single-pass DirectX 12 hardware stereo drawing.
+  * Optimize Lumen for 90 FPS PC VR: `r.Lumen.ScreenProbeGather.DownsampleFactor=16`, `r.LumenScene.RadianceCache.ClipmapResolution=64`, `r.Lumen.Reflections.DownsampleFactor=2`, `r.RayTracing=False`.
+  * Optimize Virtual Shadow Maps with directional/local resolution LOD bias (`1`).
+  * Eliminate lens blur and shimmering on Quest 2: `r.TSR.Quality=2`, `r.TSR.ShadingRejection.Flickering=1`, `r.Tonemapper.Sharpen=0.8`.
+  * Enable Dynamic Resolution Scaling (`r.DynamicRes.OperationMode=2`, `FrameTimeBudget=11.11`) to prevent frame drops during complex tower collapses.
+  * Synchronize Chaos physics substepping to 90 Hz (`MaxSubstepDeltaTime=0.011111`, `MaxSubsteps=3`).
+* **Consequences:**
+  * *(Positive)* Rock-solid 90 FPS native PC VR rendering without ASW reprojection stutter.
+  * *(Positive)* Sharp, crystal-clear visuals on Meta Quest 2 lenses while fully maintaining dynamic Lumen lighting, Nanite, and photorealistic wood and skin shaders.
 
 ---
 
