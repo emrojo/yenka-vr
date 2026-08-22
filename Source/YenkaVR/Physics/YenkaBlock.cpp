@@ -36,9 +36,10 @@ AYenkaBlock::AYenkaBlock()
 	BlockMesh->BodyInstance.bUseCCD = true; // Continuous Collision Detection
 	BlockMesh->BodyInstance.PositionSolverIterationCount = 16;
 	BlockMesh->BodyInstance.VelocitySolverIterationCount = 8;
+	BlockMesh->BodyInstance.SetMaxDepenetrationVelocity(8.0f); // Limits depenetration speed to 8cm/s, completely preventing explosive pops on initial contact
 	BlockMesh->SetMassOverrideInKg(NAME_None, 0.085f, true); // ~85g per block
-	BlockMesh->SetLinearDamping(1.0f);
-	BlockMesh->SetAngularDamping(1.0f);
+	BlockMesh->SetLinearDamping(0.8f);
+	BlockMesh->SetAngularDamping(0.8f);
 
 	LayerIndex = 0;
 	bIsPlacedOnTop = false;

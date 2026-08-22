@@ -515,28 +515,34 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 
 					if (bIsProtruding)
 					{
-						// Block is protruding: position hand at protruding edge ready to grab
+						// Block is protruding: position pinch fingers 1.0cm from protruding edge
 						bIsLockedPerpendicular = false;
 						VirtualHand->SetHandPoseMode(EHandPoseMode::GrabPinch);
-						FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset();
-						FVector StandbyPos = ProtrudingPos + (ProtrudingNorm * GRAB_STANDBY_SEPARATION);
+						FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset(); // (3.5, 0.0, 0.0)
+						FVector StandbyFingertipPos = ProtrudingPos + (ProtrudingNorm * GRAB_STANDBY_SEPARATION);
 
 						FRotator HandRot = (-ProtrudingNorm).Rotation();
 						HandRot.Pitch = 0.0f;
 						HandRot.Roll = 0.0f;
 
-						VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), StandbyPos), 0.0f);
+						FVector SafeHandPos = StandbyFingertipPos - HandRot.RotateVector(LocalOffset);
+						VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), SafeHandPos), 0.0f);
 					}
 					else
 					{
-						// Block is flush/not protruding: hand hovers outside in inspection mode
+						// Block is flush/not protruding: hand hovers outside in inspection mode (fingertips strictly 1cm from tower)
 						bIsLockedPerpendicular = false;
 						VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
+						FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset(); // (6.4, -0.4, 0.0)
+
 						FVector Diff = HitResult.ImpactPoint - TowerCenter;
 						float Angle = FMath::Atan2(Diff.Y, Diff.X);
-						float R = FMath::Max(FVector2D(Diff.X, Diff.Y).Size(), INSPECTION_SAFE_RADIUS);
-						FVector SafeHandPos = TowerCenter + FVector(FMath::Cos(Angle) * R, FMath::Sin(Angle) * R, Diff.Z);
-						FRotator InspectRot = GetHorizontalFacingRotation(SafeHandPos);
+						float DistXY = FVector2D(Diff.X, Diff.Y).Size();
+						float SafeFingertipRadius = FMath::Max(DistXY, TOWER_BASE_RADIUS + 1.0f);
+						FVector TargetFingertipPos = TowerCenter + FVector(FMath::Cos(Angle) * SafeFingertipRadius, FMath::Sin(Angle) * SafeFingertipRadius, Diff.Z);
+						FRotator InspectRot = GetHorizontalFacingRotation(TargetFingertipPos);
+
+						FVector SafeHandPos = TargetFingertipPos - InspectRot.RotateVector(LocalOffset);
 						VirtualHand->SetTargetHandTransform(FTransform(InspectRot.Quaternion(), SafeHandPos), 0.0f);
 					}
 				}
@@ -544,12 +550,17 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 				{
 					// --- PROXIMITY TO TABLE (No Block Hovered) ---
 					bIsLockedPerpendicular = false;
+					VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
+					FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset(); // (6.4, -0.4, 0.0)
+
 					FVector Diff = HitResult.ImpactPoint - TowerCenter;
 					float Angle = FMath::Atan2(Diff.Y, Diff.X);
-					float R = FMath::Max(FVector2D(Diff.X, Diff.Y).Size(), INSPECTION_SAFE_RADIUS);
-					FVector SafeHandPos = TowerCenter + FVector(FMath::Cos(Angle) * R, FMath::Sin(Angle) * R, Diff.Z);
-					FRotator InspectRot = GetHorizontalFacingRotation(SafeHandPos);
-					VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
+					float DistXY = FVector2D(Diff.X, Diff.Y).Size();
+					float SafeFingertipRadius = FMath::Max(DistXY, TOWER_BASE_RADIUS + 1.0f);
+					FVector TargetFingertipPos = TowerCenter + FVector(FMath::Cos(Angle) * SafeFingertipRadius, FMath::Sin(Angle) * SafeFingertipRadius, Diff.Z);
+					FRotator InspectRot = GetHorizontalFacingRotation(TargetFingertipPos);
+
+					FVector SafeHandPos = TargetFingertipPos - InspectRot.RotateVector(LocalOffset);
 					VirtualHand->SetTargetHandTransform(FTransform(InspectRot.Quaternion(), SafeHandPos), 0.0f);
 				}
 				else

@@ -133,8 +133,9 @@ void AYenkaTowerManager::SpawnTower()
 				LateralOffset = +(2.5f + GapRight);
 			}
 
-			// Slight organic 1mm longitudinal jitter for realistic hand-built look
+			// Slight organic 1mm longitudinal jitter and -1 to +1 degree orientation deviation to simulate human placement
 			float LongitudinalJitter = FMath::FRandRange(-0.10f, 0.10f);
+			float YawDev = FMath::FRandRange(-1.0f, 1.0f);
 
 			FVector BlockPos;
 			FRotator BlockRot;
@@ -142,12 +143,12 @@ void AYenkaTowerManager::SpawnTower()
 			if (bIsEvenLayer)
 			{
 				BlockPos = FVector(Origin.X + LongitudinalJitter, Origin.Y + LateralOffset, CurrentZ);
-				BlockRot = FRotator(0.0f, 0.0f, 0.0f);
+				BlockRot = FRotator(0.0f, YawDev, 0.0f);
 			}
 			else
 			{
 				BlockPos = FVector(Origin.X + LateralOffset, Origin.Y + LongitudinalJitter, CurrentZ);
-				BlockRot = FRotator(0.0f, 90.0f, 0.0f);
+				BlockRot = FRotator(0.0f, 90.0f + YawDev, 0.0f);
 			}
 
 			FActorSpawnParameters SpawnParams;
