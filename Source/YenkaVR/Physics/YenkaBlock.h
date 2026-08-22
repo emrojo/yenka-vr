@@ -44,4 +44,18 @@ public:
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Yenka|State")
 	bool bIsPlacedOnTop;
+
+	UPROPERTY(ReplicatedUsing = OnRep_BlockColor, BlueprintReadOnly, Category = "Yenka|Appearance")
+	FLinearColor BlockColor;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Yenka|Appearance")
+	int32 ColorIndex;
+
+	UFUNCTION()
+	void OnRep_BlockColor();
+
+	UFUNCTION(BlueprintCallable, Category = "Yenka|Appearance")
+	void ApplyColor(int32 InColorIndex, const FLinearColor& InColor);
+
+	void UpdateMaterialColor();
 };

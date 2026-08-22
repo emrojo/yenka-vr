@@ -35,6 +35,17 @@ AYenkaTowerManager::AYenkaTowerManager()
 	BlockClass = AYenkaBlock::StaticClass();
 	BlockDimensions = FVector(7.5f, 2.5f, 1.5f);
 	TableSurfaceZ = 0.0f;
+
+	// 7 Basic colors palette with vibrant wood-stain hues
+	BlockColorPalette = {
+		FLinearColor(0.88f, 0.16f, 0.18f, 1.0f), // 0: Red (Rojo)
+		FLinearColor(0.95f, 0.45f, 0.08f, 1.0f), // 1: Orange (Naranja)
+		FLinearColor(0.96f, 0.80f, 0.12f, 1.0f), // 2: Yellow (Amarillo)
+		FLinearColor(0.16f, 0.72f, 0.26f, 1.0f), // 3: Green (Verde)
+		FLinearColor(0.10f, 0.72f, 0.88f, 1.0f), // 4: Cyan / Light Blue (Cian)
+		FLinearColor(0.18f, 0.35f, 0.90f, 1.0f), // 5: Blue (Azul)
+		FLinearColor(0.68f, 0.20f, 0.82f, 1.0f)  // 6: Purple / Magenta (Púrpura)
+	};
 }
 
 #include "Materials/MaterialInstanceDynamic.h"
@@ -95,8 +106,10 @@ void AYenkaTowerManager::SpawnTower()
 
 	const int32 TotalLayers = 18;
 	const int32 BlocksPerLayer = 3;
+	const int32 PaletteSize = (BlockColorPalette.Num() > 0) ? BlockColorPalette.Num() : 7;
 	FVector Origin = GetActorLocation();
 	float BaseZ = TableSurfaceZ;
+	int32 GlobalBlockIndex = 0;
 
 	for (int32 Layer = 0; Layer < TotalLayers; ++Layer)
 	{
@@ -128,14 +141,23 @@ void AYenkaTowerManager::SpawnTower()
 			if (NewBlock)
 			{
 				NewBlock->LayerIndex = Layer;
+
+				// Distribute 7 basic colors evenly across all 54 blocks (gcd(3,7)=1 ensures contrasting adjacent colors)
+				int32 ColorIdx = GlobalBlockIndex % PaletteSize;
+				if (BlockColorPalette.IsValidIndex(ColorIdx))
+				{
+					NewBlock->ApplyColor(ColorIdx, BlockColorPalette[ColorIdx]);
+				}
+
 				ActiveBlocks.Add(NewBlock);
+				GlobalBlockIndex++;
 			}
 		}
 	}
 
 	// Keep all 54 blocks in stable sleep state on spawn until player touches them
 	FreezeTowerPhysics();
-	UE_LOG(LogYenkaVR, Log, TEXT("Spawned 54-block Yenka tower with lateral clearance in stable sleep state."));
+	UE_LOG(LogYenkaVR, Log, TEXT("Spawned 54-block Yenka tower with 7-color balanced distribution in stable sleep state."));
 }
 
 void AYenkaTowerManager::ResetTower()

@@ -42,34 +42,62 @@ AYenkaBlock::AYenkaBlock()
 
 	LayerIndex = 0;
 	bIsPlacedOnTop = false;
+	ColorIndex = 0;
+	BlockColor = FLinearColor(0.88f, 0.16f, 0.18f, 1.0f);
 }
 
 void AYenkaBlock::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// Apply rich polished wood material with natural tone variations
-	UMaterialInterface* BaseMat = BlockMesh ? BlockMesh->GetMaterial(0) : nullptr;
-	if (BlockMesh && BaseMat)
-	{
-		UMaterialInstanceDynamic* DynMat = UMaterialInstanceDynamic::Create(BaseMat, this);
-		if (DynMat)
-		{
-			// Natural polished beech / oak wood tone variation
-			float HashVal = static_cast<float>(GetTypeHash(GetActorLocation().ToString()) % 100);
-			float Var = (HashVal / 100.0f) * 0.14f - 0.07f;
-			FLinearColor WoodTone(0.84f + Var, 0.58f + (Var * 0.75f), 0.33f + (Var * 0.5f), 1.0f);
-
-			DynMat->SetVectorParameterValue(TEXT("Color"), WoodTone);
-			DynMat->SetScalarParameterValue(TEXT("Roughness"), 0.32f);
-			DynMat->SetScalarParameterValue(TEXT("Metallic"), 0.0f);
-			BlockMesh->SetMaterial(0, DynMat);
-		}
-	}
+	UpdateMaterialColor();
 
 	if (WoodPhysicalMaterial && BlockMesh)
 	{
 		BlockMesh->SetPhysMaterialOverride(WoodPhysicalMaterial);
+	}
+}
+
+void AYenkaBlock::ApplyColor(int32 InColorIndex, const FLinearColor& InColor)
+{
+	ColorIndex = InColorIndex;
+	BlockColor = InColor;
+	UpdateMaterialColor();
+}
+
+void AYenkaBlock::OnRep_BlockColor()
+{
+	UpdateMaterialColor();
+}
+
+void AYenkaBlock::UpdateMaterialColor()
+{
+	if (!BlockMesh) return;
+
+	UMaterialInterface* CurrentMat = BlockMesh->GetMaterial(0);
+	UMaterialInstanceDynamic* DynMat = Cast<UMaterialInstanceDynamic>(CurrentMat);
+
+	if (!DynMat && CurrentMat)
+	{
+		DynMat = UMaterialInstanceDynamic::Create(CurrentMat, this);
+		BlockMesh->SetMaterial(0, DynMat);
+	}
+
+	if (DynMat)
+	{
+		// Preserve natural wood sheen and roughness while applying distinct stained dye
+		float HashVal = static_cast<float>(GetTypeHash(GetActorLocation().ToString()) % 100);
+		float Var = (HashVal / 100.0f) * 0.06f - 0.03f;
+		FLinearColor FinalColor(
+			FMath::Clamp(BlockColor.R + Var, 0.0f, 1.0f),
+			FMath::Clamp(BlockColor.G + Var, 0.0f, 1.0f),
+			FMath::Clamp(BlockColor.B + Var, 0.0f, 1.0f),
+			1.0f
+		);
+
+		DynMat->SetVectorParameterValue(TEXT("Color"), FinalColor);
+		DynMat->SetScalarParameterValue(TEXT("Roughness"), 0.32f);
+		DynMat->SetScalarParameterValue(TEXT("Metallic"), 0.0f);
 	}
 }
 
@@ -79,6 +107,8 @@ void AYenkaBlock::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 
 	DOREPLIFETIME(AYenkaBlock, LayerIndex);
 	DOREPLIFETIME(AYenkaBlock, bIsPlacedOnTop);
+	DOREPLIFETIME(AYenkaBlock, BlockColor);
+	DOREPLIFETIME(AYenkaBlock, ColorIndex);
 }
 
 void AYenkaBlock::SetPhysicsActive(bool bActive)

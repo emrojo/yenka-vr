@@ -50,6 +50,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Yenka|Config")
 	FVector BlockDimensions; // e.g. (7.5, 2.5, 1.5) cm
 
+	UPROPERTY(EditDefaultsOnly, Category = "Yenka|Appearance")
+	TArray<FLinearColor> BlockColorPalette;
+
 	UPROPERTY(BlueprintAssignable, Category = "Yenka|Events")
 	FOnTowerCollapsed OnTowerCollapsed;
 
