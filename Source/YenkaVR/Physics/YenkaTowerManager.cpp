@@ -36,6 +36,9 @@ AYenkaTowerManager::AYenkaTowerManager()
 	BlockDimensions = FVector(7.5f, 2.5f, 1.5f);
 	TableSurfaceZ = 0.0f;
 
+	SequentialSpawnInterval = 0.05f;
+	bIsBuildingTower = false;
+
 	// 7 Basic colors palette with vibrant wood-stain hues
 	BlockColorPalette = {
 		FLinearColor(0.88f, 0.16f, 0.18f, 1.0f), // 0: Red (Rojo)
@@ -113,6 +116,8 @@ void AYenkaTowerManager::Tick(float DeltaTime)
 	}
 }
 
+#include "TimerManager.h"
+
 void AYenkaTowerManager::SpawnTower()
 {
 	if (!HasAuthority() || !BlockClass) return;
@@ -177,32 +182,67 @@ void AYenkaTowerManager::SpawnTower()
 				BlockRot = FRotator(0.0f, 90.0f + YawDev, 0.0f);
 			}
 
-			FActorSpawnParameters SpawnParams;
-			SpawnParams.Owner = this;
-			AYenkaBlock* NewBlock = GetWorld()->SpawnActor<AYenkaBlock>(BlockClass, BlockPos, BlockRot, SpawnParams);
-			if (NewBlock)
+			FBlockSpawnData SpawnData;
+			SpawnData.Location = BlockPos;
+			SpawnData.Rotation = BlockRot;
+			SpawnData.LayerIndex = Layer;
+			SpawnData.ColorIndex = GlobalBlockIndex % PaletteSize;
+			if (BlockColorPalette.IsValidIndex(SpawnData.ColorIndex))
 			{
-				NewBlock->LayerIndex = Layer;
-
-				// Distribute 7 basic colors evenly across all 54 blocks (gcd(3,7)=1 ensures contrasting adjacent colors)
-				int32 ColorIdx = GlobalBlockIndex % PaletteSize;
-				if (BlockColorPalette.IsValidIndex(ColorIdx))
-				{
-					NewBlock->ApplyColor(ColorIdx, BlockColorPalette[ColorIdx]);
-				}
-
-				ActiveBlocks.Add(NewBlock);
-				GlobalBlockIndex++;
+				SpawnData.Color = BlockColorPalette[SpawnData.ColorIndex];
 			}
+			else
+			{
+				SpawnData.Color = FLinearColor::White;
+			}
+
+			PendingSpawnQueue.Add(SpawnData);
+			GlobalBlockIndex++;
 		}
 	}
 
-	// Blocks simulate physics and settle naturally in contact equilibrium from Frame 0
-	UE_LOG(LogYenkaVR, Log, TEXT("Spawned 54-block Yenka tower with +-0.2cm protrusion error and max 1cm safety limit."));
+	bIsBuildingTower = true;
+	float Interval = (SequentialSpawnInterval > 0.001f) ? SequentialSpawnInterval : 0.05f;
+	GetWorldTimerManager().SetTimer(SequentialSpawnTimerHandle, this, &AYenkaTowerManager::SpawnNextBlockFromQueue, Interval, true, 0.0f);
+	UE_LOG(LogYenkaVR, Log, TEXT("Enqueued 54 blocks for sequential piece-by-piece construction (Interval: %.2fs)."), Interval);
+}
+
+void AYenkaTowerManager::SpawnNextBlockFromQueue()
+{
+	if (!HasAuthority() || !BlockClass || PendingSpawnQueue.Num() == 0)
+	{
+		GetWorldTimerManager().ClearTimer(SequentialSpawnTimerHandle);
+		bIsBuildingTower = false;
+		return;
+	}
+
+	FBlockSpawnData Data = PendingSpawnQueue[0];
+	PendingSpawnQueue.RemoveAt(0);
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	AYenkaBlock* NewBlock = GetWorld()->SpawnActor<AYenkaBlock>(BlockClass, Data.Location, Data.Rotation, SpawnParams);
+	if (NewBlock)
+	{
+		NewBlock->LayerIndex = Data.LayerIndex;
+		NewBlock->ApplyColor(Data.ColorIndex, Data.Color);
+		ActiveBlocks.Add(NewBlock);
+	}
+
+	if (PendingSpawnQueue.Num() == 0)
+	{
+		GetWorldTimerManager().ClearTimer(SequentialSpawnTimerHandle);
+		bIsBuildingTower = false;
+		UE_LOG(LogYenkaVR, Log, TEXT("Completed sequential construction of 54-block Yenka tower."));
+	}
 }
 
 void AYenkaTowerManager::ResetTower()
 {
+	GetWorldTimerManager().ClearTimer(SequentialSpawnTimerHandle);
+	PendingSpawnQueue.Empty();
+	bIsBuildingTower = false;
+
 	for (AYenkaBlock* Block : ActiveBlocks)
 	{
 		if (Block)

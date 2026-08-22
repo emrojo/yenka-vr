@@ -8,6 +8,27 @@ class AYenkaBlock;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTowerCollapsed);
 
+USTRUCT()
+struct FBlockSpawnData
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	FVector Location = FVector::ZeroVector;
+
+	UPROPERTY()
+	FRotator Rotation = FRotator::ZeroRotator;
+
+	UPROPERTY()
+	int32 LayerIndex = 0;
+
+	UPROPERTY()
+	int32 ColorIndex = 0;
+
+	UPROPERTY()
+	FLinearColor Color = FLinearColor::White;
+};
+
 /**
  * Procedural generator and state monitor for the 54 Yenka blocks.
  */
@@ -24,13 +45,21 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* TableMesh;
 
-	/** Generates the 54 blocks on top of the calibrated table */
+	/** Generates the 54 blocks sequentially one-by-one on top of the calibrated table */
 	UFUNCTION(BlueprintCallable, Category = "Yenka|Tower")
 	void SpawnTower();
 
 	/** Clears and rebuilds the tower */
 	UFUNCTION(BlueprintCallable, Category = "Yenka|Tower")
 	void ResetTower();
+
+	/** Spawns the next block in the sequential build queue */
+	UFUNCTION()
+	void SpawnNextBlockFromQueue();
+
+	/** Returns true while the tower is actively placing blocks one by one */
+	UFUNCTION(BlueprintPure, Category = "Yenka|Tower")
+	bool IsBuildingTower() const { return bIsBuildingTower; }
 
 	/** Freezes all blocks to sleep state to avoid float drift between turns */
 	UFUNCTION(BlueprintCallable, Category = "Yenka|Physics")
@@ -53,6 +82,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Yenka|Appearance")
 	TArray<FLinearColor> BlockColorPalette;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Yenka|Config")
+	float SequentialSpawnInterval; // e.g. 0.05s between pieces
+
 	UPROPERTY(BlueprintAssignable, Category = "Yenka|Events")
 	FOnTowerCollapsed OnTowerCollapsed;
 
@@ -62,6 +94,15 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|State")
 	float TableSurfaceZ;
+
+	UPROPERTY()
+	TArray<FBlockSpawnData> PendingSpawnQueue;
+
+	UPROPERTY()
+	FTimerHandle SequentialSpawnTimerHandle;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|State")
+	bool bIsBuildingTower;
 
 	virtual void Tick(float DeltaTime) override;
 };
