@@ -19,13 +19,30 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 	HandRoot = CreateDefaultSubobject<USceneComponent>(TEXT("HandRoot"));
 	RootComponent = HandRoot;
 
-	// 0.1. MetaHuman / Standard Skeletal Mesh Hand Component
+	// 0.1. MetaHuman / Standard Continuous Skeletal Mesh Hand Component
 	HandSkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("HandSkeletalMesh"));
 	HandSkeletalMesh->SetupAttachment(HandRoot);
 	HandSkeletalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HandSkeletalMesh->SetCastShadow(true);
 
-	// 1. Palm (Anatomical proportions: 5cm length x 4.5cm width x 1.5cm thickness)
+	static ConstructorHelpers::FObjectFinder<USkeletalMesh> SkeletalMeshAsset(TEXT("/Game/Characters/MannequinsXR/Meshes/SKM_MannyXR_right.SKM_MannyXR_right"));
+	static ConstructorHelpers::FClassFinder<UAnimInstance> AnimBPClass(TEXT("/Game/Characters/MannequinsXR/Meshes/ABP_MannequinsXR.ABP_MannequinsXR_C"));
+
+	const bool bHasSkeletalHand = SkeletalMeshAsset.Succeeded();
+	if (bHasSkeletalHand)
+	{
+		HandSkeletalMesh->SetSkeletalMesh(SkeletalMeshAsset.Object);
+		HandSkeletalMesh->SetRelativeLocation(FVector(-8.0f, 0.0f, 0.0f));
+		HandSkeletalMesh->SetRelativeRotation(FRotator(0.0f, 0.0f, 0.0f));
+		HandSkeletalMesh->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
+
+		if (AnimBPClass.Succeeded())
+		{
+			HandSkeletalMesh->SetAnimInstanceClass(AnimBPClass.Class);
+		}
+	}
+
+	// 1. Palm
 	PalmMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PalmMesh"));
 	PalmMesh->SetupAttachment(HandRoot);
 	if (CubeMeshAsset.Succeeded())
@@ -35,9 +52,10 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 		PalmMesh->SetRelativeLocation(FVector(0.0f, 0.0f, 0.0f));
 	}
 	PalmMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	PalmMesh->SetCastShadow(true);
+	PalmMesh->SetCastShadow(!bHasSkeletalHand);
+	PalmMesh->SetVisibility(!bHasSkeletalHand);
 
-	// 2. Thumb (0.8cm diameter, 3.0cm length)
+	// 2. Thumb
 	ThumbMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ThumbMesh"));
 	ThumbMesh->SetupAttachment(HandRoot);
 	if (CylinderMeshAsset.Succeeded())
@@ -48,9 +66,10 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 		ThumbMesh->SetRelativeRotation(FRotator(0.0f, -40.0f, 0.0f));
 	}
 	ThumbMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	ThumbMesh->SetCastShadow(true);
+	ThumbMesh->SetCastShadow(!bHasSkeletalHand);
+	ThumbMesh->SetVisibility(!bHasSkeletalHand);
 
-	// 3. Index Finger (0.7cm diameter, 5.0cm length)
+	// 3. Index Finger
 	IndexFinger = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("IndexFinger"));
 	IndexFinger->SetupAttachment(HandRoot);
 	if (CylinderMeshAsset.Succeeded())
@@ -61,9 +80,10 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 		IndexFinger->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f));
 	}
 	IndexFinger->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	IndexFinger->SetCastShadow(true);
+	IndexFinger->SetCastShadow(!bHasSkeletalHand);
+	IndexFinger->SetVisibility(!bHasSkeletalHand);
 
-	// 4. Middle Finger (0.7cm diameter, 5.2cm length)
+	// 4. Middle Finger
 	MiddleFinger = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MiddleFinger"));
 	MiddleFinger->SetupAttachment(HandRoot);
 	if (CylinderMeshAsset.Succeeded())
@@ -74,9 +94,10 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 		MiddleFinger->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f));
 	}
 	MiddleFinger->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	MiddleFinger->SetCastShadow(true);
+	MiddleFinger->SetCastShadow(!bHasSkeletalHand);
+	MiddleFinger->SetVisibility(!bHasSkeletalHand);
 
-	// 5. Ring Finger (0.0065cm diameter, 4.5cm length)
+	// 5. Ring Finger
 	RingFinger = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RingFinger"));
 	RingFinger->SetupAttachment(HandRoot);
 	if (CylinderMeshAsset.Succeeded())
@@ -87,9 +108,10 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 		RingFinger->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f));
 	}
 	RingFinger->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	RingFinger->SetCastShadow(true);
+	RingFinger->SetCastShadow(!bHasSkeletalHand);
+	RingFinger->SetVisibility(!bHasSkeletalHand);
 
-	// 6. Pinky Finger (0.006cm diameter, 3.5cm length)
+	// 6. Pinky Finger
 	PinkyFinger = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PinkyFinger"));
 	PinkyFinger->SetupAttachment(HandRoot);
 	if (CylinderMeshAsset.Succeeded())
@@ -100,9 +122,10 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 		PinkyFinger->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f));
 	}
 	PinkyFinger->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	PinkyFinger->SetCastShadow(true);
+	PinkyFinger->SetCastShadow(!bHasSkeletalHand);
+	PinkyFinger->SetVisibility(!bHasSkeletalHand);
 
-	// 7. Translucent Keratin Fingernails (0.8cm length x 0.6cm width x 0.08cm curved plate)
+	// 7. Keratin Fingernails
 	ThumbNail = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ThumbNail"));
 	ThumbNail->SetupAttachment(ThumbMesh);
 	IndexNail = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("IndexNail"));
@@ -124,6 +147,7 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 			Nail->SetRelativeLocation(FVector(0.0f, 0.0f, 1.3f));
 			Nail->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 			Nail->SetCastShadow(false);
+			Nail->SetVisibility(!bHasSkeletalHand);
 		}
 	}
 
@@ -188,6 +212,7 @@ void AYenkaHandAvatar::ApplyHumanSkinMaterials()
 			if (HandSkeletalMesh)
 			{
 				HandSkeletalMesh->SetMaterial(0, SkinMat);
+				HandSkeletalMesh->SetMaterial(1, SkinMat);
 			}
 		}
 
@@ -238,6 +263,51 @@ void AYenkaHandAvatar::SetHandPoseMode(EHandPoseMode NewPoseMode)
 
 void AYenkaHandAvatar::UpdateFingerPoses(float GripStrength)
 {
+	// 1. Update AnimInstance properties on Skeletal Mesh Hand
+	UAnimInstance* AnimInst = HandSkeletalMesh ? HandSkeletalMesh->GetAnimInstance() : nullptr;
+	if (AnimInst)
+	{
+		float TargetGrasp = 0.0f;
+		float TargetPoint = 0.0f;
+		float TargetIndexCurl = 0.0f;
+
+		if (CurrentPoseMode == EHandPoseMode::FingerPoke)
+		{
+			TargetGrasp = 1.0f;      // Curl other fingers into fist
+			TargetPoint = 1.0f;      // Point index finger forward
+			TargetIndexCurl = 0.0f;  // Index extended
+		}
+		else if (CurrentPoseMode == EHandPoseMode::GrabPinch)
+		{
+			TargetGrasp = 0.70f;     // Caliper pinch
+			TargetPoint = 0.0f;
+			TargetIndexCurl = 0.65f;
+		}
+		else // OpenHand
+		{
+			TargetGrasp = GripStrength;
+			TargetPoint = 0.0f;
+			TargetIndexCurl = GripStrength;
+		}
+
+		if (FFloatProperty* Prop = FindFProperty<FFloatProperty>(AnimInst->GetClass(), TEXT("Grasp")))
+		{
+			Prop->SetPropertyValue_InContainer(AnimInst, TargetGrasp);
+		}
+		if (FFloatProperty* Prop = FindFProperty<FFloatProperty>(AnimInst->GetClass(), TEXT("Grip")))
+		{
+			Prop->SetPropertyValue_InContainer(AnimInst, TargetGrasp);
+		}
+		if (FFloatProperty* Prop = FindFProperty<FFloatProperty>(AnimInst->GetClass(), TEXT("Point")))
+		{
+			Prop->SetPropertyValue_InContainer(AnimInst, TargetPoint);
+		}
+		if (FFloatProperty* Prop = FindFProperty<FFloatProperty>(AnimInst->GetClass(), TEXT("IndexCurl")))
+		{
+			Prop->SetPropertyValue_InContainer(AnimInst, TargetIndexCurl);
+		}
+	}
+
 	if (CurrentPoseMode == EHandPoseMode::FingerPoke)
 	{
 		// Finger Poke: Index Finger fully extended forward; other 4 fingers curled tightly into fist
