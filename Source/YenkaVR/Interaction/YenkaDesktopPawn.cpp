@@ -171,7 +171,7 @@ void AYenkaDesktopPawn::PerformLongitudinalPush(AYenkaBlock* Block, const FVecto
 
 	Block->SetPhysicsActive(true);
 	Block->BlockMesh->WakeRigidBody();
-	FVector PushVel = PushAxis * 0.8f;
+	FVector PushVel = PushAxis * 2.5f;
 	PushVel.Z = 0.0f;
 	Block->BlockMesh->SetPhysicsLinearVelocity(PushVel);
 	Block->BlockMesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
@@ -221,7 +221,7 @@ void AYenkaDesktopPawn::OnMouseY(float Val)
 			if (ActivePushBlock && ActivePushBlock->BlockMesh)
 			{
 				ActivePushBlock->BlockMesh->WakeRigidBody();
-				float TargetSpeed = FMath::Clamp(Val * 1.5f, 0.4f, 1.2f);
+				float TargetSpeed = FMath::Clamp(Val * 3.5f, 1.0f, 3.5f);
 				FVector PushVel = PushLongitudinalAxis * TargetSpeed;
 				PushVel.Z = 0.0f;
 				ActivePushBlock->BlockMesh->SetPhysicsLinearVelocity(PushVel);
@@ -471,8 +471,8 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 					{
 						CurrentPushAdvance = PUSH_STANDBY_SEPARATION;
 						ActivePushBlock->BlockMesh->WakeRigidBody();
-						// Gentle steady push velocity (0.8 cm/s)
-						FVector PushVel = PushLongitudinalAxis * 0.8f;
+						// Active push velocity while mouse button is held down (2.5 cm/s)
+						FVector PushVel = PushLongitudinalAxis * 2.5f;
 						PushVel.Z = 0.0f;
 						ActivePushBlock->BlockMesh->SetPhysicsLinearVelocity(PushVel);
 						ActivePushBlock->BlockMesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
@@ -580,7 +580,7 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 	AYenkaBlock* TargetPush = LockedPushBlock ? LockedPushBlock : HoveredBlock;
 	if (bIsPokeModeActive && TargetPush)
 	{
-		// In poke mode, clicking smoothly advances to contact and pushes along the locked axis
+		// In poke mode, clicking advances to contact and actively pushes along the locked axis
 		bIsPushingBlock = true;
 		if (!LockedPushBlock)
 		{
@@ -589,6 +589,14 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 			CurrentPushDisplacement = 0.0f;
 		}
 		CurrentPushAdvance = PUSH_STANDBY_SEPARATION;
+		if (TargetPush->BlockMesh)
+		{
+			TargetPush->BlockMesh->WakeRigidBody();
+			FVector PushVel = PushLongitudinalAxis * 2.5f;
+			PushVel.Z = 0.0f;
+			TargetPush->BlockMesh->SetPhysicsLinearVelocity(PushVel);
+			TargetPush->BlockMesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+		}
 		return;
 	}
 
