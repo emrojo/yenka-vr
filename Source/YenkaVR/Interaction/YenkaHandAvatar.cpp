@@ -2,6 +2,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "PhysicsEngine/PhysicsHandleComponent.h"
+#include "Animation/AnimSequence.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Net/UnrealNetwork.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -26,7 +27,13 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 	HandSkeletalMesh->SetCastShadow(true);
 
 	static ConstructorHelpers::FObjectFinder<USkeletalMesh> SkeletalMeshAsset(TEXT("/Game/Characters/MannequinsXR/Meshes/SKM_MannyXR_right.SKM_MannyXR_right"));
-	static ConstructorHelpers::FClassFinder<UAnimInstance> AnimBPClass(TEXT("/Game/Characters/MannequinsXR/Meshes/ABP_MannequinsXR.ABP_MannequinsXR_C"));
+	static ConstructorHelpers::FObjectFinder<UAnimSequence> IdleSeqAsset(TEXT("/Game/Characters/MannequinsXR/Animations/A_MannequinsXR_Idle_Right.A_MannequinsXR_Idle_Right"));
+	static ConstructorHelpers::FObjectFinder<UAnimSequence> PointSeqAsset(TEXT("/Game/Characters/MannequinsXR/Animations/A_MannequinsXR_Point_Right.A_MannequinsXR_Point_Right"));
+	static ConstructorHelpers::FObjectFinder<UAnimSequence> GraspSeqAsset(TEXT("/Game/Characters/MannequinsXR/Animations/A_MannequinsXR_Grasp_Right.A_MannequinsXR_Grasp_Right"));
+
+	if (IdleSeqAsset.Succeeded()) AnimIdle = IdleSeqAsset.Object;
+	if (PointSeqAsset.Succeeded()) AnimPoint = PointSeqAsset.Object;
+	if (GraspSeqAsset.Succeeded()) AnimGrasp = GraspSeqAsset.Object;
 
 	const bool bHasSkeletalHand = SkeletalMeshAsset.Succeeded();
 	if (bHasSkeletalHand)
@@ -38,9 +45,11 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 		HandSkeletalMesh->SetRelativeRotation(FRotator(0.0f, 0.0f, 0.0f));
 		HandSkeletalMesh->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
 
-		if (AnimBPClass.Succeeded())
+		if (AnimIdle)
 		{
-			HandSkeletalMesh->SetAnimInstanceClass(AnimBPClass.Class);
+			HandSkeletalMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+			HandSkeletalMesh->SetAnimation(AnimIdle);
+			HandSkeletalMesh->Play(true);
 		}
 	}
 
@@ -265,48 +274,37 @@ void AYenkaHandAvatar::SetHandPoseMode(EHandPoseMode NewPoseMode)
 
 void AYenkaHandAvatar::UpdateFingerPoses(float GripStrength)
 {
-	// 1. Update AnimInstance properties on Skeletal Mesh Hand
-	UAnimInstance* AnimInst = HandSkeletalMesh ? HandSkeletalMesh->GetAnimInstance() : nullptr;
-	if (AnimInst)
+	// 1. Guaranteed Animation Sequence Playback on Skeletal Mesh Hand
+	if (HandSkeletalMesh)
 	{
-		float TargetGrasp = 0.0f;
-		float TargetPoint = 0.0f;
-		float TargetIndexCurl = 0.0f;
+		HandSkeletalMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
 
 		if (CurrentPoseMode == EHandPoseMode::FingerPoke)
 		{
-			TargetGrasp = 1.0f;      // Curl other fingers into fist
-			TargetPoint = 1.0f;      // Point index finger forward
-			TargetIndexCurl = 0.0f;  // Index extended
+			if (AnimPoint)
+			{
+				HandSkeletalMesh->SetAnimation(AnimPoint);
+				HandSkeletalMesh->Play(false);
+				HandSkeletalMesh->SetPosition(AnimPoint->GetPlayLength() * 0.99f, false);
+			}
 		}
 		else if (CurrentPoseMode == EHandPoseMode::GrabPinch)
 		{
-			TargetGrasp = 0.70f;     // Caliper pinch
-			TargetPoint = 0.0f;
-			TargetIndexCurl = 0.65f;
+			if (AnimGrasp)
+			{
+				HandSkeletalMesh->SetAnimation(AnimGrasp);
+				HandSkeletalMesh->Play(false);
+				HandSkeletalMesh->SetPosition(AnimGrasp->GetPlayLength() * 0.70f, false);
+			}
 		}
 		else // OpenHand
 		{
-			TargetGrasp = GripStrength;
-			TargetPoint = 0.0f;
-			TargetIndexCurl = GripStrength;
-		}
-
-		if (FFloatProperty* Prop = FindFProperty<FFloatProperty>(AnimInst->GetClass(), TEXT("Grasp")))
-		{
-			Prop->SetPropertyValue_InContainer(AnimInst, TargetGrasp);
-		}
-		if (FFloatProperty* Prop = FindFProperty<FFloatProperty>(AnimInst->GetClass(), TEXT("Grip")))
-		{
-			Prop->SetPropertyValue_InContainer(AnimInst, TargetGrasp);
-		}
-		if (FFloatProperty* Prop = FindFProperty<FFloatProperty>(AnimInst->GetClass(), TEXT("Point")))
-		{
-			Prop->SetPropertyValue_InContainer(AnimInst, TargetPoint);
-		}
-		if (FFloatProperty* Prop = FindFProperty<FFloatProperty>(AnimInst->GetClass(), TEXT("IndexCurl")))
-		{
-			Prop->SetPropertyValue_InContainer(AnimInst, TargetIndexCurl);
+			if (AnimIdle)
+			{
+				HandSkeletalMesh->SetAnimation(AnimIdle);
+				HandSkeletalMesh->Play(true);
+				HandSkeletalMesh->SetPosition(0.0f, false);
+			}
 		}
 	}
 

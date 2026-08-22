@@ -96,6 +96,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Skin")
 	float SubsurfaceScatteringStrength;
 
+	// Hand Animation Sequences for Guaranteed Pose Switching
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Animation")
+	UAnimSequence* AnimIdle;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Animation")
+	UAnimSequence* AnimPoint;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Animation")
+	UAnimSequence* AnimGrasp;
+
 	UFUNCTION(BlueprintCallable, Category = "Yenka|Hand")
 	void UpdateFingerPoses(float GripStrength);
 
