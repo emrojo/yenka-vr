@@ -126,15 +126,21 @@ void AYenkaTowerManager::SpawnTower()
 	float BaseZ = TableSurfaceZ;
 	int32 GlobalBlockIndex = 0;
 
+	const float BaseHalfSize = 3.75f; // 7.5cm / 2 = 3.75cm base perimeter
+	const float MaxAllowedProtrusion = 1.0f; // Safety limit: Never exceed base perimeter by more than 1.0cm
+
 	for (int32 Layer = 0; Layer < TotalLayers; ++Layer)
 	{
 		bool bIsEvenLayer = (Layer % 2 == 0);
 		// 0.4mm vertical clearance per layer prevents initial physics impulse
 		float CurrentZ = BaseZ + (Layer * 1.504f) + 0.75f;
 
-		// Random spacing between 1mm and 3mm (0.10cm to 0.30cm) between adjacent blocks
-		float GapLeft = FMath::FRandRange(0.10f, 0.30f);
-		float GapRight = FMath::FRandRange(0.10f, 0.30f);
+		// Layer 0 forms the reference base square; upper layers have organic human placement error
+		const bool bIsBaseLayer = (Layer == 0);
+
+		// Random spacing between 1mm and 2.5mm (0.10cm to 0.25cm) between adjacent blocks
+		float GapLeft = bIsBaseLayer ? 0.03f : FMath::FRandRange(0.10f, 0.25f);
+		float GapRight = bIsBaseLayer ? 0.03f : FMath::FRandRange(0.10f, 0.25f);
 
 		for (int32 i = 0; i < BlocksPerLayer; ++i)
 		{
@@ -148,21 +154,26 @@ void AYenkaTowerManager::SpawnTower()
 				LateralOffset = +(2.5f + GapRight);
 			}
 
-			// Slight organic 1mm longitudinal jitter and -1 to +1 degree orientation deviation to simulate human placement
-			float LongitudinalJitter = FMath::FRandRange(-0.10f, 0.10f);
-			float YawDev = FMath::FRandRange(-1.0f, 1.0f);
+			// Placement error between -0.2cm and +0.2cm relative to the base perimeter
+			float LongJitter = bIsBaseLayer ? 0.0f : FMath::FRandRange(-0.20f, 0.20f);
+			float YawDev = bIsBaseLayer ? 0.0f : FMath::FRandRange(-1.0f, 1.0f);
+
+			// Safety validation: Ensure no block ever exceeds the base boundary by more than 1.0cm
+			float ClampedLongJitter = FMath::Clamp(LongJitter, -MaxAllowedProtrusion, MaxAllowedProtrusion);
+			float MaxLateral = (BaseHalfSize - 1.25f) + MaxAllowedProtrusion; // 2.5 + 1.0 = 3.5cm
+			float ClampedLateralOffset = FMath::Clamp(LateralOffset, -MaxLateral, +MaxLateral);
 
 			FVector BlockPos;
 			FRotator BlockRot;
 
 			if (bIsEvenLayer)
 			{
-				BlockPos = FVector(Origin.X + LongitudinalJitter, Origin.Y + LateralOffset, CurrentZ);
+				BlockPos = FVector(Origin.X + ClampedLongJitter, Origin.Y + ClampedLateralOffset, CurrentZ);
 				BlockRot = FRotator(0.0f, YawDev, 0.0f);
 			}
 			else
 			{
-				BlockPos = FVector(Origin.X + LateralOffset, Origin.Y + LongitudinalJitter, CurrentZ);
+				BlockPos = FVector(Origin.X + ClampedLateralOffset, Origin.Y + ClampedLongJitter, CurrentZ);
 				BlockRot = FRotator(0.0f, 90.0f + YawDev, 0.0f);
 			}
 
@@ -187,7 +198,7 @@ void AYenkaTowerManager::SpawnTower()
 	}
 
 	// Blocks simulate physics and settle naturally in contact equilibrium from Frame 0
-	UE_LOG(LogYenkaVR, Log, TEXT("Spawned 54-block Yenka tower with natural physics equilibrium and 7-color distribution."));
+	UE_LOG(LogYenkaVR, Log, TEXT("Spawned 54-block Yenka tower with +-0.2cm protrusion error and max 1cm safety limit."));
 }
 
 void AYenkaTowerManager::ResetTower()
