@@ -65,7 +65,7 @@ protected:
 	static constexpr float PROXIMITY_THRESHOLD = 2.0f * HAND_LENGTH;
 	static constexpr float TOWER_BASE_RADIUS = 3.75f;
 	static constexpr float INSPECTION_SAFE_RADIUS = 16.0f;
-	static constexpr float PUSH_STANDBY_SEPARATION = 16.0f;
+	static constexpr float PUSH_STANDBY_SEPARATION = 20.0f;
 	static constexpr float GRAB_STANDBY_SEPARATION = 2.5f;
 	static constexpr float PUSH_VERTICAL_OFFSET = 0.0f;
 
@@ -81,6 +81,7 @@ protected:
 	FRotator GetHorizontalFacingRotation(const FVector& TargetLocation) const;
 	FVector GetBlockStandOffLocation(const AYenkaBlock* Block, const FVector& ViewOrigin, FVector& OutApproachNormal, float Clearance = 8.0f, const FVector& LocalFingertipOffset = FVector(6.0f, -1.5f, 0.0f)) const;
 	FVector GetBlockChosenFacePos(const AYenkaBlock* Block, const FVector& ApproachNormal) const;
+	bool IsBlockProtruding(const AYenkaBlock* Block, FVector& OutProtrudingEdgePos, FVector& OutProtrudingNormal) const;
 	void OnMouseX(float Val);
 	void OnMouseY(float Val);
 	void OnMouseWheel(float Val);

@@ -334,6 +334,44 @@ FVector AYenkaDesktopPawn::GetBlockChosenFacePos(const AYenkaBlock* Block, const
 	return SideNegPos;
 }
 
+bool AYenkaDesktopPawn::IsBlockProtruding(const AYenkaBlock* Block, FVector& OutProtrudingEdgePos, FVector& OutProtrudingNormal) const
+{
+	if (!Block) return false;
+
+	AActor* TowerActor = UGameplayStatics::GetActorOfClass(GetWorld(), AYenkaTowerManager::StaticClass());
+	FVector TowerCenter = TowerActor ? TowerActor->GetActorLocation() : FVector(0.0f, 0.0f, 85.0f);
+	FVector BlockCenter = Block->GetActorLocation();
+
+	FVector ForwardVec = Block->GetActorForwardVector(); // 7.5cm length (+- 3.75cm)
+
+	// The two longitudinal end faces of the block
+	FVector EndPos = BlockCenter + (ForwardVec * 3.75f);
+	FVector EndNeg = BlockCenter - (ForwardVec * 3.75f);
+
+	// Distance of the ends from the tower center on the XY plane
+	float DistEndPosToTower = FVector::Dist2D(EndPos, TowerCenter);
+	float DistEndNegToTower = FVector::Dist2D(EndNeg, TowerCenter);
+
+	// Flush tower outer boundary is ~3.75cm from center.
+	// A block is considered protruding if its end extends at least 0.4cm (4mm) past the flush tower boundary.
+	const float PROTRUSION_THRESHOLD = 4.15f; // 3.75cm + 0.4cm
+
+	if (DistEndPosToTower > PROTRUSION_THRESHOLD && DistEndPosToTower >= DistEndNegToTower)
+	{
+		OutProtrudingEdgePos = EndPos;
+		OutProtrudingNormal = ForwardVec;
+		return true;
+	}
+	else if (DistEndNegToTower > PROTRUSION_THRESHOLD)
+	{
+		OutProtrudingEdgePos = EndNeg;
+		OutProtrudingNormal = -ForwardVec;
+		return true;
+	}
+
+	return false;
+}
+
 void AYenkaDesktopPawn::HandleMouseTrace()
 {
 	APlayerController* PC = Cast<APlayerController>(GetController());
@@ -420,15 +458,8 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 					// Find block face location in world space
 					FVector CurrentFacePos = GetBlockChosenFacePos(ActivePushBlock, ApproachNormal);
 
-					// Project mouse cursor onto horizontal plane at CurrentFacePos.Z
-					float t = (FMath::Abs(WorldDirection.Z) > 0.001f) ? (CurrentFacePos.Z - WorldLocation.Z) / WorldDirection.Z : 50.0f;
-					FVector MousePlanePos = WorldLocation + (WorldDirection * t);
-
-					// Distance from the block face along the approach normal (positive = outside tower, negative = pushed into block)
-					float DistFromFace = FVector::DotProduct(MousePlanePos - CurrentFacePos, ApproachNormal);
-					float RayAdvance = PUSH_STANDBY_SEPARATION - DistFromFace;
-
-					float EffectiveAdvance = FMath::Max(CurrentPushAdvance, RayAdvance);
+					// Push advance is strictly driven by user mouse movement (CurrentPushAdvance), zero on frame 0
+					float EffectiveAdvance = CurrentPushAdvance;
 					if (bIsPushingBlock)
 					{
 						EffectiveAdvance = FMath::Max(EffectiveAdvance, PUSH_STANDBY_SEPARATION + 0.5f);
@@ -437,7 +468,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 					if (EffectiveAdvance < PUSH_STANDBY_SEPARATION)
 					{
 						// In the air (Standby to Contact): Hand moves freely towards the block surface
-						float Clearance = PUSH_STANDBY_SEPARATION - EffectiveAdvance; // 16cm -> 0cm
+						float Clearance = PUSH_STANDBY_SEPARATION - EffectiveAdvance; // 20cm -> 0cm
 						FVector TargetFingertipWorld = CurrentFacePos + (ApproachNormal * Clearance);
 						FVector HandPos = TargetFingertipWorld - HandRot.RotateVector(LocalOffset);
 						VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), HandPos), 0.0f);
@@ -474,18 +505,35 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 
 				if (bInProximity && HoveredBlock)
 				{
-					// --- GRAB / INSPECTION STAND-BY ---
-					bIsLockedPerpendicular = false;
-					VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
-					FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset();
-					FVector ApproachNormal;
-					FVector StandbyPos = GetBlockStandOffLocation(HoveredBlock, WorldLocation, ApproachNormal, GRAB_STANDBY_SEPARATION, LocalOffset);
+					FVector ProtrudingPos, ProtrudingNorm;
+					bool bIsProtruding = IsBlockProtruding(HoveredBlock, ProtrudingPos, ProtrudingNorm);
 
-					FRotator HandRot = (-ApproachNormal).Rotation();
-					HandRot.Pitch = 0.0f;
-					HandRot.Roll = 0.0f;
+					if (bIsProtruding)
+					{
+						// Block is protruding: position hand at protruding edge ready to grab
+						bIsLockedPerpendicular = false;
+						VirtualHand->SetHandPoseMode(EHandPoseMode::GrabPinch);
+						FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset();
+						FVector StandbyPos = ProtrudingPos + (ProtrudingNorm * GRAB_STANDBY_SEPARATION);
 
-					VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), StandbyPos), 0.0f);
+						FRotator HandRot = (-ProtrudingNorm).Rotation();
+						HandRot.Pitch = 0.0f;
+						HandRot.Roll = 0.0f;
+
+						VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), StandbyPos), 0.0f);
+					}
+					else
+					{
+						// Block is flush/not protruding: hand hovers outside in inspection mode
+						bIsLockedPerpendicular = false;
+						VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
+						FVector Diff = HitResult.ImpactPoint - TowerCenter;
+						float Angle = FMath::Atan2(Diff.Y, Diff.X);
+						float R = FMath::Max(FVector2D(Diff.X, Diff.Y).Size(), INSPECTION_SAFE_RADIUS);
+						FVector SafeHandPos = TowerCenter + FVector(FMath::Cos(Angle) * R, FMath::Sin(Angle) * R, Diff.Z);
+						FRotator InspectRot = GetHorizontalFacingRotation(SafeHandPos);
+						VirtualHand->SetTargetHandTransform(FTransform(InspectRot.Quaternion(), SafeHandPos), 0.0f);
+					}
 				}
 				else if (bInProximity)
 				{
@@ -534,15 +582,23 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 		return;
 	}
 
+	// In Grab Mode: Only grab if the hovered block is PROTRUDING from the tower!
 	if (HoveredBlock && VirtualHand && VirtualHand->PhysicsHandle)
 	{
+		FVector ProtrudingPos, ProtrudingNorm;
+		if (!IsBlockProtruding(HoveredBlock, ProtrudingPos, ProtrudingNorm))
+		{
+			// Piece is flush/not protruding: DO NOTHING!
+			return;
+		}
+
 		APlayerController* PC = Cast<APlayerController>(GetController());
 		if (PC)
 		{
 			FVector WorldLocation, WorldDirection;
 			if (PC->DeprojectMousePositionToWorld(WorldLocation, WorldDirection))
 			{
-				GrabDistance = FMath::Clamp((LastHitLocation - WorldLocation).Size(), 20.0f, 250.0f);
+				GrabDistance = FMath::Clamp((ProtrudingPos - WorldLocation).Size(), 20.0f, 250.0f);
 			}
 		}
 
@@ -556,11 +612,11 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 		VirtualHand->PhysicsHandle->GrabComponentAtLocationWithRotation(
 			GrabbedBlock->BlockMesh,
 			NAME_None,
-			LastHitLocation,
+			ProtrudingPos,
 			GrabbedBlock->GetActorRotation()
 		);
-		FRotator HandRot = GetHorizontalFacingRotation(LastHitLocation);
-		FTransform HandTarget(HandRot.Quaternion(), LastHitLocation);
+		FRotator HandRot = GetHorizontalFacingRotation(ProtrudingPos);
+		FTransform HandTarget(HandRot.Quaternion(), ProtrudingPos);
 		VirtualHand->SetTargetHandTransform(HandTarget, 1.0f);
 	}
 }
