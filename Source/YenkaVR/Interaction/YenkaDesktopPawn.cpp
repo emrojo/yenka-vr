@@ -242,6 +242,57 @@ void AYenkaDesktopPawn::MoveRight(float Val)
 	}
 }
 
+FVector AYenkaDesktopPawn::GetBlockStandOffLocation(const AYenkaBlock* Block, const FVector& ViewOrigin, FVector& OutApproachNormal) const
+{
+	if (!Block)
+	{
+		OutApproachNormal = FVector::ForwardVector;
+		return FVector::ZeroVector;
+	}
+
+	FVector BlockCenter = Block->GetActorLocation();
+	FVector ForwardVec = Block->GetActorForwardVector(); // 7.5cm length (+- 3.75cm)
+	FVector RightVec = Block->GetActorRightVector();     // 2.5cm width (+- 1.25cm)
+
+	// Block face candidate positions
+	FVector EndPosPos = BlockCenter + (ForwardVec * 3.75f);
+	FVector EndNegPos = BlockCenter - (ForwardVec * 3.75f);
+	FVector SidePosPos = BlockCenter + (RightVec * 1.25f);
+	FVector SideNegPos = BlockCenter - (RightVec * 1.25f);
+
+	// Find the face closest to the camera/cursor ray origin
+	float DistEndPos = FVector::DistSquared(EndPosPos, ViewOrigin);
+	float DistEndNeg = FVector::DistSquared(EndNegPos, ViewOrigin);
+	float DistSidePos = FVector::DistSquared(SidePosPos, ViewOrigin);
+	float DistSideNeg = FVector::DistSquared(SideNegPos, ViewOrigin);
+
+	FVector ChosenFacePos = EndPosPos;
+	OutApproachNormal = ForwardVec;
+	float MinDist = DistEndPos;
+
+	if (DistEndNeg < MinDist)
+	{
+		MinDist = DistEndNeg;
+		ChosenFacePos = EndNegPos;
+		OutApproachNormal = -ForwardVec;
+	}
+	if (DistSidePos < MinDist)
+	{
+		MinDist = DistSidePos;
+		ChosenFacePos = SidePosPos;
+		OutApproachNormal = RightVec;
+	}
+	if (DistSideNeg < MinDist)
+	{
+		MinDist = DistSideNeg;
+		ChosenFacePos = SideNegPos;
+		OutApproachNormal = -RightVec;
+	}
+
+	// Stand-off position: face position offset by clearance along outward normal
+	return ChosenFacePos + (OutApproachNormal * STANDOFF_CLEARANCE);
+}
+
 void AYenkaDesktopPawn::HandleMouseTrace()
 {
 	APlayerController* PC = Cast<APlayerController>(GetController());
@@ -287,65 +338,62 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 				const float DistToTowerXY = FVector::Dist2D(HitResult.ImpactPoint, TowerCenter);
 				const bool bInProximity = (DistToTowerXY <= ProximityRadius);
 
-				if (bInProximity)
+				if (bInProximity && HoveredBlock)
 				{
-					// --- PROXIMITY ZONE: Strict Horizontal Orientation (Pitch = 0, Roll = 0) ---
+					// --- AUTOMATIC PROXIMITY SNAPPING: Stand-off clearance without touching block ---
+					FVector ApproachNormal;
+					FVector StandOffPos = GetBlockStandOffLocation(HoveredBlock, WorldLocation, ApproachNormal);
+
+					FRotator HandRot = (-ApproachNormal).Rotation();
+					HandRot.Pitch = 0.0f;
+					HandRot.Roll = 0.0f;
 
 					if (bIsPokeModeActive || bIsPushingBlock)
 					{
-						// --- PUSH / POKE MODE: Lock mouse movement strictly perpendicular to tower ---
-						if (!bIsLockedPerpendicular || HoveredBlock)
-						{
-							FVector RadialDiff = HitResult.ImpactPoint - TowerCenter;
-							RadialDiff.Z = 0.0f;
-							if (!RadialDiff.IsNearlyZero(0.1f))
-							{
-								LockedRadialDirection = RadialDiff.GetSafeNormal();
-							}
-							else
-							{
-								LockedRadialDirection = (-FollowCamera->GetForwardVector()).GetSafeNormal2D();
-							}
-							LockedFloorZ = HitResult.ImpactPoint.Z;
-							bIsLockedPerpendicular = true;
-						}
-
-						// Project mouse cursor along the locked perpendicular line
-						float t = (FMath::Abs(WorldDirection.Z) > 0.001f) ? (LockedFloorZ - WorldLocation.Z) / WorldDirection.Z : 50.0f;
-						FVector MousePlanePos = WorldLocation + (WorldDirection * t);
-						float RadialDist = FVector::DotProduct(MousePlanePos - TowerCenter, LockedRadialDirection);
-						RadialDist = FMath::Clamp(RadialDist, TOWER_BASE_RADIUS + 0.5f, ProximityRadius);
-
-						FVector HandPos = TowerCenter + (LockedRadialDirection * RadialDist);
-						HandPos.Z = LockedFloorZ;
-
-						FRotator PokeRot = (-LockedRadialDirection).Rotation();
-						PokeRot.Pitch = 0.0f;
-						PokeRot.Roll = 0.0f;
-
+						// --- PUSH / POKE MODE ---
 						VirtualHand->SetHandPoseMode(EHandPoseMode::FingerPoke);
-						VirtualHand->SetTargetHandTransform(FTransform(PokeRot.Quaternion(), HandPos), 0.0f);
+						LockedRadialDirection = ApproachNormal;
+						LockedFloorZ = StandOffPos.Z;
+						bIsLockedPerpendicular = true;
 
-						if (bIsPushingBlock && HoveredBlock)
+						// Check mouse push depth along the approach normal
+						float t = (FMath::Abs(WorldDirection.Z) > 0.001f) ? (StandOffPos.Z - WorldLocation.Z) / WorldDirection.Z : 50.0f;
+						FVector MousePlanePos = WorldLocation + (WorldDirection * t);
+						float MousePushDepth = FVector::DotProduct(StandOffPos - MousePlanePos, ApproachNormal);
+
+						if (MousePushDepth > 0.0f || bIsPushingBlock)
 						{
-							PerformLongitudinalPush(HoveredBlock, LockedRadialDirection);
+							// User deliberately moves mouse forward into piece: make contact and push
+							float PushOffset = FMath::Clamp(MousePushDepth, 0.0f, STANDOFF_CLEARANCE + 2.5f);
+							FVector PushingPos = StandOffPos - (ApproachNormal * PushOffset);
+							VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), PushingPos), 0.0f);
+							PerformLongitudinalPush(HoveredBlock, ApproachNormal);
+						}
+						else
+						{
+							// Idle stand-off: sits 8mm in front of block with zero pressure applied
+							VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), StandOffPos), 0.0f);
 						}
 					}
 					else
 					{
-						// --- INSPECTION MODE: Allow only movement around the perimeter, cannot approach tower ---
+						// --- GRAB / INSPECTION STAND-BY ---
 						bIsLockedPerpendicular = false;
-
-						FVector Diff = HitResult.ImpactPoint - TowerCenter;
-						float Angle = FMath::Atan2(Diff.Y, Diff.X);
-						float R = FMath::Max(FVector2D(Diff.X, Diff.Y).Size(), INSPECTION_SAFE_RADIUS);
-
-						FVector SafeHandPos = TowerCenter + FVector(FMath::Cos(Angle) * R, FMath::Sin(Angle) * R, Diff.Z);
-
-						FRotator InspectRot = GetHorizontalFacingRotation(SafeHandPos);
 						VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
-						VirtualHand->SetTargetHandTransform(FTransform(InspectRot.Quaternion(), SafeHandPos), 0.0f);
+						VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), StandOffPos), 0.0f);
 					}
+				}
+				else if (bInProximity)
+				{
+					// --- PROXIMITY TO TABLE (No Block Hovered) ---
+					bIsLockedPerpendicular = false;
+					FVector Diff = HitResult.ImpactPoint - TowerCenter;
+					float Angle = FMath::Atan2(Diff.Y, Diff.X);
+					float R = FMath::Max(FVector2D(Diff.X, Diff.Y).Size(), INSPECTION_SAFE_RADIUS);
+					FVector SafeHandPos = TowerCenter + FVector(FMath::Cos(Angle) * R, FMath::Sin(Angle) * R, Diff.Z);
+					FRotator InspectRot = GetHorizontalFacingRotation(SafeHandPos);
+					VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
+					VirtualHand->SetTargetHandTransform(FTransform(InspectRot.Quaternion(), SafeHandPos), 0.0f);
 				}
 				else
 				{

@@ -57,6 +57,7 @@ protected:
 	static constexpr float PROXIMITY_THRESHOLD = 2.0f * HAND_LENGTH;
 	static constexpr float TOWER_BASE_RADIUS = 3.75f;
 	static constexpr float INSPECTION_SAFE_RADIUS = 16.0f;
+	static constexpr float STANDOFF_CLEARANCE = 0.8f;
 
 	void HandleMouseTrace();
 	void OnPrimaryClickPressed();
@@ -68,6 +69,7 @@ protected:
 	void OnTogglePokeMode();
 	void PerformLongitudinalPush(AYenkaBlock* Block, const FVector& DirectionNormal);
 	FRotator GetHorizontalFacingRotation(const FVector& TargetLocation) const;
+	FVector GetBlockStandOffLocation(const AYenkaBlock* Block, const FVector& ViewOrigin, FVector& OutApproachNormal) const;
 	void OnMouseX(float Val);
 	void OnMouseY(float Val);
 	void OnMouseWheel(float Val);

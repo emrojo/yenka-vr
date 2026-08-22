@@ -15,6 +15,7 @@ This document records all architectural, technical design, and mechanics decisio
 * [ADR-007: 3D Articulated Hand Model with VR Shader & Physics Handle Manipulation on PC](#adr-007-3d-articulated-hand-model-with-vr-shader--physics-handle-manipulation-on-pc)
 * [ADR-008: Index Finger Poke Pose & Guided Longitudinal Block Pushing](#adr-008-index-finger-poke-pose--guided-longitudinal-block-pushing)
 * [ADR-009: Proximity Boundary Constraint, Perpendicular Push Lock & Inspection Perimeter Lock](#adr-009-proximity-boundary-constraint-perpendicular-push-lock--inspection-perimeter-lock)
+* [ADR-010: Assisted Stand-Off Proximity Snapping in Push and Grab Modes](#adr-010-assisted-stand-off-proximity-snapping-in-push-and-grab-modes)
 
 ---
 
@@ -136,6 +137,18 @@ This document records all architectural, technical design, and mechanics decisio
 * **Consequences:**
   * *(Positive)* High-precision block pushing with zero risk of lateral slipping into adjacent pieces.
   * *(Positive)* Fail-safe inspection mode preventing accidental collisions with tower blocks.
+
+### ADR-010: Assisted Stand-Off Proximity Snapping in Push and Grab Modes
+* **Date:** 2026-08-22
+* **Status:** Accepted
+* **Context:** Requiring pixel-perfect manual positioning of the virtual hand against target blocks caused accidental contact and premature force exertion, potentially toppling tower blocks before the player intended to push or grab.
+* **Decision:**
+  * Implement an automatic stand-off proximity snapping system (`GetBlockStandOffLocation`) with a calibrated safety clearance of $D_{clearance} = 8\text{ mm}$.
+  * In **Push Mode**, the hand automatically snaps in front of the nearest piece's accessible face in `FingerPoke` posture without touching the piece. Force is only applied when the player deliberately moves the mouse forward past the stand-off clearance.
+  * In **Grab Mode**, the open hand hovers at the stand-off distance facing the block end. Grasping and extraction occur exclusively upon pressing and dragging Left Mouse Button.
+* **Consequences:**
+  * *(Positive)* Completely prevents accidental block collisions and premature forces during aiming or mode switching.
+  * *(Positive)* High player control and tactile feedback when intentionally applying force or pulling pieces.
 
 ---
 

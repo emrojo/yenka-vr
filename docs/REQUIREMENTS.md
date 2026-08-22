@@ -108,6 +108,10 @@ This section maintains the immutable history of all requirements defined and agr
 * **`[REQ-CROSS-07]` Perpendicular Push Lock & Inspection Perimeter Lock:**
   * **Push Mode Lock:** In Poke/Push mode (`E` key or toggle `F`), mouse movement is locked strictly perpendicular (radial) to the tower face, allowing only inward push or outward retraction along the piece's longitudinal axis to prevent lateral disturbance of neighboring blocks.
   * **Inspection Mode Perimeter Lock:** In normal inspection/hover mode, inward radial motion is clamped to a safe perimeter ($R \ge \text{INSPECTION_SAFE_RADIUS} \approx 16.0\text{ cm}$), allowing only orbital/circumferential movement around the tower and vertical floor transitions, preventing accidental collision with or toppling of tower blocks.
+* **`[REQ-CROSS-08]` Assisted Stand-Off Proximity Snapping:**
+  * In both **Push Mode** and **Grab Mode**, the hand automatically approaches and aligns with the nearest Jenga block's accessible face at a calibrated safety stand-off clearance ($8\text{ mm}$).
+  * The hand stops before contact, ensuring that aiming or activating modes never applies premature pressure or knocks over pieces.
+  * Physical pushing or extraction is only initiated upon deliberate forward mouse movement or left-click drag.
 
 ---
 
@@ -176,6 +180,7 @@ This section maintains the immutable history of all requirements defined and agr
 | `[REQ-CROSS-05]`| Guided Longitudinal Push | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
 | `[REQ-CROSS-06]`| Proximity Horizontal Lock (2x Hand) | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
 | `[REQ-CROSS-07]`| Perpendicular & Perimeter Locks | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
+| `[REQ-CROSS-08]`| Assisted Stand-Off Snapping | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
 | `[REQ-ART-01]`  | Photorealistic Wood Shaders | `Source/YenkaVR/Physics/YenkaBlock.cpp` | Implemented |
 | `[REQ-XR-01]`   | OpenXR Passthrough | `Source/YenkaVR/Spatial/YenkaPassthroughManager.h` | Specified |
 | `[REQ-XR-02]`   | Table Calibration | `Source/YenkaVR/Spatial/YenkaSurfaceCalibrator.h` | Specified |
