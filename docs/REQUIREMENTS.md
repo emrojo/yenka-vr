@@ -149,8 +149,10 @@ This section maintains the immutable history of all requirements defined and agr
 * **`[REQ-ART-01]` Dynamic Photorealistic Wood Shaders:**
   * Each tower block uses a dynamic polished wood shader with satin sheen (`Roughness = 0.32`) and organic wood grain texture.
   * Game tabletop finished in noble dark walnut wood (`Roughness = 0.40`).
-* **`[REQ-ART-02]` VR Glove Avatar Styling:**
-  * Articulated hand rendered with vibrant cyan-blue VR glove styling featuring metallic/specular highlights.
+* **`[REQ-ART-02]` Photorealistic Human Skin & Skeletal Hand Avatar:**
+  * Hand represented via a standard 24-bone **`USkeletalMeshComponent`** and anatomical skin geometry.
+  * Human skin rendered with **Subsurface Scattering (SSS)** profile (`SkinTone #DCA98C`, `SubsurfaceColor #D91508`, `Roughness 0.36`), providing vascular capillary red light scattering through fingers under illumination.
+  * Individual translucent keratin fingernails with glossy specular sheen (`Roughness 0.12`).
 * **`[REQ-ART-03]` 7-Color Balanced Wood-Stain Palette Distribution:**
   * The 54 blocks are evenly partitioned across a 7-color palette: Red, Orange, Yellow, Green, Cyan, Blue, and Purple (5 groups of 8 blocks, 2 groups of 7 blocks).
   * Colors are applied as dynamic translucent wood stains, preserving underlying wood grain, specular reflections, and normal maps.

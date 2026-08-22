@@ -24,6 +24,7 @@ This document records all architectural, technical design, and mechanics decisio
 * [ADR-016: Double-Click Tap Strike Mechanics (+50% Force / 27.0cm/s + Impulse) in Push Mode](#adr-016-double-click-tap-strike-mechanics-50-force--270cms--impulse-in-push-mode)
 * [ADR-017: Standardized Table Surface Elevation ($90.0\text{ cm}$) Above Ground](#adr-017-standardized-table-surface-elevation-900text-cm-above-ground)
 * [ADR-018: Anatomical Index-Thumb Caliper Pinch Pose for Block Extraction](#adr-018-anatomical-index-thumb-caliper-pinch-pose-for-block-extraction)
+* [ADR-019: Photorealistic Human Skin Subsurface Scattering (SSS) & Skeletal Hand Architecture](#adr-019-photorealistic-human-skin-subsurface-scattering-sss--skeletal-hand-architecture)
 
 ---
 
@@ -276,6 +277,23 @@ This document records all architectural, technical design, and mechanics decisio
 * **Consequences:**
   * *(Positive)* Highly photorealistic and anatomically natural pinch pose.
   * *(Positive)* Visual feedback clearly demonstrates firm contact on the lateral sides of the block.
+
+---
+
+### ADR-019: Photorealistic Human Skin Subsurface Scattering (SSS) & Skeletal Hand Architecture
+* **Date:** 2026-08-22
+* **Status:** Accepted
+* **Context:** To achieve an ultra-realistic human appearance, the hand avatar required physical skin material properties (Subsurface Scattering light transmission, lipid layer specular sheen, keratin fingernails) and a MetaHuman-compatible 24-bone skeletal component.
+* **Decision:**
+  * Integrate `USkeletalMeshComponent` into `AYenkaHandAvatar` to support MetaHuman and standard Unreal mannequin skeletal rigs.
+  * Implement Subsurface Scattering (SSS) skin shader properties:
+    * Melanin skin tone (`#DCA98C`) with vascular capillary bleed (`#D91508`).
+    * Natural lipid layer specular sheen (`SkinRoughness = 0.36`, `Specular = 0.50`).
+    * 5 distinct translucent keratin fingernail subcomponents with polished specular reflection (`Roughness = 0.12`).
+  * Seamlessly bind procedural kinematics across `OpenHand`, `GrabPinch`, and `FingerPoke`.
+* **Consequences:**
+  * *(Positive)* Photorealistic organic human skin appearance replacing stylized metallic glove textures.
+  * *(Positive)* Fully compatible with MetaHuman skeletal assets and live OpenXR optical hand tracking in VR.
 
 ---
 
