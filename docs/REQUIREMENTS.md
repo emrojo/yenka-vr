@@ -130,6 +130,8 @@ This section maintains the immutable history of all requirements defined and agr
   * Forward mouse motion dynamically scales the push velocity up to **$24.0\text{ cm/s}$**.
 * **`[REQ-CROSS-11]` Fingertip-Accurate Stand-Off Distance in Exploration Mode:**
   * In inspection/exploration mode, safety clearance is measured strictly from the tip of the extended middle finger ($X = 6.4\text{ cm}$) to the tower surface, guaranteeing zero mesh clipping or collision when examining blocks.
+* **`[REQ-CROSS-12]` Double-Click Strike (+50% Force / 27.0cm/s + Impulse):**
+  * In Push Mode (`E` / `F`), performing a rapid double-click on a target block triggers an instantaneous strike ("golpe"), launching the piece with **$27.0\text{ cm/s}$** velocity (+50% bonus over standard push) combined with an instantaneous physical impulse along its longitudinal axis to simulate real-world Jenga tap strikes.
 
 ---
 
@@ -209,6 +211,7 @@ This section maintains the immutable history of all requirements defined and agr
 | `[REQ-CROSS-09]`| Protrusion-Only Selective Grabbing | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
 | `[REQ-CROSS-10]`| High-Power Active Push (18.0 - 24.0 cm/s)| `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
 | `[REQ-CROSS-11]`| Fingertip-Accurate Stand-Off Distance | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
+| `[REQ-CROSS-12]`| Double-Click Strike (+50% Force / 27cm/s)| `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
 | `[REQ-ART-01]`  | Photorealistic Wood Shaders | `Source/YenkaVR/Physics/YenkaBlock.cpp` | Implemented |
 | `[REQ-ART-03]`  | 7-Color Balanced Wood-Stain Palette | `Source/YenkaVR/Physics/YenkaTowerManager.cpp` | Implemented |
 | `[REQ-XR-01]`   | OpenXR Passthrough | `Source/YenkaVR/Spatial/YenkaPassthroughManager.h` | Specified |

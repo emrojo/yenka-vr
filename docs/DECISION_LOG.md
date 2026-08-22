@@ -21,6 +21,7 @@ This document records all architectural, technical design, and mechanics decisio
 * [ADR-013: Sequential Piece-by-Piece FIFO Construction with 1.0cm Top-Down Drop](#adr-013-sequential-piece-by-piece-fifo-construction-with-10cm-top-down-drop)
 * [ADR-014: Protrusion-Only Selective Grabbing & Tower Structural Integrity Protection](#adr-014-protrusion-only-selective-grabbing--tower-structural-integrity-protection)
 * [ADR-015: High-Power Active Push Velocity ($18.0\text{ cm/s}$ - $24.0\text{ cm/s}$) for Lower-Layer Extraction](#adr-015-high-power-active-push-velocity-180text-cms---240text-cms-for-lower-layer-extraction)
+* [ADR-016: Double-Click Tap Strike Mechanics (+50% Force / 27.0cm/s + Impulse) in Push Mode](#adr-016-double-click-tap-strike-mechanics-50-force--270cms--impulse-in-push-mode)
 
 ---
 
@@ -228,6 +229,21 @@ This document records all architectural, technical design, and mechanics decisio
 * **Consequences:**
   * *(Positive)* Authoritative, satisfying piece sliding through tight, heavily weighted layers without toppling adjacent columns.
   * *(Positive)* Precise real-time control via mouse drag and click holding.
+
+---
+
+### ADR-016: Double-Click Tap Strike Mechanics (+50% Force / 27.0cm/s + Impulse) in Push Mode
+* **Date:** 2026-08-22
+* **Status:** Accepted
+* **Context:** In real Jenga matches, players frequently use rapid tap strikes / finger flicks to dislodge sticky or friction-locked pieces quickly before the surrounding structure shifts. A steady continuous push alone does not replicate this tactical tapping technique.
+* **Decision:**
+  * Track click timestamps with a $350\text{ ms}$ interval window to detect rapid double-clicks on target blocks in Push Mode (`E` / `F`).
+  * On double-click, deliver a sharp physical strike ("golpe"):
+    * Velocity boosted by $+50\%$ over standard push ($1.5 \times 18.0\text{ cm/s} = \mathbf{27.0\text{ cm/s}}$).
+    * Instantaneous longitudinal physical impulse (`AddImpulse`) applied along the piece's locked axis.
+* **Consequences:**
+  * *(Positive)* Enables authentic high-speed tap-strike strategies for dislodging sticky pieces.
+  * *(Positive)* Intuitive desktop interaction pattern (Single Click = Smooth Push, Double Click = Strike / Golpe).
 
 ---
 
