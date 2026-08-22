@@ -54,6 +54,10 @@ protected:
 	float LockedFloorZ;
 	float GrabDistance;
 	float CurrentPushAdvance;
+	float CurrentPushDisplacement;
+	FVector PushBlockInitialLocation;
+	FVector PushApproachNormal;
+	FVector PushLongitudinalAxis;
 	FVector LastHitLocation;
 	FVector LastHitNormal;
 
@@ -76,6 +80,7 @@ protected:
 	void PerformLongitudinalPush(AYenkaBlock* Block, const FVector& DirectionNormal);
 	FRotator GetHorizontalFacingRotation(const FVector& TargetLocation) const;
 	FVector GetBlockStandOffLocation(const AYenkaBlock* Block, const FVector& ViewOrigin, FVector& OutApproachNormal, float Clearance = 8.0f, const FVector& LocalFingertipOffset = FVector(6.0f, -1.5f, 0.0f)) const;
+	FVector GetBlockChosenFacePos(const AYenkaBlock* Block, const FVector& ApproachNormal) const;
 	void OnMouseX(float Val);
 	void OnMouseY(float Val);
 	void OnMouseWheel(float Val);

@@ -310,6 +310,30 @@ FVector AYenkaDesktopPawn::GetBlockStandOffLocation(const AYenkaBlock* Block, co
 	return TargetFingertipWorld - HandRot.RotateVector(LocalFingertipOffset);
 }
 
+FVector AYenkaDesktopPawn::GetBlockChosenFacePos(const AYenkaBlock* Block, const FVector& ApproachNormal) const
+{
+	if (!Block) return FVector::ZeroVector;
+
+	FVector BlockCenter = Block->GetActorLocation();
+	FVector ForwardVec = Block->GetActorForwardVector(); // 7.5cm length (+- 3.75cm)
+	FVector RightVec = Block->GetActorRightVector();     // 2.5cm width (+- 1.25cm)
+
+	FVector EndPosPos = BlockCenter + (ForwardVec * 3.75f);
+	FVector EndNegPos = BlockCenter - (ForwardVec * 3.75f);
+	FVector SidePosPos = BlockCenter + (RightVec * 1.25f);
+	FVector SideNegPos = BlockCenter - (RightVec * 1.25f);
+
+	float DotEndPos = FVector::DotProduct(ApproachNormal, ForwardVec);
+	float DotEndNeg = FVector::DotProduct(ApproachNormal, -ForwardVec);
+	float DotSidePos = FVector::DotProduct(ApproachNormal, RightVec);
+	float DotSideNeg = FVector::DotProduct(ApproachNormal, -RightVec);
+
+	if (DotEndPos >= DotEndNeg && DotEndPos >= DotSidePos && DotEndPos >= DotSideNeg) return EndPosPos;
+	if (DotEndNeg >= DotSidePos && DotEndNeg >= DotSideNeg) return EndNegPos;
+	if (DotSidePos >= DotSideNeg) return SidePosPos;
+	return SideNegPos;
+}
+
 void AYenkaDesktopPawn::HandleMouseTrace()
 {
 	APlayerController* PC = Cast<APlayerController>(GetController());
@@ -358,81 +382,88 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 		{
 			VirtualHand->SetActorHiddenInGame(false);
 
-			AYenkaBlock* ActivePushBlock = (bIsPokeModeActive || bIsPushingBlock) ? (LockedPushBlock ? LockedPushBlock : HoveredBlock) : nullptr;
-			if ((bIsPokeModeActive || bIsPushingBlock) && HoveredBlock && !LockedPushBlock)
+			if (bIsPokeModeActive || bIsPushingBlock)
 			{
-				LockedPushBlock = HoveredBlock;
-				ActivePushBlock = LockedPushBlock;
-			}
-
-			if (ActivePushBlock)
-			{
-				// --- PUSH / POKE MODE ---
-				VirtualHand->SetHandPoseMode(EHandPoseMode::FingerPoke);
-				FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset(); // (6.0, -1.5, 0.0)
-
-				FVector ApproachNormal;
-				FVector DummyStandby = GetBlockStandOffLocation(ActivePushBlock, WorldLocation, ApproachNormal, PUSH_STANDBY_SEPARATION, LocalOffset);
-
-				FRotator HandRot = (-ApproachNormal).Rotation();
-				HandRot.Pitch = 0.0f;
-				HandRot.Roll = 0.0f;
-
-				LockedRadialDirection = ApproachNormal;
-				LockedFloorZ = DummyStandby.Z + PUSH_VERTICAL_OFFSET;
-				bIsLockedPerpendicular = true;
-
-				// Find block face location in world space
-				FVector BlockCenter = ActivePushBlock->GetActorLocation();
-				FVector ForwardVec = ActivePushBlock->GetActorForwardVector();
-				FVector RightVec = ActivePushBlock->GetActorRightVector();
-				FVector EndPosPos = BlockCenter + (ForwardVec * 3.75f);
-				FVector EndNegPos = BlockCenter - (ForwardVec * 3.75f);
-				FVector SidePosPos = BlockCenter + (RightVec * 1.25f);
-				FVector SideNegPos = BlockCenter - (RightVec * 1.25f);
-
-				FVector ChosenFacePos = EndPosPos;
-				float MinDist = FVector::DistSquared(EndPosPos, WorldLocation);
-				if (FVector::DistSquared(EndNegPos, WorldLocation) < MinDist) { MinDist = FVector::DistSquared(EndNegPos, WorldLocation); ChosenFacePos = EndNegPos; }
-				if (FVector::DistSquared(SidePosPos, WorldLocation) < MinDist) { MinDist = FVector::DistSquared(SidePosPos, WorldLocation); ChosenFacePos = SidePosPos; }
-				if (FVector::DistSquared(SideNegPos, WorldLocation) < MinDist) { ChosenFacePos = SideNegPos; }
-
-				FVector TargetFaceCenter = ChosenFacePos;
-				TargetFaceCenter.Z += PUSH_VERTICAL_OFFSET;
-
-				// Project mouse cursor onto horizontal plane at TargetFaceCenter.Z
-				float t = (FMath::Abs(WorldDirection.Z) > 0.001f) ? (TargetFaceCenter.Z - WorldLocation.Z) / WorldDirection.Z : 50.0f;
-				FVector MousePlanePos = WorldLocation + (WorldDirection * t);
-
-				// Distance from the block face along the approach normal (positive = outside tower, negative = pushed into block)
-				float DistFromFace = FVector::DotProduct(MousePlanePos - TargetFaceCenter, ApproachNormal);
-				float RayAdvance = PUSH_STANDBY_SEPARATION - DistFromFace;
-
-				if (bIsPushingBlock)
+				if (HoveredBlock && !LockedPushBlock)
 				{
-					// Direct click/drag push: place fingertip pushing into block and apply impulse
-					float ActiveAdvance = FMath::Max(CurrentPushAdvance, PUSH_STANDBY_SEPARATION + 1.5f);
-					float PushClearance = PUSH_STANDBY_SEPARATION - ActiveAdvance;
-					FVector PushHandPos = GetBlockStandOffLocation(ActivePushBlock, WorldLocation, ApproachNormal, PushClearance, LocalOffset);
-					PushHandPos.Z += PUSH_VERTICAL_OFFSET;
-					VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), PushHandPos), 0.0f);
-					PerformLongitudinalPush(ActivePushBlock, ApproachNormal);
+					LockedPushBlock = HoveredBlock;
+					PushBlockInitialLocation = LockedPushBlock->GetActorLocation();
+					CurrentPushDisplacement = 0.0f;
 				}
-				else
+
+				AYenkaBlock* ActivePushBlock = LockedPushBlock ? LockedPushBlock : HoveredBlock;
+
+				if (ActivePushBlock)
 				{
-					// Combine RayAdvance with OnMouseY CurrentPushAdvance
+					// --- PUSH / POKE MODE ---
+					VirtualHand->SetHandPoseMode(EHandPoseMode::FingerPoke);
+					FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset(); // (6.0, -1.5, 0.0)
+
+					FVector ApproachNormal;
+					GetBlockStandOffLocation(ActivePushBlock, WorldLocation, ApproachNormal, PUSH_STANDBY_SEPARATION, LocalOffset);
+
+					// Calculate longitudinal push axis (facing inward towards tower)
+					FVector ForwardVec = ActivePushBlock->GetActorForwardVector();
+					FVector RightVec = ActivePushBlock->GetActorRightVector();
+					float DotFwd = FVector::DotProduct(-ApproachNormal, ForwardVec);
+					float DotRt = FVector::DotProduct(-ApproachNormal, RightVec);
+					PushLongitudinalAxis = (FMath::Abs(DotFwd) >= FMath::Abs(DotRt)) ? (ForwardVec * FMath::Sign(DotFwd)) : (RightVec * FMath::Sign(DotRt));
+					PushApproachNormal = ApproachNormal;
+
+					FRotator HandRot = (-ApproachNormal).Rotation();
+					HandRot.Pitch = 0.0f;
+					HandRot.Roll = 0.0f;
+
+					LockedRadialDirection = ApproachNormal;
+					bIsLockedPerpendicular = true;
+
+					// Find block face location in world space
+					FVector CurrentFacePos = GetBlockChosenFacePos(ActivePushBlock, ApproachNormal);
+
+					// Project mouse cursor onto horizontal plane at CurrentFacePos.Z
+					float t = (FMath::Abs(WorldDirection.Z) > 0.001f) ? (CurrentFacePos.Z - WorldLocation.Z) / WorldDirection.Z : 50.0f;
+					FVector MousePlanePos = WorldLocation + (WorldDirection * t);
+
+					// Distance from the block face along the approach normal (positive = outside tower, negative = pushed into block)
+					float DistFromFace = FVector::DotProduct(MousePlanePos - CurrentFacePos, ApproachNormal);
+					float RayAdvance = PUSH_STANDBY_SEPARATION - DistFromFace;
+
 					float EffectiveAdvance = FMath::Max(CurrentPushAdvance, RayAdvance);
-					float ClampedAdvance = FMath::Clamp(EffectiveAdvance, 0.0f, PUSH_STANDBY_SEPARATION + 2.5f);
-					float EffectiveClearance = PUSH_STANDBY_SEPARATION - ClampedAdvance;
-
-					FVector HandPos = GetBlockStandOffLocation(ActivePushBlock, WorldLocation, ApproachNormal, EffectiveClearance, LocalOffset);
-					HandPos.Z += PUSH_VERTICAL_OFFSET;
-					VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), HandPos), 0.0f);
-
-					if (ClampedAdvance >= PUSH_STANDBY_SEPARATION)
+					if (bIsPushingBlock)
 					{
-						// Fingertip reached contact: push the block forward
-						PerformLongitudinalPush(ActivePushBlock, ApproachNormal);
+						EffectiveAdvance = FMath::Max(EffectiveAdvance, PUSH_STANDBY_SEPARATION + 0.5f);
+					}
+
+					if (EffectiveAdvance < PUSH_STANDBY_SEPARATION)
+					{
+						// In the air (Standby to Contact): Hand moves freely towards the block surface
+						float Clearance = PUSH_STANDBY_SEPARATION - EffectiveAdvance; // 16cm -> 0cm
+						FVector TargetFingertipWorld = CurrentFacePos + (ApproachNormal * Clearance);
+						FVector HandPos = TargetFingertipWorld - HandRot.RotateVector(LocalOffset);
+						VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), HandPos), 0.0f);
+					}
+					else
+					{
+						// In Contact & Pushing: Fingertip stays EXACTLY ON THE SURFACE (Clearance = 0.0cm)!
+						float DesiredPushDepth = EffectiveAdvance - PUSH_STANDBY_SEPARATION; // 0cm -> 4.5cm
+						CurrentPushDisplacement = FMath::Clamp(DesiredPushDepth, 0.0f, 4.5f);
+
+						if (CurrentPushDisplacement > 0.001f)
+						{
+							// Smoothly move the block forward along its longitudinal axis with collision sweep
+							FVector TargetBlockLoc = PushBlockInitialLocation + (PushLongitudinalAxis * CurrentPushDisplacement);
+							FHitResult MoveHit;
+							ActivePushBlock->BlockMesh->WakeRigidBody();
+							ActivePushBlock->SetActorLocation(TargetBlockLoc, true, &MoveHit, ETeleportType::TeleportPhysics);
+
+							// Apply a complementary physics impulse so Chaos simulates friction on adjacent pieces
+							ActivePushBlock->BlockMesh->AddImpulse(PushLongitudinalAxis * 0.02f, NAME_None, true);
+						}
+
+						// Finger sits EXACTLY at the current outer face of the block (ZERO penetration!)
+						FVector UpdatedFacePos = GetBlockChosenFacePos(ActivePushBlock, ApproachNormal);
+						FVector HandPos = UpdatedFacePos - HandRot.RotateVector(LocalOffset);
+						VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), HandPos), 0.0f);
 					}
 				}
 			}
@@ -493,7 +524,13 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 	{
 		// In poke mode, clicking directly pushes the block along the locked perpendicular axis
 		bIsPushingBlock = true;
-		PerformLongitudinalPush(TargetPush, LockedRadialDirection);
+		if (!LockedPushBlock)
+		{
+			LockedPushBlock = TargetPush;
+			PushBlockInitialLocation = LockedPushBlock->GetActorLocation();
+			CurrentPushDisplacement = 0.0f;
+		}
+		CurrentPushAdvance = FMath::Max(CurrentPushAdvance, PUSH_STANDBY_SEPARATION + 0.5f);
 		return;
 	}
 
