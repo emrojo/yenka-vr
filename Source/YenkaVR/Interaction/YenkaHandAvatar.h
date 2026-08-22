@@ -4,7 +4,7 @@
 #include "GameFramework/Actor.h"
 #include "YenkaHandAvatar.generated.h"
 
-class USkeletalMeshComponent;
+class UPoseableMeshComponent;
 class UPhysicsHandleComponent;
 
 UENUM(BlueprintType)
@@ -41,7 +41,7 @@ public:
 	USceneComponent* HandRoot;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	USkeletalMeshComponent* HandSkeletalMesh;
+	UPoseableMeshComponent* HandPoseableMesh;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* PalmMesh;

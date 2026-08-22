@@ -1,8 +1,7 @@
 #include "YenkaHandAvatar.h"
-#include "Components/SkeletalMeshComponent.h"
+#include "Components/PoseableMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "PhysicsEngine/PhysicsHandleComponent.h"
-#include "Animation/AnimSequence.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Net/UnrealNetwork.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -20,37 +19,23 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 	HandRoot = CreateDefaultSubobject<USceneComponent>(TEXT("HandRoot"));
 	RootComponent = HandRoot;
 
-	// 0.1. MetaHuman / Standard Continuous Skeletal Mesh Hand Component
-	HandSkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("HandSkeletalMesh"));
-	HandSkeletalMesh->SetupAttachment(HandRoot);
-	HandSkeletalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	HandSkeletalMesh->SetCastShadow(true);
+	// 0.1. MetaHuman / Standard Continuous Poseable Skeletal Mesh Hand Component
+	HandPoseableMesh = CreateDefaultSubobject<UPoseableMeshComponent>(TEXT("HandPoseableMesh"));
+	HandPoseableMesh->SetupAttachment(HandRoot);
+	HandPoseableMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	HandPoseableMesh->SetCastShadow(true);
 
 	static ConstructorHelpers::FObjectFinder<USkeletalMesh> SkeletalMeshAsset(TEXT("/Game/Characters/MannequinsXR/Meshes/SKM_MannyXR_right.SKM_MannyXR_right"));
-	static ConstructorHelpers::FObjectFinder<UAnimSequence> IdleSeqAsset(TEXT("/Game/Characters/MannequinsXR/Animations/A_MannequinsXR_Idle_Right.A_MannequinsXR_Idle_Right"));
-	static ConstructorHelpers::FObjectFinder<UAnimSequence> PointSeqAsset(TEXT("/Game/Characters/MannequinsXR/Animations/A_MannequinsXR_Point_Right.A_MannequinsXR_Point_Right"));
-	static ConstructorHelpers::FObjectFinder<UAnimSequence> GraspSeqAsset(TEXT("/Game/Characters/MannequinsXR/Animations/A_MannequinsXR_Grasp_Right.A_MannequinsXR_Grasp_Right"));
-
-	if (IdleSeqAsset.Succeeded()) AnimIdle = IdleSeqAsset.Object;
-	if (PointSeqAsset.Succeeded()) AnimPoint = PointSeqAsset.Object;
-	if (GraspSeqAsset.Succeeded()) AnimGrasp = GraspSeqAsset.Object;
 
 	const bool bHasSkeletalHand = SkeletalMeshAsset.Succeeded();
 	if (bHasSkeletalHand)
 	{
-		HandSkeletalMesh->SetSkeletalMesh(SkeletalMeshAsset.Object);
+		HandPoseableMesh->SetSkeletalMesh(SkeletalMeshAsset.Object);
 		// MannyXR right hand: scaled to 0.5 (half-size), rotated -90 deg to face pieces directly
 		// Offset wrist by -5.0cm so palm center is at HandRoot (0,0,0) and fingertips reach +2.5cm
-		HandSkeletalMesh->SetRelativeLocation(FVector(-5.0f, 0.0f, 0.0f));
-		HandSkeletalMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
-		HandSkeletalMesh->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.5f));
-
-		if (AnimIdle)
-		{
-			HandSkeletalMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
-			HandSkeletalMesh->SetAnimation(AnimIdle);
-			HandSkeletalMesh->Play(true);
-		}
+		HandPoseableMesh->SetRelativeLocation(FVector(-5.0f, 0.0f, 0.0f));
+		HandPoseableMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+		HandPoseableMesh->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.5f));
 	}
 
 	// 1. Palm
@@ -221,10 +206,10 @@ void AYenkaHandAvatar::ApplyHumanSkinMaterials()
 					Part->SetMaterial(0, SkinMat);
 				}
 			}
-			if (HandSkeletalMesh)
+			if (HandPoseableMesh)
 			{
-				HandSkeletalMesh->SetMaterial(0, SkinMat);
-				HandSkeletalMesh->SetMaterial(1, SkinMat);
+				HandPoseableMesh->SetMaterial(0, SkinMat);
+				HandPoseableMesh->SetMaterial(1, SkinMat);
 			}
 		}
 
@@ -264,60 +249,95 @@ void AYenkaHandAvatar::SetTargetHandTransform(const FTransform& InTransform, flo
 	ReplicatedHandTransform = InTransform;
 	ReplicatedGripStrength = InGripStrength;
 	SetActorTransform(InTransform);
-	if (CurrentPoseMode != LastAppliedPoseMode)
-	{
-		UpdateFingerPoses(InGripStrength);
-	}
+	UpdateFingerPoses(InGripStrength);
 }
 
 void AYenkaHandAvatar::SetHandPoseMode(EHandPoseMode NewPoseMode)
 {
-	if (CurrentPoseMode != NewPoseMode)
-	{
-		CurrentPoseMode = NewPoseMode;
-		UpdateFingerPoses(ReplicatedGripStrength);
-	}
+	CurrentPoseMode = NewPoseMode;
+	UpdateFingerPoses(ReplicatedGripStrength);
 }
 
 void AYenkaHandAvatar::UpdateFingerPoses(float GripStrength)
 {
-	LastAppliedPoseMode = CurrentPoseMode;
+	if (!HandPoseableMesh) return;
 
-	// 1. Guaranteed Animation Sequence Playback on Skeletal Mesh Hand
-	if (HandSkeletalMesh)
+	if (CurrentPoseMode == EHandPoseMode::FingerPoke)
 	{
-		HandSkeletalMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+		// --- FINGER POKE: INDEX STRAIGHT, OTHER 4 FINGERS IN A SOLID TIGHT CLENCHED FIST ---
+		// 1. Index Finger: 100% straight extended forward like an arrow
+		HandPoseableMesh->SetBoneRotationByName(TEXT("index_01_r"), FRotator(0.0f, 0.0f, 0.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("index_02_r"), FRotator(0.0f, 0.0f, 0.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("index_03_r"), FRotator(0.0f, 0.0f, 0.0f), EBoneSpaces::ComponentSpace);
 
-		if (CurrentPoseMode == EHandPoseMode::FingerPoke)
-		{
-			// Tight clenched fist with index finger completely extended forward
-			if (AnimPoint)
-			{
-				HandSkeletalMesh->SetAnimation(AnimPoint);
-				HandSkeletalMesh->SetPosition(AnimPoint->GetPlayLength(), false);
-				HandSkeletalMesh->SetPlayRate(0.0f); // Freeze at full pointing pose (100% clenched fist with index pointing!)
-			}
-		}
-		else if (CurrentPoseMode == EHandPoseMode::GrabPinch)
-		{
-			// Caliper pinch clamping lateral block ends
-			if (AnimGrasp)
-			{
-				HandSkeletalMesh->SetAnimation(AnimGrasp);
-				HandSkeletalMesh->SetPosition(AnimGrasp->GetPlayLength() * 0.70f, false);
-				HandSkeletalMesh->SetPlayRate(0.0f); // Freeze at 70% caliper pinch
-			}
-		}
-		else // OpenHand
-		{
-			// Relaxed open exploration hand
-			if (AnimIdle)
-			{
-				HandSkeletalMesh->SetAnimation(AnimIdle);
-				HandSkeletalMesh->SetPosition(0.0f, false);
-				HandSkeletalMesh->SetPlayRate(0.0f);
-			}
-		}
+		// 2. Middle Finger: 100% curled tightly against palm (90+ degrees total curl)
+		HandPoseableMesh->SetBoneRotationByName(TEXT("middle_01_r"), FRotator(0.0f, 0.0f, -45.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("middle_02_r"), FRotator(0.0f, 0.0f, -50.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("middle_03_r"), FRotator(0.0f, 0.0f, -40.0f), EBoneSpaces::ComponentSpace);
+
+		// 3. Ring Finger: 100% curled tightly against palm
+		HandPoseableMesh->SetBoneRotationByName(TEXT("ring_01_r"), FRotator(0.0f, 0.0f, -45.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("ring_02_r"), FRotator(0.0f, 0.0f, -50.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("ring_03_r"), FRotator(0.0f, 0.0f, -40.0f), EBoneSpaces::ComponentSpace);
+
+		// 4. Pinky Finger: 100% curled tightly against palm
+		HandPoseableMesh->SetBoneRotationByName(TEXT("pinky_01_r"), FRotator(0.0f, 0.0f, -45.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("pinky_02_r"), FRotator(0.0f, 0.0f, -50.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("pinky_03_r"), FRotator(0.0f, 0.0f, -40.0f), EBoneSpaces::ComponentSpace);
+
+		// 5. Thumb: Folded tightly across the clenched fist
+		HandPoseableMesh->SetBoneRotationByName(TEXT("thumb_01_r"), FRotator(25.0f, -30.0f, -30.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("thumb_02_r"), FRotator(0.0f, 0.0f, -35.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("thumb_03_r"), FRotator(0.0f, 0.0f, -35.0f), EBoneSpaces::ComponentSpace);
+	}
+	else if (CurrentPoseMode == EHandPoseMode::GrabPinch)
+	{
+		// --- GRAB PINCH: INDEX & THUMB FORM CALIPER PINCH CLAMPING PIECE EDGES (2.5cm) ---
+		// 1. Index Finger: Flexed inward to right edge (+1.25cm)
+		HandPoseableMesh->SetBoneRotationByName(TEXT("index_01_r"), FRotator(10.0f, -15.0f, -25.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("index_02_r"), FRotator(0.0f, 0.0f, -25.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("index_03_r"), FRotator(0.0f, 0.0f, -15.0f), EBoneSpaces::ComponentSpace);
+
+		// 2. Thumb: Opposed and reaching forward to left edge (-1.25cm)
+		HandPoseableMesh->SetBoneRotationByName(TEXT("thumb_01_r"), FRotator(-15.0f, 20.0f, 15.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("thumb_02_r"), FRotator(0.0f, 0.0f, -15.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("thumb_03_r"), FRotator(0.0f, 0.0f, -10.0f), EBoneSpaces::ComponentSpace);
+
+		// 3. Middle, Ring, Pinky: Curled tightly into palm out of the way
+		HandPoseableMesh->SetBoneRotationByName(TEXT("middle_01_r"), FRotator(0.0f, 0.0f, -45.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("middle_02_r"), FRotator(0.0f, 0.0f, -50.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("middle_03_r"), FRotator(0.0f, 0.0f, -40.0f), EBoneSpaces::ComponentSpace);
+
+		HandPoseableMesh->SetBoneRotationByName(TEXT("ring_01_r"), FRotator(0.0f, 0.0f, -45.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("ring_02_r"), FRotator(0.0f, 0.0f, -50.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("ring_03_r"), FRotator(0.0f, 0.0f, -40.0f), EBoneSpaces::ComponentSpace);
+
+		HandPoseableMesh->SetBoneRotationByName(TEXT("pinky_01_r"), FRotator(0.0f, 0.0f, -45.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("pinky_02_r"), FRotator(0.0f, 0.0f, -50.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("pinky_03_r"), FRotator(0.0f, 0.0f, -40.0f), EBoneSpaces::ComponentSpace);
+	}
+	else // OpenHand
+	{
+		// --- OPEN HAND: RELAXED NATURAL EXPLORATION ---
+		HandPoseableMesh->SetBoneRotationByName(TEXT("index_01_r"), FRotator(0.0f, 0.0f, -5.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("index_02_r"), FRotator(0.0f, 0.0f, -5.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("index_03_r"), FRotator(0.0f, 0.0f, -5.0f), EBoneSpaces::ComponentSpace);
+
+		HandPoseableMesh->SetBoneRotationByName(TEXT("middle_01_r"), FRotator(0.0f, 0.0f, -8.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("middle_02_r"), FRotator(0.0f, 0.0f, -8.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("middle_03_r"), FRotator(0.0f, 0.0f, -8.0f), EBoneSpaces::ComponentSpace);
+
+		HandPoseableMesh->SetBoneRotationByName(TEXT("ring_01_r"), FRotator(0.0f, 0.0f, -10.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("ring_02_r"), FRotator(0.0f, 0.0f, -10.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("ring_03_r"), FRotator(0.0f, 0.0f, -10.0f), EBoneSpaces::ComponentSpace);
+
+		HandPoseableMesh->SetBoneRotationByName(TEXT("pinky_01_r"), FRotator(0.0f, 0.0f, -12.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("pinky_02_r"), FRotator(0.0f, 0.0f, -12.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("pinky_03_r"), FRotator(0.0f, 0.0f, -12.0f), EBoneSpaces::ComponentSpace);
+
+		HandPoseableMesh->SetBoneRotationByName(TEXT("thumb_01_r"), FRotator(0.0f, 0.0f, 0.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("thumb_02_r"), FRotator(0.0f, 0.0f, 0.0f), EBoneSpaces::ComponentSpace);
+		HandPoseableMesh->SetBoneRotationByName(TEXT("thumb_03_r"), FRotator(0.0f, 0.0f, 0.0f), EBoneSpaces::ComponentSpace);
 	}
 
 	if (CurrentPoseMode == EHandPoseMode::FingerPoke)
