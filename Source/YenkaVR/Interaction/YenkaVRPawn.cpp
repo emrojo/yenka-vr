@@ -130,6 +130,63 @@ void AYenkaVRPawn::Tick(float DeltaTime)
 
 	if (IsLocallyControlled())
 	{
+		APlayerController* PC = Cast<APlayerController>(GetController());
+		if (PC)
+		{
+			// 1. Direct Axis Polling fallback (Supports Oculus Touch, OpenXR, Gamepad, Keyboard)
+			float LeftY = PC->GetInputAxisValue(TEXT("OculusTouch_Left_Thumbstick_Y"));
+			if (FMath::IsNearlyZero(LeftY)) LeftY = PC->GetInputAxisValue(TEXT("Gamepad_LeftY"));
+			if (FMath::IsNearlyZero(LeftY)) LeftY = PC->GetInputAxisValue(TEXT("MixedReality_Left_Thumbstick_Y"));
+			if (FMath::IsNearlyZero(LeftY)) LeftY = PC->GetInputAxisValue(TEXT("ValveIndex_Left_Thumbstick_Y"));
+
+			float RightY = PC->GetInputAxisValue(TEXT("OculusTouch_Right_Thumbstick_Y"));
+			if (FMath::IsNearlyZero(RightY)) RightY = PC->GetInputAxisValue(TEXT("Gamepad_RightY"));
+			if (FMath::IsNearlyZero(RightY)) RightY = PC->GetInputAxisValue(TEXT("MixedReality_Right_Thumbstick_Y"));
+			if (FMath::IsNearlyZero(RightY)) RightY = PC->GetInputAxisValue(TEXT("ValveIndex_Right_Thumbstick_Y"));
+
+			// Also support keyboard 'T', Spacebar, or Gamepad Triggers for teleport testing
+			const bool bKeyT = PC->IsInputKeyDown(EKeys::T) || PC->IsInputKeyDown(EKeys::SpaceBar) || PC->IsInputKeyDown(EKeys::Gamepad_LeftTrigger) || PC->IsInputKeyDown(EKeys::Gamepad_RightTrigger);
+
+			if (LeftY > 0.50f || (bKeyT && !bIsTeleportAiming))
+			{
+				if (!bIsTeleportAiming)
+				{
+					StartTeleportTrace(true);
+				}
+			}
+			else if (RightY > 0.50f)
+			{
+				if (!bIsTeleportAiming)
+				{
+					StartTeleportTrace(false);
+				}
+			}
+			else if (bIsTeleportAiming)
+			{
+				if ((bTeleportUsingLeftHand && LeftY < 0.20f && !bKeyT) || (!bTeleportUsingLeftHand && RightY < 0.20f && !bKeyT))
+				{
+					ExecuteTeleport();
+				}
+			}
+
+			// Snap Turn polling
+			float RightX = PC->GetInputAxisValue(TEXT("OculusTouch_Right_Thumbstick_X"));
+			if (FMath::IsNearlyZero(RightX)) RightX = PC->GetInputAxisValue(TEXT("Gamepad_RightX"));
+			if (FMath::IsNearlyZero(RightX)) RightX = PC->GetInputAxisValue(TEXT("MixedReality_Right_Thumbstick_X"));
+			if (FMath::IsNearlyZero(RightX)) RightX = PC->GetInputAxisValue(TEXT("ValveIndex_Right_Thumbstick_X"));
+			if (PC->IsInputKeyDown(EKeys::E)) RightX = 1.0f;
+			if (PC->IsInputKeyDown(EKeys::Q)) RightX = -1.0f;
+
+			if (!bIsTeleportAiming && FMath::Abs(RightX) > 0.50f)
+			{
+				ExecuteSnapTurn(RightX);
+			}
+			else if (FMath::Abs(RightX) < 0.30f)
+			{
+				bSnapTurnAxisReset = true;
+			}
+		}
+
 		if (bIsTeleportAiming)
 		{
 			UpdateTeleportTrace();
@@ -264,9 +321,9 @@ void AYenkaVRPawn::UpdateTeleportTrace()
 		TeleportTargetLocation = PathResult.HitResult.ImpactPoint;
 		TeleportTargetNormal = PathResult.HitResult.ImpactNormal;
 
-		// Surface is valid if horizontal floor (Normal Z >= 0.65) and not hitting the elevated table top (Z <= 20cm)
+		// Surface is valid if horizontal floor (Normal Z >= 0.65) and not hitting the elevated table top (Z <= 70cm)
 		const bool bIsFloorSlope = TeleportTargetNormal.Z >= 0.65f;
-		const bool bIsNotTable = TeleportTargetLocation.Z <= 40.0f; // Table is at Z = 90cm
+		const bool bIsNotTable = TeleportTargetLocation.Z <= 70.0f; // Table is at Z = 90cm
 		const float HorizontalDist = FVector::Dist2D(StartPos, TeleportTargetLocation);
 
 		bIsTeleportTargetValid = bIsFloorSlope && bIsNotTable && (HorizontalDist <= MaxTeleportDistance);
