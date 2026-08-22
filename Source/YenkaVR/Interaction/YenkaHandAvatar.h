@@ -64,6 +64,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Yenka|Hand")
 	void UpdateFingerPoses(float GripStrength);
 
+	UFUNCTION(BlueprintPure, Category = "Yenka|Hand")
+	float GetExtendedFingertipOffset() const;
+
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Yenka|Hand")
 	EHandPoseMode CurrentPoseMode;
 

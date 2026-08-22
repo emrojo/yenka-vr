@@ -242,7 +242,7 @@ void AYenkaDesktopPawn::MoveRight(float Val)
 	}
 }
 
-FVector AYenkaDesktopPawn::GetBlockStandOffLocation(const AYenkaBlock* Block, const FVector& ViewOrigin, FVector& OutApproachNormal) const
+FVector AYenkaDesktopPawn::GetBlockStandOffLocation(const AYenkaBlock* Block, const FVector& ViewOrigin, FVector& OutApproachNormal, float FingertipOffset) const
 {
 	if (!Block)
 	{
@@ -254,7 +254,7 @@ FVector AYenkaDesktopPawn::GetBlockStandOffLocation(const AYenkaBlock* Block, co
 	FVector ForwardVec = Block->GetActorForwardVector(); // 7.5cm length (+- 3.75cm)
 	FVector RightVec = Block->GetActorRightVector();     // 2.5cm width (+- 1.25cm)
 
-	// Block face candidate positions
+	// Block face candidate positions (exact outer surface of the Jenga piece)
 	FVector EndPosPos = BlockCenter + (ForwardVec * 3.75f);
 	FVector EndNegPos = BlockCenter - (ForwardVec * 3.75f);
 	FVector SidePosPos = BlockCenter + (RightVec * 1.25f);
@@ -289,8 +289,9 @@ FVector AYenkaDesktopPawn::GetBlockStandOffLocation(const AYenkaBlock* Block, co
 		OutApproachNormal = -RightVec;
 	}
 
-	// Stand-off position: face position offset by clearance along outward normal
-	return ChosenFacePos + (OutApproachNormal * STANDOFF_CLEARANCE);
+	// Stand-off position: face position offset by clearance PLUS the length of the extended finger
+	// This ensures that the TIP of the finger sits exactly STANDOFF_CLEARANCE (8mm) in front of the block!
+	return ChosenFacePos + (OutApproachNormal * (STANDOFF_CLEARANCE + FingertipOffset));
 }
 
 void AYenkaDesktopPawn::HandleMouseTrace()
@@ -340,18 +341,19 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 
 				if (bInProximity && HoveredBlock)
 				{
-					// --- AUTOMATIC PROXIMITY SNAPPING: Stand-off clearance without touching block ---
 					FVector ApproachNormal;
-					FVector StandOffPos = GetBlockStandOffLocation(HoveredBlock, WorldLocation, ApproachNormal);
-
-					FRotator HandRot = (-ApproachNormal).Rotation();
-					HandRot.Pitch = 0.0f;
-					HandRot.Roll = 0.0f;
 
 					if (bIsPokeModeActive || bIsPushingBlock)
 					{
-						// --- PUSH / POKE MODE ---
+						// --- PUSH / POKE MODE: Offset using Index Finger Tip length ---
 						VirtualHand->SetHandPoseMode(EHandPoseMode::FingerPoke);
+						const float PokeFingertipOffset = VirtualHand->GetExtendedFingertipOffset(); // ~6.3cm
+						FVector StandOffPos = GetBlockStandOffLocation(HoveredBlock, WorldLocation, ApproachNormal, PokeFingertipOffset);
+
+						FRotator HandRot = (-ApproachNormal).Rotation();
+						HandRot.Pitch = 0.0f;
+						HandRot.Roll = 0.0f;
+
 						LockedRadialDirection = ApproachNormal;
 						LockedFloorZ = StandOffPos.Z;
 						bIsLockedPerpendicular = true;
@@ -363,7 +365,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 
 						if (MousePushDepth > 0.0f || bIsPushingBlock)
 						{
-							// User deliberately moves mouse forward into piece: make contact and push
+							// User deliberately moves mouse forward into piece: close 8mm clearance and push
 							float PushOffset = FMath::Clamp(MousePushDepth, 0.0f, STANDOFF_CLEARANCE + 2.5f);
 							FVector PushingPos = StandOffPos - (ApproachNormal * PushOffset);
 							VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), PushingPos), 0.0f);
@@ -371,15 +373,22 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 						}
 						else
 						{
-							// Idle stand-off: sits 8mm in front of block with zero pressure applied
+							// Idle stand-off: fingertip sits exactly 8mm in front of block face with zero pressure
 							VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), StandOffPos), 0.0f);
 						}
 					}
 					else
 					{
-						// --- GRAB / INSPECTION STAND-BY ---
+						// --- GRAB / INSPECTION STAND-BY: Offset using Open Hand finger tip length ---
 						bIsLockedPerpendicular = false;
 						VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
+						const float OpenFingertipOffset = VirtualHand->GetExtendedFingertipOffset(); // ~6.9cm
+						FVector StandOffPos = GetBlockStandOffLocation(HoveredBlock, WorldLocation, ApproachNormal, OpenFingertipOffset);
+
+						FRotator HandRot = (-ApproachNormal).Rotation();
+						HandRot.Pitch = 0.0f;
+						HandRot.Roll = 0.0f;
+
 						VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), StandOffPos), 0.0f);
 					}
 				}

@@ -69,7 +69,7 @@ protected:
 	void OnTogglePokeMode();
 	void PerformLongitudinalPush(AYenkaBlock* Block, const FVector& DirectionNormal);
 	FRotator GetHorizontalFacingRotation(const FVector& TargetLocation) const;
-	FVector GetBlockStandOffLocation(const AYenkaBlock* Block, const FVector& ViewOrigin, FVector& OutApproachNormal) const;
+	FVector GetBlockStandOffLocation(const AYenkaBlock* Block, const FVector& ViewOrigin, FVector& OutApproachNormal, float FingertipOffset = 6.5f) const;
 	void OnMouseX(float Val);
 	void OnMouseY(float Val);
 	void OnMouseWheel(float Val);

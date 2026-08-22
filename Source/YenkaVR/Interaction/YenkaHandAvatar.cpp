@@ -215,6 +215,25 @@ void AYenkaHandAvatar::UpdateFingerPoses(float GripStrength)
 	}
 }
 
+float AYenkaHandAvatar::GetExtendedFingertipOffset() const
+{
+	if (CurrentPoseMode == EHandPoseMode::FingerPoke)
+	{
+		// Index finger: Location X = 4.2cm, half-length = 2.1cm -> tip at X = 6.3cm
+		return 6.3f;
+	}
+	else if (CurrentPoseMode == EHandPoseMode::GrabPinch)
+	{
+		// Bent fingers during pinch: tip at ~3.8cm
+		return 3.8f;
+	}
+	else // OpenHand
+	{
+		// Middle finger: Location X = 4.6cm, half-length = 2.3cm -> tip at X = 6.9cm
+		return 6.9f;
+	}
+}
+
 void AYenkaHandAvatar::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
