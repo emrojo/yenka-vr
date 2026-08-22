@@ -171,7 +171,7 @@ void AYenkaDesktopPawn::PerformLongitudinalPush(AYenkaBlock* Block, const FVecto
 
 	Block->SetPhysicsActive(true);
 	Block->BlockMesh->WakeRigidBody();
-	FVector PushVel = PushAxis * 2.5f;
+	FVector PushVel = PushAxis * 6.0f;
 	PushVel.Z = 0.0f;
 	Block->BlockMesh->SetPhysicsLinearVelocity(PushVel);
 	Block->BlockMesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
@@ -221,7 +221,7 @@ void AYenkaDesktopPawn::OnMouseY(float Val)
 			if (ActivePushBlock && ActivePushBlock->BlockMesh)
 			{
 				ActivePushBlock->BlockMesh->WakeRigidBody();
-				float TargetSpeed = FMath::Clamp(Val * 3.5f, 1.0f, 3.5f);
+				float TargetSpeed = FMath::Clamp(Val * 8.0f, 2.5f, 8.0f);
 				FVector PushVel = PushLongitudinalAxis * TargetSpeed;
 				PushVel.Z = 0.0f;
 				ActivePushBlock->BlockMesh->SetPhysicsLinearVelocity(PushVel);
@@ -471,8 +471,8 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 					{
 						CurrentPushAdvance = PUSH_STANDBY_SEPARATION;
 						ActivePushBlock->BlockMesh->WakeRigidBody();
-						// Active push velocity while mouse button is held down (2.5 cm/s)
-						FVector PushVel = PushLongitudinalAxis * 2.5f;
+						// Strong active push velocity while mouse button is held down (6.0 cm/s)
+						FVector PushVel = PushLongitudinalAxis * 6.0f;
 						PushVel.Z = 0.0f;
 						ActivePushBlock->BlockMesh->SetPhysicsLinearVelocity(PushVel);
 						ActivePushBlock->BlockMesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
@@ -592,7 +592,7 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 		if (TargetPush->BlockMesh)
 		{
 			TargetPush->BlockMesh->WakeRigidBody();
-			FVector PushVel = PushLongitudinalAxis * 2.5f;
+			FVector PushVel = PushLongitudinalAxis * 6.0f;
 			PushVel.Z = 0.0f;
 			TargetPush->BlockMesh->SetPhysicsLinearVelocity(PushVel);
 			TargetPush->BlockMesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
