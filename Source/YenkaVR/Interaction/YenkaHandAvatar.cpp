@@ -45,7 +45,7 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 		// MannyXR right hand: scaled to 0.5 (half-size), rotated -90 deg to face pieces directly
 		// Offset wrist by -5.0cm so palm center is at HandRoot (0,0,0) and fingertips reach +2.5cm
 		HandSkeletalMesh->SetRelativeLocation(FVector(-5.0f, 0.0f, 0.0f));
-		HandSkeletalMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+		HandSkeletalMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, -65.0f));
 		HandSkeletalMesh->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.5f));
 
 		if (AnimIdle)
@@ -221,8 +221,9 @@ void AYenkaHandAvatar::UpdateHandMeshSide()
 			{
 				HandSkeletalMesh->SetSkeletalMesh(LeftSkeletalMesh);
 			}
+			// Left hand: Rotated -90 deg to face forward, +65 deg Roll so palm tilts vertically inward (handshake controller grip)
 			HandSkeletalMesh->SetRelativeLocation(FVector(-5.0f, 0.0f, 0.0f));
-			HandSkeletalMesh->SetRelativeRotation(FRotator(0.0f, 90.0f, 0.0f));
+			HandSkeletalMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 65.0f));
 			HandSkeletalMesh->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.5f));
 		}
 		else
@@ -231,8 +232,9 @@ void AYenkaHandAvatar::UpdateHandMeshSide()
 			{
 				HandSkeletalMesh->SetSkeletalMesh(RightSkeletalMesh);
 			}
+			// Right hand: Rotated -90 deg to face forward, -65 deg Roll so palm tilts vertically inward (handshake controller grip)
 			HandSkeletalMesh->SetRelativeLocation(FVector(-5.0f, 0.0f, 0.0f));
-			HandSkeletalMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+			HandSkeletalMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, -65.0f));
 			HandSkeletalMesh->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.5f));
 		}
 
