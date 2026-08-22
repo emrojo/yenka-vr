@@ -167,19 +167,11 @@ void AYenkaDesktopPawn::PerformLongitudinalPush(AYenkaBlock* Block, const FVecto
 	float DotForward = FVector::DotProduct(-DirectionNormal, ForwardVec);
 	float DotRight = FVector::DotProduct(-DirectionNormal, RightVec);
 
-	FVector PushAxis;
-	if (FMath::Abs(DotForward) >= FMath::Abs(DotRight))
-	{
-		PushAxis = ForwardVec * FMath::Sign(DotForward);
-	}
-	else
-	{
-		PushAxis = RightVec * FMath::Sign(DotRight);
-	}
+	FVector PushAxis = (FMath::Abs(DotForward) >= FMath::Abs(DotRight)) ? (ForwardVec * FMath::Sign(DotForward)) : (RightVec * FMath::Sign(DotRight));
 
 	Block->SetPhysicsActive(true);
 	Block->BlockMesh->WakeRigidBody();
-	FVector PushVel = PushAxis * 4.0f;
+	FVector PushVel = PushAxis * 0.8f;
 	PushVel.Z = 0.0f;
 	Block->BlockMesh->SetPhysicsLinearVelocity(PushVel);
 	Block->BlockMesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
@@ -221,7 +213,7 @@ void AYenkaDesktopPawn::OnMouseY(float Val)
 	else if (bIsPokeModeActive && FMath::Abs(Val) > 0.001f)
 	{
 		// Moving mouse forward (+Val) advances finger towards block and pushes; moving backward (-Val) retracts
-		CurrentPushAdvance = FMath::Clamp(CurrentPushAdvance + (Val * 0.25f), 0.0f, PUSH_STANDBY_SEPARATION + 0.5f);
+		CurrentPushAdvance = FMath::Clamp(CurrentPushAdvance + (Val * 0.15f), 0.0f, PUSH_STANDBY_SEPARATION + 0.5f);
 
 		if (Val > 0.01f && CurrentPushAdvance >= PUSH_STANDBY_SEPARATION)
 		{
@@ -229,7 +221,8 @@ void AYenkaDesktopPawn::OnMouseY(float Val)
 			if (ActivePushBlock && ActivePushBlock->BlockMesh)
 			{
 				ActivePushBlock->BlockMesh->WakeRigidBody();
-				FVector PushVel = PushLongitudinalAxis * (FMath::Clamp(Val * 12.0f, 2.0f, 6.0f));
+				float TargetSpeed = FMath::Clamp(Val * 1.5f, 0.4f, 1.2f);
+				FVector PushVel = PushLongitudinalAxis * TargetSpeed;
 				PushVel.Z = 0.0f;
 				ActivePushBlock->BlockMesh->SetPhysicsLinearVelocity(PushVel);
 				ActivePushBlock->BlockMesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
@@ -478,7 +471,8 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 					{
 						CurrentPushAdvance = PUSH_STANDBY_SEPARATION;
 						ActivePushBlock->BlockMesh->WakeRigidBody();
-						FVector PushVel = PushLongitudinalAxis * 4.0f;
+						// Gentle steady push velocity (0.8 cm/s)
+						FVector PushVel = PushLongitudinalAxis * 0.8f;
 						PushVel.Z = 0.0f;
 						ActivePushBlock->BlockMesh->SetPhysicsLinearVelocity(PushVel);
 						ActivePushBlock->BlockMesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);

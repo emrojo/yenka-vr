@@ -36,10 +36,10 @@ AYenkaBlock::AYenkaBlock()
 	BlockMesh->BodyInstance.bUseCCD = true; // Continuous Collision Detection
 	BlockMesh->BodyInstance.PositionSolverIterationCount = 16;
 	BlockMesh->BodyInstance.VelocitySolverIterationCount = 8;
-	BlockMesh->BodyInstance.SetMaxDepenetrationVelocity(8.0f); // Limits depenetration speed to 8cm/s, completely preventing explosive pops on initial contact
+	BlockMesh->BodyInstance.SetMaxDepenetrationVelocity(4.0f); // Ultra-gentle 4cm/s max depenetration speed
 	BlockMesh->SetMassOverrideInKg(NAME_None, 0.085f, true); // ~85g per block
-	BlockMesh->SetLinearDamping(0.8f);
-	BlockMesh->SetAngularDamping(0.8f);
+	BlockMesh->SetLinearDamping(1.5f);
+	BlockMesh->SetAngularDamping(2.0f);
 
 	LayerIndex = 0;
 	bIsPlacedOnTop = false;
@@ -66,10 +66,10 @@ void AYenkaBlock::BeginPlay()
 			UPhysicalMaterial* DynPhysMat = NewObject<UPhysicalMaterial>(this, TEXT("DynWoodPhysMat"));
 			if (DynPhysMat)
 			{
-				// Reduced friction allows individual blocks to slide out smoothly without toppling the whole layer
-				DynPhysMat->Friction = 0.20f;
-				DynPhysMat->StaticFriction = 0.22f;
-				DynPhysMat->Restitution = 0.05f;
+				// Smooth polished wood friction allows single blocks to slide cleanly without toppling adjacent pieces
+				DynPhysMat->Friction = 0.18f;
+				DynPhysMat->StaticFriction = 0.20f;
+				DynPhysMat->Restitution = 0.02f;
 				DynPhysMat->FrictionCombineMode = EFrictionCombineMode::Min;
 				DynPhysMat->RestitutionCombineMode = EFrictionCombineMode::Min;
 				BlockMesh->SetPhysMaterialOverride(DynPhysMat);
