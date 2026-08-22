@@ -53,6 +53,7 @@ protected:
 	FVector LockedRadialDirection;
 	float LockedFloorZ;
 	float GrabDistance;
+	float CurrentPushAdvance;
 	FVector LastHitLocation;
 	FVector LastHitNormal;
 
@@ -60,9 +61,9 @@ protected:
 	static constexpr float PROXIMITY_THRESHOLD = 2.0f * HAND_LENGTH;
 	static constexpr float TOWER_BASE_RADIUS = 3.75f;
 	static constexpr float INSPECTION_SAFE_RADIUS = 16.0f;
-	static constexpr float PUSH_STANDBY_SEPARATION = 8.0f;
+	static constexpr float PUSH_STANDBY_SEPARATION = 16.0f;
 	static constexpr float GRAB_STANDBY_SEPARATION = 2.5f;
-	static constexpr float PUSH_VERTICAL_OFFSET = 0.35f;
+	static constexpr float PUSH_VERTICAL_OFFSET = 0.0f;
 
 	void HandleMouseTrace();
 	void OnPrimaryClickPressed();
