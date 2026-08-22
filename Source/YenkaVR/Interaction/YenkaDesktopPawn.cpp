@@ -52,9 +52,10 @@ void AYenkaDesktopPawn::BeginPlay()
 	}
 	else
 	{
-		SetActorLocation(FVector(0.0f, 0.0f, 90.0f));
+		SetActorLocation(FVector(0.0f, 0.0f, 105.0f));
 	}
 	CameraBoom->TargetArmLength = 65.0f;
+	CameraBoom->SetRelativeRotation(FRotator(-20.0f, 0.0f, 0.0f));
 
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (PC && IsLocallyControlled())
@@ -62,6 +63,7 @@ void AYenkaDesktopPawn::BeginPlay()
 		PC->bShowMouseCursor = true;
 		PC->bEnableClickEvents = true;
 		PC->bEnableMouseOverEvents = true;
+		PC->SetControlRotation(FRotator(-20.0f, 0.0f, 0.0f));
 	}
 
 	if (IsLocallyControlled() && HandAvatarClass)

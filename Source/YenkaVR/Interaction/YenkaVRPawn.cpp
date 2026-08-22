@@ -73,6 +73,13 @@ void AYenkaVRPawn::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// Position VR player standing directly in front of the Yenka table facing +X towards the tower
+	SetActorLocationAndRotation(FVector(-70.0f, 0.0f, 0.0f), FRotator::ZeroRotator);
+	if (VROrigin)
+	{
+		VROrigin->SetWorldLocationAndRotation(FVector(-70.0f, 0.0f, 0.0f), FRotator::ZeroRotator);
+	}
+
 	// Create dynamic material instances for the teleport arc and ground target marker
 	UMaterialInterface* BaseMat = TeleportTargetRing ? TeleportTargetRing->GetMaterial(0) : nullptr;
 	if (BaseMat)
