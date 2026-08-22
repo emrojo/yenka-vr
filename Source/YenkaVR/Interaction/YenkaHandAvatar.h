@@ -123,12 +123,26 @@ public:
 
 	EHandPoseMode LastAppliedPoseMode;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Meshes")
+	USkeletalMesh* RightSkeletalMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Meshes")
+	USkeletalMesh* LeftSkeletalMesh;
+
+	UFUNCTION(BlueprintCallable, Category = "Yenka|Hand")
+	void SetIsLeftHand(bool bInIsLeft);
+
+	UFUNCTION()
+	void OnRep_IsLeftHand();
+
+	void UpdateHandMeshSide();
+
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Yenka|Hand")
 	FTransform ReplicatedHandTransform;
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Yenka|Hand")
 	float ReplicatedGripStrength;
 
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Yenka|Hand")
+	UPROPERTY(ReplicatedUsing = OnRep_IsLeftHand, BlueprintReadOnly, Category = "Yenka|Hand")
 	bool bIsLeftHand;
 };

@@ -26,19 +26,22 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 	HandSkeletalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HandSkeletalMesh->SetCastShadow(true);
 
-	static ConstructorHelpers::FObjectFinder<USkeletalMesh> SkeletalMeshAsset(TEXT("/Game/Characters/MannequinsXR/Meshes/SKM_MannyXR_right.SKM_MannyXR_right"));
+	static ConstructorHelpers::FObjectFinder<USkeletalMesh> RightSkeletalMeshAsset(TEXT("/Game/Characters/MannequinsXR/Meshes/SKM_MannyXR_right.SKM_MannyXR_right"));
+	static ConstructorHelpers::FObjectFinder<USkeletalMesh> LeftSkeletalMeshAsset(TEXT("/Game/Characters/MannequinsXR/Meshes/SKM_MannyXR_left.SKM_MannyXR_left"));
 	static ConstructorHelpers::FObjectFinder<UAnimSequence> IdleSeqAsset(TEXT("/Game/Characters/MannequinsXR/Animations/A_MannequinsXR_Idle_Right.A_MannequinsXR_Idle_Right"));
 	static ConstructorHelpers::FObjectFinder<UAnimSequence> PointSeqAsset(TEXT("/Game/Characters/MannequinsXR/Animations/A_MannequinsXR_Point_Right.A_MannequinsXR_Point_Right"));
 	static ConstructorHelpers::FObjectFinder<UAnimSequence> GraspSeqAsset(TEXT("/Game/Characters/MannequinsXR/Animations/A_MannequinsXR_Grasp_Right.A_MannequinsXR_Grasp_Right"));
 
+	if (RightSkeletalMeshAsset.Succeeded()) RightSkeletalMesh = RightSkeletalMeshAsset.Object;
+	if (LeftSkeletalMeshAsset.Succeeded()) LeftSkeletalMesh = LeftSkeletalMeshAsset.Object;
 	if (IdleSeqAsset.Succeeded()) AnimIdle = IdleSeqAsset.Object;
 	if (PointSeqAsset.Succeeded()) AnimPoint = PointSeqAsset.Object;
 	if (GraspSeqAsset.Succeeded()) AnimGrasp = GraspSeqAsset.Object;
 
-	const bool bHasSkeletalHand = SkeletalMeshAsset.Succeeded();
+	const bool bHasSkeletalHand = RightSkeletalMesh != nullptr;
 	if (bHasSkeletalHand)
 	{
-		HandSkeletalMesh->SetSkeletalMesh(SkeletalMeshAsset.Object);
+		HandSkeletalMesh->SetSkeletalMesh(RightSkeletalMesh);
 		// MannyXR right hand: scaled to 0.5 (half-size), rotated -90 deg to face pieces directly
 		// Offset wrist by -5.0cm so palm center is at HandRoot (0,0,0) and fingertips reach +2.5cm
 		HandSkeletalMesh->SetRelativeLocation(FVector(-5.0f, 0.0f, 0.0f));
@@ -193,7 +196,52 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 void AYenkaHandAvatar::BeginPlay()
 {
 	Super::BeginPlay();
+	UpdateHandMeshSide();
 	ApplyHumanSkinMaterials();
+}
+
+void AYenkaHandAvatar::SetIsLeftHand(bool bInIsLeft)
+{
+	bIsLeftHand = bInIsLeft;
+	UpdateHandMeshSide();
+}
+
+void AYenkaHandAvatar::OnRep_IsLeftHand()
+{
+	UpdateHandMeshSide();
+}
+
+void AYenkaHandAvatar::UpdateHandMeshSide()
+{
+	if (HandSkeletalMesh)
+	{
+		if (bIsLeftHand)
+		{
+			if (LeftSkeletalMesh)
+			{
+				HandSkeletalMesh->SetSkeletalMesh(LeftSkeletalMesh);
+			}
+			HandSkeletalMesh->SetRelativeLocation(FVector(-5.0f, 0.0f, 0.0f));
+			HandSkeletalMesh->SetRelativeRotation(FRotator(0.0f, 90.0f, 0.0f));
+			HandSkeletalMesh->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.5f));
+		}
+		else
+		{
+			if (RightSkeletalMesh)
+			{
+				HandSkeletalMesh->SetSkeletalMesh(RightSkeletalMesh);
+			}
+			HandSkeletalMesh->SetRelativeLocation(FVector(-5.0f, 0.0f, 0.0f));
+			HandSkeletalMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+			HandSkeletalMesh->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.5f));
+		}
+
+		if (AnimIdle)
+		{
+			HandSkeletalMesh->PlayAnimation(AnimIdle, true);
+			HandSkeletalMesh->SetPlayRate(1.0f);
+		}
+	}
 }
 
 void AYenkaHandAvatar::ApplyHumanSkinMaterials()

@@ -106,14 +106,14 @@ void AYenkaVRPawn::BeginPlay()
 		LeftHandAvatar = GetWorld()->SpawnActor<AYenkaHandAvatar>(HandAvatarClass, GetActorTransform(), SpawnParams);
 		if (LeftHandAvatar)
 		{
-			LeftHandAvatar->bIsLeftHand = true;
+			LeftHandAvatar->SetIsLeftHand(true);
 			LeftHandAvatar->AttachToComponent(LeftController, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
 		}
 
 		RightHandAvatar = GetWorld()->SpawnActor<AYenkaHandAvatar>(HandAvatarClass, GetActorTransform(), SpawnParams);
 		if (RightHandAvatar)
 		{
-			RightHandAvatar->bIsLeftHand = false;
+			RightHandAvatar->SetIsLeftHand(false);
 			RightHandAvatar->AttachToComponent(RightController, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
 		}
 	}
