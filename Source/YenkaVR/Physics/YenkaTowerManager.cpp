@@ -137,8 +137,8 @@ void AYenkaTowerManager::SpawnTower()
 	for (int32 Layer = 0; Layer < TotalLayers; ++Layer)
 	{
 		bool bIsEvenLayer = (Layer % 2 == 0);
-		// 0.4mm vertical clearance per layer prevents initial physics impulse
-		float CurrentZ = BaseZ + (Layer * 1.504f) + 0.75f;
+		// Spawn each piece 1.0cm above the top of the previous layer so it drops naturally onto the stack
+		float CurrentZ = BaseZ + (Layer * 1.50f) + 1.75f;
 
 		// Layer 0 forms the reference base square; upper layers have organic human placement error
 		const bool bIsBaseLayer = (Layer == 0);
