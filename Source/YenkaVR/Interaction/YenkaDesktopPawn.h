@@ -94,6 +94,7 @@ protected:
 	void OnSelectScenario4() { SelectScenarioTheme(3); }
 	void OnSelectScenario5() { SelectScenarioTheme(4); }
 	void OnSelectScenario6() { SelectScenarioTheme(5); }
+	void OnSelectScenario7() { SelectScenarioTheme(6); }
 	void SelectScenarioTheme(int32 ThemeIndex);
 	void OnToggleScenarioMenu();
 };

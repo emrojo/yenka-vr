@@ -12,12 +12,13 @@ class UMaterialInstanceDynamic;
 UENUM(BlueprintType)
 enum class EYenkaEnvironmentTheme : uint8
 {
-	ModernPenthouse   UMETA(DisplayName = "Ático de Lujo Moderno"),
-	CozyCabin         UMETA(DisplayName = "Cabaña de Montaña"),
-	ZenGarden         UMETA(DisplayName = "Jardín Zen Japonés"),
-	SpaceObservatory  UMETA(DisplayName = "Observatorio Espacial"),
-	VictorianLibrary  UMETA(DisplayName = "Biblioteca Victoriana"),
-	MinimalistStudio  UMETA(DisplayName = "Estudio Minimalista")
+	ModernPenthouse          UMETA(DisplayName = "Ático de Lujo Moderno"),
+	CozyCabin                UMETA(DisplayName = "Cabaña de Montaña"),
+	ZenGarden                UMETA(DisplayName = "Jardín Zen Japonés"),
+	SpaceObservatory         UMETA(DisplayName = "Observatorio Espacial"),
+	VictorianLibrary         UMETA(DisplayName = "Biblioteca Victoriana"),
+	MinimalistStudio         UMETA(DisplayName = "Estudio Minimalista"),
+	MixedRealityPassthrough  UMETA(DisplayName = "Realidad Mixta (Passthrough)")
 };
 
 /**

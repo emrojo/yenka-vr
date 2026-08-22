@@ -193,8 +193,45 @@ void AYenkaEnvironmentManager::ApplyEnvironmentTheme(EYenkaEnvironmentTheme NewT
 
 	AYenkaTowerManager* TowerMgr = Cast<AYenkaTowerManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AYenkaTowerManager::StaticClass()));
 
+	const bool bIsMR = (NewTheme == EYenkaEnvironmentTheme::MixedRealityPassthrough);
+	if (FloorMesh) FloorMesh->SetVisibility(!bIsMR);
+	if (CeilingMesh) CeilingMesh->SetVisibility(!bIsMR);
+	if (BackWallMesh) BackWallMesh->SetVisibility(!bIsMR);
+	if (FrontWallMesh) FrontWallMesh->SetVisibility(!bIsMR);
+	if (LeftWallMesh) LeftWallMesh->SetVisibility(!bIsMR);
+	if (RightWallMesh) RightWallMesh->SetVisibility(!bIsMR);
+
 	switch (CurrentTheme)
 	{
+	case EYenkaEnvironmentTheme::MixedRealityPassthrough:
+	{
+		if (FeaturePropMesh) FeaturePropMesh->SetVisibility(false);
+		if (WindowVistaMesh) WindowVistaMesh->SetVisibility(false);
+
+		// Lights: Soft realistic ambient lighting that blends seamlessly with the player's physical room
+		if (TowerSpotlight)
+		{
+			TowerSpotlight->SetLightColor(FLinearColor(1.0f, 0.98f, 0.95f));
+			TowerSpotlight->SetIntensity(2500.0f);
+		}
+		if (AccentLight1) AccentLight1->SetIntensity(0.0f);
+		if (AccentLight2) AccentLight2->SetIntensity(0.0f);
+		if (FireplaceLight) FireplaceLight->SetIntensity(0.0f);
+
+		// Table: Modern matte frosted glass / composite board
+		if (TowerMgr && TowerMgr->TableMesh)
+		{
+			UMaterialInstanceDynamic* TableMat = Cast<UMaterialInstanceDynamic>(TowerMgr->TableMesh->GetMaterial(0));
+			if (TableMat)
+			{
+				TableMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.10f, 0.12f, 0.15f, 1.0f));
+				TableMat->SetScalarParameterValue(TEXT("Roughness"), 0.20f);
+				TableMat->SetScalarParameterValue(TEXT("Metallic"), 0.15f);
+			}
+		}
+		break;
+	}
+
 	case EYenkaEnvironmentTheme::ModernPenthouse:
 	{
 		// Floor: Rich dark smoked oak parquet

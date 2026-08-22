@@ -20,13 +20,13 @@ AYenkaScenarioMenu::AYenkaScenarioMenu()
 	UStaticMesh* CubeMesh = CubeMeshAsset.Succeeded() ? CubeMeshAsset.Object : nullptr;
 	UMaterialInterface* BaseMat = BaseMatAsset.Succeeded() ? BaseMatAsset.Object : nullptr;
 
-	// 1. Dark Glass Background Backdrop Plate (72cm width x 48cm height x 1.5cm depth)
+	// 1. Dark Glass Background Backdrop Plate (88cm width x 50cm height x 1.5cm depth)
 	BackgroundPlate = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BackgroundPlate"));
 	BackgroundPlate->SetupAttachment(MenuRoot);
 	if (CubeMesh)
 	{
 		BackgroundPlate->SetStaticMesh(CubeMesh);
-		BackgroundPlate->SetRelativeScale3D(FVector(0.015f, 0.72f, 0.48f));
+		BackgroundPlate->SetRelativeScale3D(FVector(0.015f, 0.88f, 0.50f));
 		BackgroundPlate->SetRelativeLocation(FVector(0.0f, 0.0f, 0.0f));
 	}
 	BackgroundPlate->SetCollisionProfileName(TEXT("BlockAll"));
@@ -47,20 +47,21 @@ AYenkaScenarioMenu::AYenkaScenarioMenu()
 	SubheaderText->SetupAttachment(BackgroundPlate);
 	SubheaderText->SetRelativeLocation(FVector(-1.0f, 0.0f, 16.0f));
 	SubheaderText->SetRelativeRotation(FRotator(0.0f, 180.0f, 0.0f));
-	SubheaderText->SetText(FText::FromString(TEXT("Elige una atmosfera para tu partida [Teclas 1 - 6 o Clic]")));
+	SubheaderText->SetText(FText::FromString(TEXT("Elige una atmosfera para tu partida [Teclas 1 - 7 o Clic]")));
 	SubheaderText->SetTextRenderColor(FColor(180, 220, 255));
 	SubheaderText->SetWorldSize(1.8f);
 	SubheaderText->SetHorizontalAlignment(EHorizTextAligment::EHTA_Center);
 	SubheaderText->SetVerticalAlignment(EVerticalTextAligment::EVRTA_TextCenter);
 
-	// 4. Setup 6 Scenario Items
+	// 4. Setup 7 Scenario Items
 	TArray<TPair<EYenkaEnvironmentTheme, FString>> ThemeConfigs = {
-		{ EYenkaEnvironmentTheme::ModernPenthouse,  TEXT("1. Atico Moderno") },
-		{ EYenkaEnvironmentTheme::CozyCabin,        TEXT("2. Cabana de Montana") },
-		{ EYenkaEnvironmentTheme::ZenGarden,        TEXT("3. Jardin Zen Japones") },
-		{ EYenkaEnvironmentTheme::SpaceObservatory, TEXT("4. Estacion Espacial") },
-		{ EYenkaEnvironmentTheme::VictorianLibrary, TEXT("5. Biblioteca Victoriana") },
-		{ EYenkaEnvironmentTheme::MinimalistStudio, TEXT("6. Estudio Minimalista") }
+		{ EYenkaEnvironmentTheme::ModernPenthouse,       TEXT("1. Atico Moderno") },
+		{ EYenkaEnvironmentTheme::CozyCabin,             TEXT("2. Cabana Montana") },
+		{ EYenkaEnvironmentTheme::ZenGarden,             TEXT("3. Jardin Zen") },
+		{ EYenkaEnvironmentTheme::SpaceObservatory,      TEXT("4. Estacion Espacial") },
+		{ EYenkaEnvironmentTheme::VictorianLibrary,      TEXT("5. Biblioteca Victoriana") },
+		{ EYenkaEnvironmentTheme::MinimalistStudio,      TEXT("6. Estudio Minimalista") },
+		{ EYenkaEnvironmentTheme::MixedRealityPassthrough, TEXT("7. Realidad Mixta") }
 	};
 
 	TArray<FLinearColor> ThemeColors = {
@@ -69,21 +70,33 @@ AYenkaScenarioMenu::AYenkaScenarioMenu()
 		FLinearColor(0.95f, 0.40f, 0.60f), // Zen Sakura Pink
 		FLinearColor(0.50f, 0.20f, 1.00f), // Space Violet
 		FLinearColor(0.20f, 0.85f, 0.40f), // Victorian Emerald
-		FLinearColor(0.70f, 0.70f, 0.70f)  // Studio Silver
+		FLinearColor(0.70f, 0.70f, 0.70f), // Studio Silver
+		FLinearColor(0.00f, 0.90f, 0.80f)  // Mixed Reality Passthrough Teal
 	};
 
-	for (int32 i = 0; i < 6; ++i)
+	for (int32 i = 0; i < 7; ++i)
 	{
 		FScenarioMenuItem Item;
 		Item.Theme = ThemeConfigs[i].Key;
 		Item.Title = ThemeConfigs[i].Value;
 		Item.AccentColor = ThemeColors[i];
 
-		const int32 Row = i / 3;    // 0 or 1
-		const int32 Col = i % 3;    // 0, 1, or 2
+		float PosY = 0.0f;
+		float PosZ = 0.0f;
 
-		const float PosY = (Col - 1) * 22.0f; // -22cm, 0cm, +22cm
-		const float PosZ = (Row == 0) ? 6.0f : -9.0f; // Top row at +6cm, Bottom row at -9cm
+		if (i < 4)
+		{
+			// Top row: 4 cards
+			PosY = (i - 1.5f) * 21.0f; // -31.5, -10.5, +10.5, +31.5 cm
+			PosZ = 6.0f;
+		}
+		else
+		{
+			// Bottom row: 3 cards
+			const int32 Col = i - 4;   // 0, 1, 2
+			PosY = (Col - 1.0f) * 23.0f; // -23.0, 0.0, +23.0 cm
+			PosZ = -9.0f;
+		}
 
 		// Card Mesh
 		FString MeshName = FString::Printf(TEXT("ButtonMesh_%d"), i);
@@ -92,7 +105,7 @@ AYenkaScenarioMenu::AYenkaScenarioMenu()
 		if (CubeMesh)
 		{
 			Item.ButtonMesh->SetStaticMesh(CubeMesh);
-			Item.ButtonMesh->SetRelativeScale3D(FVector(0.02f, 0.20f, 0.12f)); // 20cm width x 12cm height
+			Item.ButtonMesh->SetRelativeScale3D(FVector(0.02f, 0.19f, 0.12f)); // 19cm width x 12cm height
 			Item.ButtonMesh->SetRelativeLocation(FVector(-1.2f, PosY, PosZ));
 		}
 		Item.ButtonMesh->SetCollisionProfileName(TEXT("BlockAll"));
@@ -105,7 +118,7 @@ AYenkaScenarioMenu::AYenkaScenarioMenu()
 		Item.TitleText->SetRelativeRotation(FRotator(0.0f, 180.0f, 0.0f));
 		Item.TitleText->SetText(FText::FromString(Item.Title));
 		Item.TitleText->SetTextRenderColor(FColor::White);
-		Item.TitleText->SetWorldSize(2.2f);
+		Item.TitleText->SetWorldSize(2.0f);
 		Item.TitleText->SetHorizontalAlignment(EHorizTextAligment::EHTA_Center);
 		Item.TitleText->SetVerticalAlignment(EVerticalTextAligment::EVRTA_TextCenter);
 
@@ -119,7 +132,7 @@ AYenkaScenarioMenu::AYenkaScenarioMenu()
 	{
 		ReopenButton->SetStaticMesh(CubeMesh);
 		ReopenButton->SetRelativeScale3D(FVector(0.015f, 0.22f, 0.06f));
-		ReopenButton->SetRelativeLocation(FVector(0.0f, -42.0f, -22.0f));
+		ReopenButton->SetRelativeLocation(FVector(0.0f, -48.0f, -22.0f));
 	}
 	ReopenButton->SetCollisionProfileName(TEXT("BlockAll"));
 	ReopenButton->SetVisibility(false);
@@ -200,7 +213,7 @@ void AYenkaScenarioMenu::Tick(float DeltaTime)
 		CurrentScale = FMath::FInterpTo(CurrentScale, TargetScale, DeltaTime, 12.0f);
 		if (BackgroundPlate)
 		{
-			BackgroundPlate->SetRelativeScale3D(FVector(0.015f, 0.72f * CurrentScale, 0.48f * CurrentScale));
+			BackgroundPlate->SetRelativeScale3D(FVector(0.015f, 0.88f * CurrentScale, 0.50f * CurrentScale));
 		}
 		if (CurrentScale <= 0.05f && !bIsMenuOpen)
 		{

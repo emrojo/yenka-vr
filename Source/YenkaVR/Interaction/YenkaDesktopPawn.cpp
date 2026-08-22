@@ -106,13 +106,14 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		PlayerInputComponent->BindKey(EKeys::F, IE_Pressed, this, &AYenkaDesktopPawn::OnTogglePokeMode);
 		PlayerInputComponent->BindKey(EKeys::M, IE_Pressed, this, &AYenkaDesktopPawn::OnToggleScenarioMenu);
 
-		// Scenario Theme Hotkeys (1 to 6)
+		// Scenario Theme Hotkeys (1 to 7)
 		PlayerInputComponent->BindKey(EKeys::One, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario1);
 		PlayerInputComponent->BindKey(EKeys::Two, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario2);
 		PlayerInputComponent->BindKey(EKeys::Three, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario3);
 		PlayerInputComponent->BindKey(EKeys::Four, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario4);
 		PlayerInputComponent->BindKey(EKeys::Five, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario5);
 		PlayerInputComponent->BindKey(EKeys::Six, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario6);
+		PlayerInputComponent->BindKey(EKeys::Seven, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario7);
 
 		PlayerInputComponent->BindKey(EKeys::NumPadOne, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario1);
 		PlayerInputComponent->BindKey(EKeys::NumPadTwo, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario2);
@@ -120,6 +121,7 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		PlayerInputComponent->BindKey(EKeys::NumPadFour, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario4);
 		PlayerInputComponent->BindKey(EKeys::NumPadFive, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario5);
 		PlayerInputComponent->BindKey(EKeys::NumPadSix, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario6);
+		PlayerInputComponent->BindKey(EKeys::NumPadSeven, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario7);
 
 		PlayerInputComponent->BindAxisKey(EKeys::MouseX, this, &AYenkaDesktopPawn::OnMouseX);
 		PlayerInputComponent->BindAxisKey(EKeys::MouseY, this, &AYenkaDesktopPawn::OnMouseY);
