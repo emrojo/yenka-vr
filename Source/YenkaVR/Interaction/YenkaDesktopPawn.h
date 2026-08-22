@@ -46,9 +46,17 @@ protected:
 	bool bIsOrbitingCamera;
 	bool bIsPokeModeActive;
 	bool bIsPushingBlock;
+	bool bIsLockedPerpendicular;
+	FVector LockedRadialDirection;
+	float LockedFloorZ;
 	float GrabDistance;
 	FVector LastHitLocation;
 	FVector LastHitNormal;
+
+	static constexpr float HAND_LENGTH = 11.0f;
+	static constexpr float PROXIMITY_THRESHOLD = 2.0f * HAND_LENGTH;
+	static constexpr float TOWER_BASE_RADIUS = 3.75f;
+	static constexpr float INSPECTION_SAFE_RADIUS = 16.0f;
 
 	void HandleMouseTrace();
 	void OnPrimaryClickPressed();

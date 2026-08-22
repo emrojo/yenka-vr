@@ -102,7 +102,12 @@ This section maintains the immutable history of all requirements defined and agr
   * **Contact Alignment:** The index fingertip places precisely against the target block face.
 * **`[REQ-CROSS-05]` Precision Longitudinal Block Push:**
   * In poke mode, pressing the push action calculates the longitudinal axis of the block.
-  * A guided physical impulse is applied along the piece's main axis, sliding the block $1$ to $3\text{ cm}$ out the opposite side without disturbing adjacent blocks, ready for clean extraction from the other side.
+* **`[REQ-CROSS-06]` Proximity Horizontal Enforcement ($2\times \text{HandLength}$):**
+  * Within a proximity radius of $2\times \text{HandLength}$ ($22.0\text{ cm}$ from the tower boundary), the hand orientation is strictly constrained to be horizontal (`Pitch = 0°`, `Roll = 0°`) facing the tower center.
+  * Outside the proximity boundary, the hand moves freely in 3D space following the cursor ray.
+* **`[REQ-CROSS-07]` Perpendicular Push Lock & Inspection Perimeter Lock:**
+  * **Push Mode Lock:** In Poke/Push mode (`E` key or toggle `F`), mouse movement is locked strictly perpendicular (radial) to the tower face, allowing only inward push or outward retraction along the piece's longitudinal axis to prevent lateral disturbance of neighboring blocks.
+  * **Inspection Mode Perimeter Lock:** In normal inspection/hover mode, inward radial motion is clamped to a safe perimeter ($R \ge \text{INSPECTION_SAFE_RADIUS} \approx 16.0\text{ cm}$), allowing only orbital/circumferential movement around the tower and vertical floor transitions, preventing accidental collision with or toppling of tower blocks.
 
 ---
 
@@ -169,6 +174,8 @@ This section maintains the immutable history of all requirements defined and agr
 | `[REQ-CROSS-03]`| PhysicsHandle Mouse Extraction | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
 | `[REQ-CROSS-04]`| Extended Index Finger Mode | `Source/YenkaVR/Interaction/YenkaHandAvatar.cpp` | Implemented |
 | `[REQ-CROSS-05]`| Guided Longitudinal Push | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
+| `[REQ-CROSS-06]`| Proximity Horizontal Lock (2x Hand) | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
+| `[REQ-CROSS-07]`| Perpendicular & Perimeter Locks | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
 | `[REQ-ART-01]`  | Photorealistic Wood Shaders | `Source/YenkaVR/Physics/YenkaBlock.cpp` | Implemented |
 | `[REQ-XR-01]`   | OpenXR Passthrough | `Source/YenkaVR/Spatial/YenkaPassthroughManager.h` | Specified |
 | `[REQ-XR-02]`   | Table Calibration | `Source/YenkaVR/Spatial/YenkaSurfaceCalibrator.h` | Specified |

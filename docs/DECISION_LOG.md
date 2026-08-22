@@ -14,6 +14,7 @@ This document records all architectural, technical design, and mechanics decisio
 * [ADR-006: Chaos Physics Tower Stabilization via Micro-Clearance, Initial Sleep State & Selective Wakeup](#adr-006-chaos-physics-tower-stabilization-via-micro-clearance-initial-sleep-state--selective-wakeup)
 * [ADR-007: 3D Articulated Hand Model with VR Shader & Physics Handle Manipulation on PC](#adr-007-3d-articulated-hand-model-with-vr-shader--physics-handle-manipulation-on-pc)
 * [ADR-008: Index Finger Poke Pose & Guided Longitudinal Block Pushing](#adr-008-index-finger-poke-pose--guided-longitudinal-block-pushing)
+* [ADR-009: Proximity Boundary Constraint, Perpendicular Push Lock & Inspection Perimeter Lock](#adr-009-proximity-boundary-constraint-perpendicular-push-lock--inspection-perimeter-lock)
 
 ---
 
@@ -122,6 +123,19 @@ This document records all architectural, technical design, and mechanics decisio
 * **Consequences:**
   * *(Positive)* Faithful reproduction of real-world Jenga poking techniques.
   * *(Positive)* Maximum extraction precision on tightly packed lower floors.
+
+### ADR-009: Proximity Boundary Constraint, Perpendicular Push Lock & Inspection Perimeter Lock
+* **Date:** 2026-08-22
+* **Status:** Accepted
+* **Context:** In desktop mode, unconstrained 3D mouse motion allowed players to accidentally bump into the tower during inspection or slip laterally while attempting to push a block with the index finger.
+* **Decision:**
+  * Define a proximity threshold of $2\times \text{HandLength} \approx 22.0\text{ cm}$ from the tower boundary ($R_{prox} \approx 25.75\text{ cm}$ from center).
+  * Within proximity, strictly enforce horizontal orientation (`Pitch = 0°`, `Roll = 0°`) facing the tower center. Outside proximity, allow free 3D cursor movement.
+  * In **Push Mode** (`E` key or Poke toggle `F`), lock the mouse movement to a single radial perpendicular axis (`LockedRadialDirection`), enabling only inward push and outward retraction along the piece's longitudinal axis.
+  * In **Inspection Mode** (normal hover), enforce a safe radial perimeter ($R \ge \text{INSPECTION_SAFE_RADIUS} \approx 16.0\text{ cm}$), constraining motion to orbital movement around the tower and vertical floor transitions without allowing inward penetration.
+* **Consequences:**
+  * *(Positive)* High-precision block pushing with zero risk of lateral slipping into adjacent pieces.
+  * *(Positive)* Fail-safe inspection mode preventing accidental collisions with tower blocks.
 
 ---
 

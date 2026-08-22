@@ -29,6 +29,9 @@ AYenkaDesktopPawn::AYenkaDesktopPawn()
 	bIsOrbitingCamera = false;
 	bIsPokeModeActive = false;
 	bIsPushingBlock = false;
+	bIsLockedPerpendicular = false;
+	LockedRadialDirection = FVector::ForwardVector;
+	LockedFloorZ = 85.0f;
 	GrabDistance = 65.0f;
 	LastHitLocation = FVector::ZeroVector;
 	LastHitNormal = FVector::UpVector;
@@ -138,11 +141,16 @@ void AYenkaDesktopPawn::OnPokeKeyPressed()
 void AYenkaDesktopPawn::OnPokeKeyReleased()
 {
 	bIsPushingBlock = false;
+	bIsLockedPerpendicular = false;
 }
 
 void AYenkaDesktopPawn::OnTogglePokeMode()
 {
 	bIsPokeModeActive = !bIsPokeModeActive;
+	if (!bIsPokeModeActive)
+	{
+		bIsLockedPerpendicular = false;
+	}
 }
 
 void AYenkaDesktopPawn::PerformLongitudinalPush(AYenkaBlock* Block, const FVector& DirectionNormal)
@@ -239,6 +247,10 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (!PC) return;
 
+	AActor* TowerActor = UGameplayStatics::GetActorOfClass(GetWorld(), AYenkaTowerManager::StaticClass());
+	FVector TowerCenter = TowerActor ? TowerActor->GetActorLocation() : FVector(0.0f, 0.0f, 85.0f);
+	const float ProximityRadius = TOWER_BASE_RADIUS + PROXIMITY_THRESHOLD; // 3.75 + 22.0 = 25.75 cm
+
 	FVector WorldLocation, WorldDirection;
 	if (PC->DeprojectMousePositionToWorld(WorldLocation, WorldDirection))
 	{
@@ -271,29 +283,76 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 			if (VirtualHand)
 			{
 				VirtualHand->SetActorHiddenInGame(false);
-				FRotator HandRot = GetHorizontalFacingRotation(HitResult.ImpactPoint);
-				FVector FacingForward = HandRot.Vector(); // Points horizontally towards tower center
-				FVector HandOffset = -FacingForward;     // Outside the tower facing inward
 
-				if (bIsPokeModeActive || bIsPushingBlock)
+				const float DistToTowerXY = FVector::Dist2D(HitResult.ImpactPoint, TowerCenter);
+				const bool bInProximity = (DistToTowerXY <= ProximityRadius);
+
+				if (bInProximity)
 				{
-					VirtualHand->SetHandPoseMode(EHandPoseMode::FingerPoke);
-					// Tip of the index finger positioned horizontally at impact point
-					FVector HandPos = HitResult.ImpactPoint + (HandOffset * 2.0f);
-					FTransform HandTarget(HandRot.Quaternion(), HandPos);
-					VirtualHand->SetTargetHandTransform(HandTarget, 0.0f);
+					// --- PROXIMITY ZONE: Strict Horizontal Orientation (Pitch = 0, Roll = 0) ---
 
-					if (bIsPushingBlock && HoveredBlock)
+					if (bIsPokeModeActive || bIsPushingBlock)
 					{
-						PerformLongitudinalPush(HoveredBlock, LastHitNormal);
+						// --- PUSH / POKE MODE: Lock mouse movement strictly perpendicular to tower ---
+						if (!bIsLockedPerpendicular || HoveredBlock)
+						{
+							FVector RadialDiff = HitResult.ImpactPoint - TowerCenter;
+							RadialDiff.Z = 0.0f;
+							if (!RadialDiff.IsNearlyZero(0.1f))
+							{
+								LockedRadialDirection = RadialDiff.GetSafeNormal();
+							}
+							else
+							{
+								LockedRadialDirection = (-FollowCamera->GetForwardVector()).GetSafeNormal2D();
+							}
+							LockedFloorZ = HitResult.ImpactPoint.Z;
+							bIsLockedPerpendicular = true;
+						}
+
+						// Project mouse cursor along the locked perpendicular line
+						float t = (FMath::Abs(WorldDirection.Z) > 0.001f) ? (LockedFloorZ - WorldLocation.Z) / WorldDirection.Z : 50.0f;
+						FVector MousePlanePos = WorldLocation + (WorldDirection * t);
+						float RadialDist = FVector::DotProduct(MousePlanePos - TowerCenter, LockedRadialDirection);
+						RadialDist = FMath::Clamp(RadialDist, TOWER_BASE_RADIUS + 0.5f, ProximityRadius);
+
+						FVector HandPos = TowerCenter + (LockedRadialDirection * RadialDist);
+						HandPos.Z = LockedFloorZ;
+
+						FRotator PokeRot = (-LockedRadialDirection).Rotation();
+						PokeRot.Pitch = 0.0f;
+						PokeRot.Roll = 0.0f;
+
+						VirtualHand->SetHandPoseMode(EHandPoseMode::FingerPoke);
+						VirtualHand->SetTargetHandTransform(FTransform(PokeRot.Quaternion(), HandPos), 0.0f);
+
+						if (bIsPushingBlock && HoveredBlock)
+						{
+							PerformLongitudinalPush(HoveredBlock, LockedRadialDirection);
+						}
+					}
+					else
+					{
+						// --- INSPECTION MODE: Allow only movement around the perimeter, cannot approach tower ---
+						bIsLockedPerpendicular = false;
+
+						FVector Diff = HitResult.ImpactPoint - TowerCenter;
+						float Angle = FMath::Atan2(Diff.Y, Diff.X);
+						float R = FMath::Max(FVector2D(Diff.X, Diff.Y).Size(), INSPECTION_SAFE_RADIUS);
+
+						FVector SafeHandPos = TowerCenter + FVector(FMath::Cos(Angle) * R, FMath::Sin(Angle) * R, Diff.Z);
+
+						FRotator InspectRot = GetHorizontalFacingRotation(SafeHandPos);
+						VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
+						VirtualHand->SetTargetHandTransform(FTransform(InspectRot.Quaternion(), SafeHandPos), 0.0f);
 					}
 				}
 				else
 				{
+					// --- OUTSIDE PROXIMITY: Free 3D movement ---
+					bIsLockedPerpendicular = false;
 					VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
-					// Palm positioned horizontally approaching block
-					FVector HandPos = HitResult.ImpactPoint + (HandOffset * 3.5f);
-					FTransform HandTarget(HandRot.Quaternion(), HandPos);
+					FTransform HandTarget(FRotationMatrix::MakeFromX(WorldDirection).ToQuat(), HitResult.ImpactPoint);
 					VirtualHand->SetTargetHandTransform(HandTarget, 0.0f);
 				}
 			}
@@ -301,6 +360,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 		else
 		{
 			HoveredBlock = nullptr;
+			bIsLockedPerpendicular = false;
 			if (VirtualHand)
 			{
 				VirtualHand->SetActorHiddenInGame(true);
@@ -313,9 +373,9 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 {
 	if (bIsPokeModeActive && HoveredBlock)
 	{
-		// In poke mode, clicking directly pushes the block
+		// In poke mode, clicking directly pushes the block along the locked perpendicular axis
 		bIsPushingBlock = true;
-		PerformLongitudinalPush(HoveredBlock, LastHitNormal);
+		PerformLongitudinalPush(HoveredBlock, LockedRadialDirection);
 		return;
 	}
 
