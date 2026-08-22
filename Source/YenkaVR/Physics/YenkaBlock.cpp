@@ -34,12 +34,12 @@ AYenkaBlock::AYenkaBlock()
 	BlockMesh->SetEnableGravity(true);
 	BlockMesh->SetCollisionProfileName(TEXT("BlockAllDynamic"));
 	BlockMesh->BodyInstance.bUseCCD = true; // Continuous Collision Detection
-	BlockMesh->BodyInstance.PositionSolverIterationCount = 16;
-	BlockMesh->BodyInstance.VelocitySolverIterationCount = 8;
-	BlockMesh->BodyInstance.SetMaxDepenetrationVelocity(4.0f); // Ultra-gentle 4cm/s max depenetration speed
+	BlockMesh->BodyInstance.PositionSolverIterationCount = 24;
+	BlockMesh->BodyInstance.VelocitySolverIterationCount = 12;
+	BlockMesh->BodyInstance.SetMaxDepenetrationVelocity(3.0f); // Ultra-gentle 3cm/s max depenetration speed
 	BlockMesh->SetMassOverrideInKg(NAME_None, 0.085f, true); // ~85g per block
-	BlockMesh->SetLinearDamping(1.5f);
-	BlockMesh->SetAngularDamping(2.0f);
+	BlockMesh->SetLinearDamping(1.2f);
+	BlockMesh->SetAngularDamping(1.8f);
 
 	LayerIndex = 0;
 	bIsPlacedOnTop = false;

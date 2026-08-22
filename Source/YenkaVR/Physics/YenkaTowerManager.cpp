@@ -48,12 +48,27 @@ AYenkaTowerManager::AYenkaTowerManager()
 	};
 }
 
-#include "Materials/MaterialInstanceDynamic.h"
+#include "PhysicalMaterials/PhysicalMaterial.h"
 
 void AYenkaTowerManager::BeginPlay()
 {
 	Super::BeginPlay();
 	TableSurfaceZ = GetActorLocation().Z;
+
+	// Assign high-friction physical material to the table board so base layer never slips
+	if (TableMesh)
+	{
+		UPhysicalMaterial* TablePhysMat = NewObject<UPhysicalMaterial>(this, TEXT("TablePhysMat"));
+		if (TablePhysMat)
+		{
+			TablePhysMat->Friction = 0.60f;
+			TablePhysMat->StaticFriction = 0.65f;
+			TablePhysMat->Restitution = 0.0f;
+			TablePhysMat->FrictionCombineMode = EFrictionCombineMode::Max;
+			TablePhysMat->RestitutionCombineMode = EFrictionCombineMode::Min;
+			TableMesh->SetPhysMaterialOverride(TablePhysMat);
+		}
+	}
 
 	// Apply dark walnut wood material to the table board
 	UMaterialInterface* BaseMat = TableMesh ? TableMesh->GetMaterial(0) : nullptr;
@@ -171,9 +186,8 @@ void AYenkaTowerManager::SpawnTower()
 		}
 	}
 
-	// Keep all 54 blocks in stable sleep state on spawn until player touches them
-	FreezeTowerPhysics();
-	UE_LOG(LogYenkaVR, Log, TEXT("Spawned 54-block Yenka tower with 1-3mm random spacing and 7-color distribution in stable sleep state."));
+	// Blocks simulate physics and settle naturally in contact equilibrium from Frame 0
+	UE_LOG(LogYenkaVR, Log, TEXT("Spawned 54-block Yenka tower with natural physics equilibrium and 7-color distribution."));
 }
 
 void AYenkaTowerManager::ResetTower()
