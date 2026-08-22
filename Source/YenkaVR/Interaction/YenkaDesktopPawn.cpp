@@ -658,7 +658,9 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 			ProtrudingPos,
 			GrabbedBlock->GetActorRotation()
 		);
-		FRotator HandRot = GetHorizontalFacingRotation(ProtrudingPos);
+		FRotator HandRot = (-ProtrudingNorm).Rotation();
+		HandRot.Pitch = 0.0f;
+		HandRot.Roll = 0.0f;
 		FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset();
 		FVector HandPos = ProtrudingPos - HandRot.RotateVector(LocalOffset);
 		FTransform HandTarget(HandRot.Quaternion(), HandPos);

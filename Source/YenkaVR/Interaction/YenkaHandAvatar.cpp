@@ -32,7 +32,9 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 	if (bHasSkeletalHand)
 	{
 		HandSkeletalMesh->SetSkeletalMesh(SkeletalMeshAsset.Object);
-		HandSkeletalMesh->SetRelativeLocation(FVector(-8.0f, 0.0f, 0.0f));
+		// MannyXR right hand: wrist_r at origin, fingers point +X forward (~16.5cm length)
+		// Offset wrist by -12.0cm so palm center is at HandRoot (0,0,0) and fingertips reach +4.5cm ~ +5.0cm
+		HandSkeletalMesh->SetRelativeLocation(FVector(-12.0f, 0.0f, 0.0f));
 		HandSkeletalMesh->SetRelativeRotation(FRotator(0.0f, 0.0f, 0.0f));
 		HandSkeletalMesh->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
 
@@ -406,18 +408,18 @@ float AYenkaHandAvatar::GetExtendedFingertipOffset() const
 {
 	if (CurrentPoseMode == EHandPoseMode::FingerPoke)
 	{
-		// Index finger: Location X = 3.5cm, half-length = 2.5cm -> tip at X = 6.0cm
-		return 6.0f;
+		// Index finger: tip at X = 4.5cm
+		return 4.5f;
 	}
 	else if (CurrentPoseMode == EHandPoseMode::GrabPinch)
 	{
-		// Pinch caliper fingertips reach at X = 4.8cm
-		return 4.8f;
+		// Pinch caliper fingertips reach at X = 3.5cm
+		return 3.5f;
 	}
 	else // OpenHand
 	{
-		// Middle finger: Location X = 3.8cm, half-length = 2.6cm -> tip at X = 6.4cm
-		return 6.4f;
+		// Middle finger: tip at X = 5.0cm
+		return 5.0f;
 	}
 }
 
@@ -425,18 +427,18 @@ FVector AYenkaHandAvatar::GetExtendedFingertipLocalOffset() const
 {
 	if (CurrentPoseMode == EHandPoseMode::FingerPoke)
 	{
-		// Index finger: Location X = 3.5cm, Y = -1.5cm, half-length = 2.5cm -> tip at (6.0cm, -1.5cm, 0.0cm)
-		return FVector(6.0f, -1.5f, 0.0f);
+		// Index finger extended forward: tip at (4.5cm, -1.5cm, 0.0cm)
+		return FVector(4.5f, -1.5f, 0.0f);
 	}
 	else if (CurrentPoseMode == EHandPoseMode::GrabPinch)
 	{
-		// Caliper pinch center aligns directly at (4.8cm, 0.0cm, 0.0cm)
-		return FVector(4.8f, 0.0f, 0.0f);
+		// Caliper pinch center aligns directly at (3.5cm, 0.0cm, 0.0cm)
+		return FVector(3.5f, 0.0f, 0.0f);
 	}
 	else // OpenHand
 	{
-		// Middle finger: Location X = 3.8cm, Y = -0.4cm, half-length = 2.6cm -> tip at (6.4cm, -0.4cm, 0.0f)
-		return FVector(6.4f, -0.4f, 0.0f);
+		// Middle finger tip aligns at (5.0cm, 0.0cm, 0.0cm)
+		return FVector(5.0f, 0.0f, 0.0f);
 	}
 }
 
