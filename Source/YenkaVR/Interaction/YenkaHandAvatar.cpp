@@ -39,11 +39,11 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 	if (bHasSkeletalHand)
 	{
 		HandSkeletalMesh->SetSkeletalMesh(SkeletalMeshAsset.Object);
-		// MannyXR right hand: wrist_r at origin, fingers point +X forward (~16.5cm length)
-		// Offset wrist by -12.0cm so palm center is at HandRoot (0,0,0) and fingertips reach +4.5cm ~ +5.0cm
-		HandSkeletalMesh->SetRelativeLocation(FVector(-12.0f, 0.0f, 0.0f));
-		HandSkeletalMesh->SetRelativeRotation(FRotator(0.0f, 0.0f, 0.0f));
-		HandSkeletalMesh->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
+		// MannyXR right hand: scaled to 0.5 (half-size), rotated -90 deg to face pieces directly
+		// Offset wrist by -5.0cm so palm center is at HandRoot (0,0,0) and fingertips reach +2.5cm
+		HandSkeletalMesh->SetRelativeLocation(FVector(-5.0f, 0.0f, 0.0f));
+		HandSkeletalMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+		HandSkeletalMesh->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.5f));
 
 		if (AnimIdle)
 		{
@@ -406,18 +406,18 @@ float AYenkaHandAvatar::GetExtendedFingertipOffset() const
 {
 	if (CurrentPoseMode == EHandPoseMode::FingerPoke)
 	{
-		// Index finger: tip at X = 4.5cm
-		return 4.5f;
+		// Scaled 0.5: Index finger tip at X = 2.5cm
+		return 2.5f;
 	}
 	else if (CurrentPoseMode == EHandPoseMode::GrabPinch)
 	{
-		// Pinch caliper fingertips reach at X = 3.5cm
-		return 3.5f;
+		// Scaled 0.5: Pinch caliper fingertips reach at X = 1.8cm
+		return 1.8f;
 	}
 	else // OpenHand
 	{
-		// Middle finger: tip at X = 5.0cm
-		return 5.0f;
+		// Scaled 0.5: Middle finger tip at X = 2.5cm
+		return 2.5f;
 	}
 }
 
@@ -425,18 +425,18 @@ FVector AYenkaHandAvatar::GetExtendedFingertipLocalOffset() const
 {
 	if (CurrentPoseMode == EHandPoseMode::FingerPoke)
 	{
-		// Index finger extended forward: tip at (4.5cm, -1.5cm, 0.0cm)
-		return FVector(4.5f, -1.5f, 0.0f);
+		// Scaled 0.5: Index finger extended forward tip at (2.5cm, 0.0cm, 0.0cm)
+		return FVector(2.5f, 0.0f, 0.0f);
 	}
 	else if (CurrentPoseMode == EHandPoseMode::GrabPinch)
 	{
-		// Caliper pinch center aligns directly at (3.5cm, 0.0cm, 0.0cm)
-		return FVector(3.5f, 0.0f, 0.0f);
+		// Scaled 0.5: Caliper pinch center aligns directly at (1.8cm, 0.0cm, 0.0cm)
+		return FVector(1.8f, 0.0f, 0.0f);
 	}
 	else // OpenHand
 	{
-		// Middle finger tip aligns at (5.0cm, 0.0cm, 0.0cm)
-		return FVector(5.0f, 0.0f, 0.0f);
+		// Scaled 0.5: Middle finger tip aligns at (2.5cm, 0.0cm, 0.0cm)
+		return FVector(2.5f, 0.0f, 0.0f);
 	}
 }
 
