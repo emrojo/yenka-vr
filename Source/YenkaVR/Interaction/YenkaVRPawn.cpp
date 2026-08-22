@@ -133,55 +133,81 @@ void AYenkaVRPawn::Tick(float DeltaTime)
 		APlayerController* PC = Cast<APlayerController>(GetController());
 		if (PC)
 		{
-			// 1. Direct Axis Polling fallback (Supports Oculus Touch, OpenXR, Gamepad, Keyboard)
-			float LeftY = PC->GetInputAxisValue(TEXT("OculusTouch_Left_Thumbstick_Y"));
-			if (FMath::IsNearlyZero(LeftY)) LeftY = PC->GetInputAxisValue(TEXT("Gamepad_LeftY"));
-			if (FMath::IsNearlyZero(LeftY)) LeftY = PC->GetInputAxisValue(TEXT("MixedReality_Left_Thumbstick_Y"));
-			if (FMath::IsNearlyZero(LeftY)) LeftY = PC->GetInputAxisValue(TEXT("ValveIndex_Left_Thumbstick_Y"));
+			// 1. Direct Hardware Key Polling for Left Hand (Thumbstick Y / Trigger / Grip / Face Buttons)
+			float LeftY = PC->GetInputAnalogKeyState(EKeys::OculusTouch_Left_Thumbstick_Y);
+			if (FMath::IsNearlyZero(LeftY)) LeftY = PC->GetInputAnalogKeyState(EKeys::MixedReality_Left_Thumbstick_Y);
+			if (FMath::IsNearlyZero(LeftY)) LeftY = PC->GetInputAnalogKeyState(EKeys::ValveIndex_Left_Thumbstick_Y);
+			if (FMath::IsNearlyZero(LeftY)) LeftY = PC->GetInputAnalogKeyState(EKeys::Gamepad_LeftY);
+			if (FMath::IsNearlyZero(LeftY)) LeftY = PC->GetInputAxisValue(TEXT("TeleportAimLeftY"));
 
-			float RightY = PC->GetInputAxisValue(TEXT("OculusTouch_Right_Thumbstick_Y"));
-			if (FMath::IsNearlyZero(RightY)) RightY = PC->GetInputAxisValue(TEXT("Gamepad_RightY"));
-			if (FMath::IsNearlyZero(RightY)) RightY = PC->GetInputAxisValue(TEXT("MixedReality_Right_Thumbstick_Y"));
-			if (FMath::IsNearlyZero(RightY)) RightY = PC->GetInputAxisValue(TEXT("ValveIndex_Right_Thumbstick_Y"));
+			// 2. Direct Hardware Key Polling for Right Hand (Thumbstick Y)
+			float RightY = PC->GetInputAnalogKeyState(EKeys::OculusTouch_Right_Thumbstick_Y);
+			if (FMath::IsNearlyZero(RightY)) RightY = PC->GetInputAnalogKeyState(EKeys::MixedReality_Right_Thumbstick_Y);
+			if (FMath::IsNearlyZero(RightY)) RightY = PC->GetInputAnalogKeyState(EKeys::ValveIndex_Right_Thumbstick_Y);
+			if (FMath::IsNearlyZero(RightY)) RightY = PC->GetInputAnalogKeyState(EKeys::Gamepad_RightY);
+			if (FMath::IsNearlyZero(RightY)) RightY = PC->GetInputAxisValue(TEXT("TeleportAimRightY"));
 
-			// Also support keyboard 'T', Spacebar, or Gamepad Triggers for teleport testing
-			const bool bKeyT = PC->IsInputKeyDown(EKeys::T) || PC->IsInputKeyDown(EKeys::SpaceBar) || PC->IsInputKeyDown(EKeys::Gamepad_LeftTrigger) || PC->IsInputKeyDown(EKeys::Gamepad_RightTrigger);
+			// 3. Triggers & Grips
+			const float LeftTrigger = FMath::Max(PC->GetInputAnalogKeyState(EKeys::OculusTouch_Left_Trigger_Axis), PC->GetInputAnalogKeyState(EKeys::Gamepad_LeftTriggerAxis));
+			const float RightTrigger = FMath::Max(PC->GetInputAnalogKeyState(EKeys::OculusTouch_Right_Trigger_Axis), PC->GetInputAnalogKeyState(EKeys::Gamepad_RightTriggerAxis));
+			const float LeftGrip = PC->GetInputAnalogKeyState(EKeys::OculusTouch_Left_Grip_Axis);
+			const float RightGrip = PC->GetInputAnalogKeyState(EKeys::OculusTouch_Right_Grip_Axis);
 
-			if (LeftY > 0.50f || (bKeyT && !bIsTeleportAiming))
+			// 4. Buttons & Keyboard
+			const bool bLeftBtn = PC->IsInputKeyDown(EKeys::OculusTouch_Left_X_Click)
+				|| PC->IsInputKeyDown(EKeys::OculusTouch_Left_Y_Click)
+				|| PC->IsInputKeyDown(EKeys::OculusTouch_Left_Trigger_Click)
+				|| PC->IsInputKeyDown(EKeys::OculusTouch_Left_Grip_Click)
+				|| PC->IsInputKeyDown(EKeys::OculusTouch_Left_Thumbstick_Click)
+				|| PC->IsInputKeyDown(EKeys::Gamepad_LeftShoulder)
+				|| PC->IsInputKeyDown(EKeys::Gamepad_LeftThumbstick)
+				|| PC->IsInputKeyDown(EKeys::T)
+				|| PC->IsInputKeyDown(EKeys::SpaceBar);
+
+			const bool bRightBtn = PC->IsInputKeyDown(EKeys::OculusTouch_Right_A_Click)
+				|| PC->IsInputKeyDown(EKeys::OculusTouch_Right_B_Click)
+				|| PC->IsInputKeyDown(EKeys::OculusTouch_Right_Trigger_Click)
+				|| PC->IsInputKeyDown(EKeys::OculusTouch_Right_Grip_Click)
+				|| PC->IsInputKeyDown(EKeys::OculusTouch_Right_Thumbstick_Click)
+				|| PC->IsInputKeyDown(EKeys::Gamepad_RightShoulder)
+				|| PC->IsInputKeyDown(EKeys::Gamepad_RightThumbstick);
+
+			// Left hand teleport activation
+			if (LeftY > 0.40f || LeftTrigger > 0.40f || LeftGrip > 0.40f || bLeftBtn)
 			{
 				if (!bIsTeleportAiming)
 				{
 					StartTeleportTrace(true);
 				}
 			}
-			else if (RightY > 0.50f)
+			// Right hand teleport activation
+			else if (RightY > 0.40f || RightTrigger > 0.40f || RightGrip > 0.40f || bRightBtn)
 			{
 				if (!bIsTeleportAiming)
 				{
 					StartTeleportTrace(false);
 				}
 			}
+			// Releasing trigger/thumbstick executes teleport
 			else if (bIsTeleportAiming)
 			{
-				if ((bTeleportUsingLeftHand && LeftY < 0.20f && !bKeyT) || (!bTeleportUsingLeftHand && RightY < 0.20f && !bKeyT))
-				{
-					ExecuteTeleport();
-				}
+				ExecuteTeleport();
 			}
 
-			// Snap Turn polling
-			float RightX = PC->GetInputAxisValue(TEXT("OculusTouch_Right_Thumbstick_X"));
-			if (FMath::IsNearlyZero(RightX)) RightX = PC->GetInputAxisValue(TEXT("Gamepad_RightX"));
-			if (FMath::IsNearlyZero(RightX)) RightX = PC->GetInputAxisValue(TEXT("MixedReality_Right_Thumbstick_X"));
-			if (FMath::IsNearlyZero(RightX)) RightX = PC->GetInputAxisValue(TEXT("ValveIndex_Right_Thumbstick_X"));
-			if (PC->IsInputKeyDown(EKeys::E)) RightX = 1.0f;
-			if (PC->IsInputKeyDown(EKeys::Q)) RightX = -1.0f;
+			// Snap Turn polling (Right Thumbstick X / Gamepad Right X / Keys Q & E)
+			float SnapTurnX = PC->GetInputAnalogKeyState(EKeys::OculusTouch_Right_Thumbstick_X);
+			if (FMath::IsNearlyZero(SnapTurnX)) SnapTurnX = PC->GetInputAnalogKeyState(EKeys::MixedReality_Right_Thumbstick_X);
+			if (FMath::IsNearlyZero(SnapTurnX)) SnapTurnX = PC->GetInputAnalogKeyState(EKeys::ValveIndex_Right_Thumbstick_X);
+			if (FMath::IsNearlyZero(SnapTurnX)) SnapTurnX = PC->GetInputAnalogKeyState(EKeys::Gamepad_RightX);
+			if (FMath::IsNearlyZero(SnapTurnX)) SnapTurnX = PC->GetInputAxisValue(TEXT("SnapTurnX"));
+			if (PC->IsInputKeyDown(EKeys::E)) SnapTurnX = 1.0f;
+			if (PC->IsInputKeyDown(EKeys::Q)) SnapTurnX = -1.0f;
 
-			if (!bIsTeleportAiming && FMath::Abs(RightX) > 0.50f)
+			if (!bIsTeleportAiming && FMath::Abs(SnapTurnX) > 0.50f)
 			{
-				ExecuteSnapTurn(RightX);
+				ExecuteSnapTurn(SnapTurnX);
 			}
-			else if (FMath::Abs(RightX) < 0.30f)
+			else if (FMath::Abs(SnapTurnX) < 0.30f)
 			{
 				bSnapTurnAxisReset = true;
 			}
