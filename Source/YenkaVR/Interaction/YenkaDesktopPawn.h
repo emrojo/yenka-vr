@@ -59,6 +59,7 @@ protected:
 	static constexpr float INSPECTION_SAFE_RADIUS = 16.0f;
 	static constexpr float PUSH_STANDBY_SEPARATION = 8.0f;
 	static constexpr float GRAB_STANDBY_SEPARATION = 2.5f;
+	static constexpr float PUSH_VERTICAL_OFFSET = 0.35f;
 
 	void HandleMouseTrace();
 	void OnPrimaryClickPressed();

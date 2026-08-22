@@ -348,8 +348,9 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 						VirtualHand->SetHandPoseMode(EHandPoseMode::FingerPoke);
 						const float PokeFingertipOffset = VirtualHand->GetExtendedFingertipOffset(); // ~6.3cm
 
-						// Standby position stays clearly separated 8cm outside the tower
+						// Standby position stays clearly separated 8cm outside the tower, elevated slightly above block center
 						FVector StandbyPos = GetBlockStandOffLocation(HoveredBlock, WorldLocation, ApproachNormal, PUSH_STANDBY_SEPARATION, PokeFingertipOffset);
+						StandbyPos.Z += PUSH_VERTICAL_OFFSET;
 
 						FRotator HandRot = (-ApproachNormal).Rotation();
 						HandRot.Pitch = 0.0f;
