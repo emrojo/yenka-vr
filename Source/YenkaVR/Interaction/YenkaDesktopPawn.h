@@ -64,9 +64,9 @@ protected:
 	static constexpr float HAND_LENGTH = 11.0f;
 	static constexpr float PROXIMITY_THRESHOLD = 2.0f * HAND_LENGTH;
 	static constexpr float TOWER_BASE_RADIUS = 3.75f;
-	static constexpr float INSPECTION_SAFE_RADIUS = 16.0f;
-	static constexpr float PUSH_STANDBY_SEPARATION = 3.0f;
-	static constexpr float GRAB_STANDBY_SEPARATION = 2.5f;
+	static constexpr float INSPECTION_SAFE_RADIUS = TOWER_BASE_RADIUS + 1.0f; // 1.0cm outside tower
+	static constexpr float PUSH_STANDBY_SEPARATION = 1.0f; // 1.0cm from block face
+	static constexpr float GRAB_STANDBY_SEPARATION = 1.0f; // 1.0cm from block edge
 	static constexpr float PUSH_VERTICAL_OFFSET = 0.0f;
 
 	void HandleMouseTrace();

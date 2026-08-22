@@ -114,24 +114,39 @@ void AYenkaTowerManager::SpawnTower()
 	for (int32 Layer = 0; Layer < TotalLayers; ++Layer)
 	{
 		bool bIsEvenLayer = (Layer % 2 == 0);
-		// 0.3mm vertical clearance per layer prevents physics penetration impulse
-		float CurrentZ = BaseZ + (Layer * 1.503f) + 0.75f;
+		// 0.4mm vertical clearance per layer prevents initial physics impulse
+		float CurrentZ = BaseZ + (Layer * 1.504f) + 0.75f;
+
+		// Random spacing between 1mm and 3mm (0.10cm to 0.30cm) between adjacent blocks
+		float GapLeft = FMath::FRandRange(0.10f, 0.30f);
+		float GapRight = FMath::FRandRange(0.10f, 0.30f);
 
 		for (int32 i = 0; i < BlocksPerLayer; ++i)
 		{
-			// 0.3mm lateral spacing between adjacent blocks prevents lateral pinching
-			float Offset = (i - 1) * 2.53f;
+			float LateralOffset = 0.0f;
+			if (i == 0)
+			{
+				LateralOffset = -(2.5f + GapLeft);
+			}
+			else if (i == 2)
+			{
+				LateralOffset = +(2.5f + GapRight);
+			}
+
+			// Slight organic 1mm longitudinal jitter for realistic hand-built look
+			float LongitudinalJitter = FMath::FRandRange(-0.10f, 0.10f);
+
 			FVector BlockPos;
 			FRotator BlockRot;
 
 			if (bIsEvenLayer)
 			{
-				BlockPos = FVector(Origin.X, Origin.Y + Offset, CurrentZ);
+				BlockPos = FVector(Origin.X + LongitudinalJitter, Origin.Y + LateralOffset, CurrentZ);
 				BlockRot = FRotator(0.0f, 0.0f, 0.0f);
 			}
 			else
 			{
-				BlockPos = FVector(Origin.X + Offset, Origin.Y, CurrentZ);
+				BlockPos = FVector(Origin.X + LateralOffset, Origin.Y + LongitudinalJitter, CurrentZ);
 				BlockRot = FRotator(0.0f, 90.0f, 0.0f);
 			}
 
@@ -157,7 +172,7 @@ void AYenkaTowerManager::SpawnTower()
 
 	// Keep all 54 blocks in stable sleep state on spawn until player touches them
 	FreezeTowerPhysics();
-	UE_LOG(LogYenkaVR, Log, TEXT("Spawned 54-block Yenka tower with 7-color balanced distribution in stable sleep state."));
+	UE_LOG(LogYenkaVR, Log, TEXT("Spawned 54-block Yenka tower with 1-3mm random spacing and 7-color distribution in stable sleep state."));
 }
 
 void AYenkaTowerManager::ResetTower()

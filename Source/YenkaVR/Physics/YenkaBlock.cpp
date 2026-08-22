@@ -46,15 +46,34 @@ AYenkaBlock::AYenkaBlock()
 	BlockColor = FLinearColor(0.88f, 0.16f, 0.18f, 1.0f);
 }
 
+#include "PhysicalMaterials/PhysicalMaterial.h"
+
 void AYenkaBlock::BeginPlay()
 {
 	Super::BeginPlay();
 
 	UpdateMaterialColor();
 
-	if (WoodPhysicalMaterial && BlockMesh)
+	if (BlockMesh)
 	{
-		BlockMesh->SetPhysMaterialOverride(WoodPhysicalMaterial);
+		if (WoodPhysicalMaterial)
+		{
+			BlockMesh->SetPhysMaterialOverride(WoodPhysicalMaterial);
+		}
+		else
+		{
+			UPhysicalMaterial* DynPhysMat = NewObject<UPhysicalMaterial>(this, TEXT("DynWoodPhysMat"));
+			if (DynPhysMat)
+			{
+				// Reduced friction allows individual blocks to slide out smoothly without toppling the whole layer
+				DynPhysMat->Friction = 0.20f;
+				DynPhysMat->StaticFriction = 0.22f;
+				DynPhysMat->Restitution = 0.05f;
+				DynPhysMat->FrictionCombineMode = EFrictionCombineMode::Min;
+				DynPhysMat->RestitutionCombineMode = EFrictionCombineMode::Min;
+				BlockMesh->SetPhysMaterialOverride(DynPhysMat);
+			}
+		}
 	}
 }
 
