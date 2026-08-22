@@ -27,7 +27,13 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 	HandSkeletalMesh->SetCastShadow(true);
 
 	static ConstructorHelpers::FObjectFinder<USkeletalMesh> SkeletalMeshAsset(TEXT("/Game/Characters/MannequinsXR/Meshes/SKM_MannyXR_right.SKM_MannyXR_right"));
-	static ConstructorHelpers::FClassFinder<UAnimInstance> AnimBPClass(TEXT("/Game/Characters/MannequinsXR/Meshes/ABP_MannequinsXR.ABP_MannequinsXR_C"));
+	static ConstructorHelpers::FObjectFinder<UAnimSequence> IdleSeqAsset(TEXT("/Game/Characters/MannequinsXR/Animations/A_MannequinsXR_Idle_Right.A_MannequinsXR_Idle_Right"));
+	static ConstructorHelpers::FObjectFinder<UAnimSequence> PointSeqAsset(TEXT("/Game/Characters/MannequinsXR/Animations/A_MannequinsXR_Point_Right.A_MannequinsXR_Point_Right"));
+	static ConstructorHelpers::FObjectFinder<UAnimSequence> GraspSeqAsset(TEXT("/Game/Characters/MannequinsXR/Animations/A_MannequinsXR_Grasp_Right.A_MannequinsXR_Grasp_Right"));
+
+	if (IdleSeqAsset.Succeeded()) AnimIdle = IdleSeqAsset.Object;
+	if (PointSeqAsset.Succeeded()) AnimPoint = PointSeqAsset.Object;
+	if (GraspSeqAsset.Succeeded()) AnimGrasp = GraspSeqAsset.Object;
 
 	const bool bHasSkeletalHand = SkeletalMeshAsset.Succeeded();
 	if (bHasSkeletalHand)
@@ -39,9 +45,10 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 		HandSkeletalMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
 		HandSkeletalMesh->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.5f));
 
-		if (AnimBPClass.Succeeded())
+		if (AnimIdle)
 		{
-			HandSkeletalMesh->SetAnimInstanceClass(AnimBPClass.Class);
+			HandSkeletalMesh->PlayAnimation(AnimIdle, true);
+			HandSkeletalMesh->SetPlayRate(1.0f);
 		}
 	}
 
@@ -272,55 +279,30 @@ void AYenkaHandAvatar::UpdateFingerPoses(float GripStrength)
 
 	if (HandSkeletalMesh)
 	{
-		UAnimInstance* AnimInst = HandSkeletalMesh->GetAnimInstance();
-		if (AnimInst)
+		if (CurrentPoseMode == EHandPoseMode::FingerPoke)
 		{
-			float TargetGrasp = 0.0f;
-			float TargetPoint = 0.0f;
-			float TargetIndexCurl = 0.0f;
-			float TargetThumbUp = 0.0f;
-
-			if (CurrentPoseMode == EHandPoseMode::FingerPoke)
+			if (AnimPoint)
 			{
-				TargetGrasp = 1.0f;      // Clench middle, ring, pinky, and thumb into a tight fist
-				TargetPoint = 1.0f;      // Extend index finger straight forward
-				TargetIndexCurl = 0.0f;  // Keep index straight
-				TargetThumbUp = 0.0f;
+				HandSkeletalMesh->PlayAnimation(AnimPoint, false);
+				HandSkeletalMesh->SetPosition(AnimPoint->GetPlayLength() * 0.90f);
+				HandSkeletalMesh->SetPlayRate(0.0f);
 			}
-			else if (CurrentPoseMode == EHandPoseMode::GrabPinch)
+		}
+		else if (CurrentPoseMode == EHandPoseMode::GrabPinch)
+		{
+			if (AnimGrasp)
 			{
-				TargetGrasp = 0.70f;     // Caliper pinch
-				TargetPoint = 0.0f;
-				TargetIndexCurl = 0.65f;
-				TargetThumbUp = 0.0f;
+				HandSkeletalMesh->PlayAnimation(AnimGrasp, false);
+				HandSkeletalMesh->SetPosition(AnimGrasp->GetPlayLength() * 0.70f);
+				HandSkeletalMesh->SetPlayRate(0.0f);
 			}
-			else // OpenHand
+		}
+		else // OpenHand
+		{
+			if (AnimIdle)
 			{
-				TargetGrasp = GripStrength;
-				TargetPoint = 0.0f;
-				TargetIndexCurl = GripStrength;
-				TargetThumbUp = 0.0f;
-			}
-
-			if (FFloatProperty* Prop = FindFProperty<FFloatProperty>(AnimInst->GetClass(), TEXT("Grasp")))
-			{
-				Prop->SetPropertyValue_InContainer(AnimInst, TargetGrasp);
-			}
-			if (FFloatProperty* Prop = FindFProperty<FFloatProperty>(AnimInst->GetClass(), TEXT("Grip")))
-			{
-				Prop->SetPropertyValue_InContainer(AnimInst, TargetGrasp);
-			}
-			if (FFloatProperty* Prop = FindFProperty<FFloatProperty>(AnimInst->GetClass(), TEXT("Point")))
-			{
-				Prop->SetPropertyValue_InContainer(AnimInst, TargetPoint);
-			}
-			if (FFloatProperty* Prop = FindFProperty<FFloatProperty>(AnimInst->GetClass(), TEXT("IndexCurl")))
-			{
-				Prop->SetPropertyValue_InContainer(AnimInst, TargetIndexCurl);
-			}
-			if (FFloatProperty* Prop = FindFProperty<FFloatProperty>(AnimInst->GetClass(), TEXT("ThumbUp")))
-			{
-				Prop->SetPropertyValue_InContainer(AnimInst, TargetThumbUp);
+				HandSkeletalMesh->PlayAnimation(AnimIdle, true);
+				HandSkeletalMesh->SetPlayRate(1.0f);
 			}
 		}
 	}
@@ -460,9 +442,6 @@ FVector AYenkaHandAvatar::GetExtendedFingertipLocalOffset() const
 void AYenkaHandAvatar::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
-	// Continuously feed pose parameters to ABP_MannequinsXR
-	UpdateFingerPoses(ReplicatedGripStrength);
 
 	// Smoothly interpolate to target transform for remote spectators
 	APawn* OwnerPawn = Cast<APawn>(GetOwner());
