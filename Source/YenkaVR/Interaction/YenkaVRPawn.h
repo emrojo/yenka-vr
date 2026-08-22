@@ -2,14 +2,19 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
+#include "Components/SplineComponent.h"
+#include "Components/SplineMeshComponent.h"
 #include "YenkaVRPawn.generated.h"
 
 class UCameraComponent;
 class UMotionControllerComponent;
 class AYenkaHandAvatar;
+class UStaticMeshComponent;
+class UMaterialInstanceDynamic;
 
 /**
- * VR Pawn for OpenXR / SteamVR headsets with 6DOF tracking and spectator gesture support.
+ * VR Pawn for OpenXR / SteamVR headsets with 6DOF tracking, spectator gestures,
+ * parabolic arc teleportation ("caña de teletransporte"), and snap turning.
  */
 UCLASS()
 class YENKAVR_API AYenkaVRPawn : public APawn
@@ -35,8 +40,49 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UMotionControllerComponent* RightController;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components|Teleport")
+	USplineComponent* TeleportSpline;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components|Teleport")
+	UStaticMeshComponent* TeleportTargetRing;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Yenka|Avatar")
 	TSubclassOf<AYenkaHandAvatar> HandAvatarClass;
+
+	// Teleport configuration parameters
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Teleport")
+	float TeleportLaunchSpeed;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Teleport")
+	float MaxTeleportDistance;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Teleport")
+	float TeleportArcRadius;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Teleport")
+	FLinearColor ValidTeleportColor;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Teleport")
+	FLinearColor InvalidTeleportColor;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Teleport")
+	float SnapTurnAngle;
+
+	// Teleport API
+	UFUNCTION(BlueprintCallable, Category = "Yenka|Teleport")
+	void StartTeleportTrace(bool bIsLeft);
+
+	UFUNCTION(BlueprintCallable, Category = "Yenka|Teleport")
+	void UpdateTeleportTrace();
+
+	UFUNCTION(BlueprintCallable, Category = "Yenka|Teleport")
+	void ExecuteTeleport();
+
+	UFUNCTION(BlueprintCallable, Category = "Yenka|Teleport")
+	void CancelTeleport();
+
+	UFUNCTION(BlueprintCallable, Category = "Yenka|Teleport")
+	void ExecuteSnapTurn(float Direction);
 
 protected:
 	UPROPERTY()
@@ -44,6 +90,35 @@ protected:
 
 	UPROPERTY()
 	AYenkaHandAvatar* RightHandAvatar;
+
+	// Teleport state
+	bool bIsTeleportAiming;
+	bool bTeleportUsingLeftHand;
+	bool bIsTeleportTargetValid;
+	FVector TeleportTargetLocation;
+	FVector TeleportTargetNormal;
+
+	UPROPERTY()
+	TArray<USplineMeshComponent*> SplineMeshPool;
+
+	UPROPERTY()
+	UStaticMesh* SplineCylinderMesh;
+
+	UPROPERTY()
+	UMaterialInstanceDynamic* ArcMaterialInstance;
+
+	UPROPERTY()
+	UMaterialInstanceDynamic* RingMaterialInstance;
+
+	// Snap turn debouncing
+	bool bSnapTurnAxisReset;
+	float SnapTurnCooldownTimer;
+
+	// Input handlers
+	void OnLeftThumbstickY(float Value);
+	void OnRightThumbstickY(float Value);
+	void OnLeftThumbstickX(float Value);
+	void OnRightThumbstickX(float Value);
 
 	// Spectator pinch zoom and world drag tracking
 	bool bIsLeftGrabbingSpace;
@@ -53,4 +128,6 @@ protected:
 	FVector InitialRightWorldPos;
 
 	void UpdateSpectatorGestures();
+	void ClearSplineMeshes();
+	void BuildSplineMeshes();
 };

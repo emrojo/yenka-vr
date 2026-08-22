@@ -302,10 +302,20 @@ This document records all architectural, technical design, and mechanics decisio
   * Optimize Virtual Shadow Maps with directional/local resolution LOD bias (`1`).
   * Eliminate lens blur and shimmering on Quest 2: `r.TSR.Quality=2`, `r.TSR.ShadingRejection.Flickering=1`, `r.Tonemapper.Sharpen=0.8`.
   * Enable Dynamic Resolution Scaling (`r.DynamicRes.OperationMode=2`, `FrameTimeBudget=11.11`) to prevent frame drops during complex tower collapses.
-  * Synchronize Chaos physics substepping to 90 Hz (`MaxSubstepDeltaTime=0.011111`, `MaxSubsteps=3`).
+### ADR-021: Parabolic Arc Teleportation ("Caña de Teletransporte") & Snap Turning in VR
+* **Date:** 2026-08-22
+* **Status:** Accepted
+* **Context:** In VR mode, players had no comfortable locomotion method to navigate around the physical table, inspect the tower from different angles, and reposition themselves naturally during extraction turns without physical roomscale walking limitations.
+* **Decision:**
+  * Implement an intuitive parabolic arc teleportation system ("caña de teletransporte") in `AYenkaVRPawn` activated by forward thumbstick tilt (`Thumbstick Y > 0.55f`).
+  * Calculate physics projectile trajectories using `UGameplayStatics::PredictProjectilePath` ($900\text{ cm/s}$ launch speed, gravity $980\text{ cm/s}^2$).
+  * Render a dynamic curved spline beam with cyan/green emission for valid horizontal floor surfaces ($\text{ImpactNormal.Z} \ge 0.65$, $Z \le 40\text{ cm}$) and bright neon red for invalid surfaces (table top, tower blocks, walls).
+  * Project an aligned holographic ground target ring (`TeleportTargetRing`) at the exact impact point.
+  * Execute teleport on thumbstick release with HMD positional offset subtraction so player eye position matches the target point precisely.
+  * Implement $45^\circ$ Snap Turning with horizontal thumbstick flicking (`Thumbstick X > 0.6f` / `X < -0.6f`) with $250\text{ ms}$ debouncing.
 * **Consequences:**
-  * *(Positive)* Rock-solid 90 FPS native PC VR rendering without ASW reprojection stutter.
-  * *(Positive)* Sharp, crystal-clear visuals on Meta Quest 2 lenses while fully maintaining dynamic Lumen lighting, Nanite, and photorealistic wood and skin shaders.
+  * *(Positive)* Completely eliminates VR motion sickness while enabling total, effortless 360-degree navigation around the Jenga table.
+  * *(Positive)* Clear visual feedback with the parabolic arc and ground ring.
 
 ---
 
