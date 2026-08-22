@@ -188,6 +188,7 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 
 	ReplicatedGripStrength = 0.0f;
 	bIsLeftHand = false;
+	LastAppliedPoseMode = static_cast<EHandPoseMode>(255);
 }
 
 void AYenkaHandAvatar::BeginPlay()
@@ -263,17 +264,25 @@ void AYenkaHandAvatar::SetTargetHandTransform(const FTransform& InTransform, flo
 	ReplicatedHandTransform = InTransform;
 	ReplicatedGripStrength = InGripStrength;
 	SetActorTransform(InTransform);
-	UpdateFingerPoses(InGripStrength);
+	if (CurrentPoseMode != LastAppliedPoseMode)
+	{
+		UpdateFingerPoses(InGripStrength);
+	}
 }
 
 void AYenkaHandAvatar::SetHandPoseMode(EHandPoseMode NewPoseMode)
 {
-	CurrentPoseMode = NewPoseMode;
-	UpdateFingerPoses(ReplicatedGripStrength);
+	if (CurrentPoseMode != NewPoseMode)
+	{
+		CurrentPoseMode = NewPoseMode;
+		UpdateFingerPoses(ReplicatedGripStrength);
+	}
 }
 
 void AYenkaHandAvatar::UpdateFingerPoses(float GripStrength)
 {
+	LastAppliedPoseMode = CurrentPoseMode;
+
 	// 1. Guaranteed Animation Sequence Playback on Skeletal Mesh Hand
 	if (HandSkeletalMesh)
 	{
@@ -281,29 +290,32 @@ void AYenkaHandAvatar::UpdateFingerPoses(float GripStrength)
 
 		if (CurrentPoseMode == EHandPoseMode::FingerPoke)
 		{
+			// Tight clenched fist with index finger completely extended forward
 			if (AnimPoint)
 			{
 				HandSkeletalMesh->SetAnimation(AnimPoint);
-				HandSkeletalMesh->Play(false);
-				HandSkeletalMesh->SetPosition(AnimPoint->GetPlayLength() * 0.99f, false);
+				HandSkeletalMesh->SetPosition(AnimPoint->GetPlayLength(), false);
+				HandSkeletalMesh->SetPlayRate(0.0f); // Freeze at full pointing pose (100% clenched fist with index pointing!)
 			}
 		}
 		else if (CurrentPoseMode == EHandPoseMode::GrabPinch)
 		{
+			// Caliper pinch clamping lateral block ends
 			if (AnimGrasp)
 			{
 				HandSkeletalMesh->SetAnimation(AnimGrasp);
-				HandSkeletalMesh->Play(false);
 				HandSkeletalMesh->SetPosition(AnimGrasp->GetPlayLength() * 0.70f, false);
+				HandSkeletalMesh->SetPlayRate(0.0f); // Freeze at 70% caliper pinch
 			}
 		}
 		else // OpenHand
 		{
+			// Relaxed open exploration hand
 			if (AnimIdle)
 			{
 				HandSkeletalMesh->SetAnimation(AnimIdle);
-				HandSkeletalMesh->Play(true);
 				HandSkeletalMesh->SetPosition(0.0f, false);
+				HandSkeletalMesh->SetPlayRate(0.0f);
 			}
 		}
 	}

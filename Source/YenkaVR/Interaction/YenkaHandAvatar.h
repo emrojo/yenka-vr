@@ -121,6 +121,8 @@ public:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Yenka|Hand")
 	EHandPoseMode CurrentPoseMode;
 
+	EHandPoseMode LastAppliedPoseMode;
+
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Yenka|Hand")
 	FTransform ReplicatedHandTransform;
 
