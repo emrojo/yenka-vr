@@ -41,6 +41,9 @@ public:
 	USceneComponent* HandRoot;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	USkeletalMeshComponent* HandSkeletalMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* PalmMesh;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
@@ -58,11 +61,46 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* PinkyFinger;
 
+	// Translucent Keratin Fingernails
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* ThumbNail;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* IndexNail;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* MiddleNail;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* RingNail;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* PinkyNail;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UPhysicsHandleComponent* PhysicsHandle;
 
+	// Human Skin PBR & Subsurface Scattering (SSS) Configuration
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Skin")
+	FLinearColor SkinTone;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Skin")
+	FLinearColor SubsurfaceColor;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Skin")
+	FLinearColor FingernailColor;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Skin")
+	float SkinRoughness;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Skin")
+	float SubsurfaceScatteringStrength;
+
 	UFUNCTION(BlueprintCallable, Category = "Yenka|Hand")
 	void UpdateFingerPoses(float GripStrength);
+
+	UFUNCTION(BlueprintCallable, Category = "Yenka|Hand")
+	void ApplyHumanSkinMaterials();
 
 	UFUNCTION(BlueprintPure, Category = "Yenka|Hand")
 	float GetExtendedFingertipOffset() const;

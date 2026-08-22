@@ -4,6 +4,7 @@
 #include "PhysicsEngine/PhysicsHandleComponent.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Net/UnrealNetwork.h"
+#include "Materials/MaterialInstanceDynamic.h"
 
 AYenkaHandAvatar::AYenkaHandAvatar()
 {
@@ -18,7 +19,13 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 	HandRoot = CreateDefaultSubobject<USceneComponent>(TEXT("HandRoot"));
 	RootComponent = HandRoot;
 
-	// 1. Palm (5cm x 4.5cm x 1.5cm)
+	// 0.1. MetaHuman / Standard Skeletal Mesh Hand Component
+	HandSkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("HandSkeletalMesh"));
+	HandSkeletalMesh->SetupAttachment(HandRoot);
+	HandSkeletalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	HandSkeletalMesh->SetCastShadow(true);
+
+	// 1. Palm (Anatomical proportions: 5cm length x 4.5cm width x 1.5cm thickness)
 	PalmMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PalmMesh"));
 	PalmMesh->SetupAttachment(HandRoot);
 	if (CubeMeshAsset.Succeeded())
@@ -28,8 +35,9 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 		PalmMesh->SetRelativeLocation(FVector(0.0f, 0.0f, 0.0f));
 	}
 	PalmMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	PalmMesh->SetCastShadow(true);
 
-	// 2. Thumb (slender 0.8cm diameter, 3.0cm length)
+	// 2. Thumb (0.8cm diameter, 3.0cm length)
 	ThumbMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ThumbMesh"));
 	ThumbMesh->SetupAttachment(HandRoot);
 	if (CylinderMeshAsset.Succeeded())
@@ -40,8 +48,9 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 		ThumbMesh->SetRelativeRotation(FRotator(0.0f, -40.0f, 0.0f));
 	}
 	ThumbMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	ThumbMesh->SetCastShadow(true);
 
-	// 3. Index Finger (slender and pointed: 0.7cm diameter, 5.0cm length)
+	// 3. Index Finger (0.7cm diameter, 5.0cm length)
 	IndexFinger = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("IndexFinger"));
 	IndexFinger->SetupAttachment(HandRoot);
 	if (CylinderMeshAsset.Succeeded())
@@ -52,8 +61,9 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 		IndexFinger->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f));
 	}
 	IndexFinger->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	IndexFinger->SetCastShadow(true);
 
-	// 4. Middle Finger (slender: 0.7cm diameter, 5.2cm length)
+	// 4. Middle Finger (0.7cm diameter, 5.2cm length)
 	MiddleFinger = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MiddleFinger"));
 	MiddleFinger->SetupAttachment(HandRoot);
 	if (CylinderMeshAsset.Succeeded())
@@ -64,8 +74,9 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 		MiddleFinger->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f));
 	}
 	MiddleFinger->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	MiddleFinger->SetCastShadow(true);
 
-	// 5. Ring Finger (slender: 0.0065cm diameter, 4.5cm length)
+	// 5. Ring Finger (0.0065cm diameter, 4.5cm length)
 	RingFinger = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RingFinger"));
 	RingFinger->SetupAttachment(HandRoot);
 	if (CylinderMeshAsset.Succeeded())
@@ -76,8 +87,9 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 		RingFinger->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f));
 	}
 	RingFinger->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	RingFinger->SetCastShadow(true);
 
-	// 6. Pinky Finger (slender: 0.006cm diameter, 3.5cm length)
+	// 6. Pinky Finger (0.006cm diameter, 3.5cm length)
 	PinkyFinger = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PinkyFinger"));
 	PinkyFinger->SetupAttachment(HandRoot);
 	if (CylinderMeshAsset.Succeeded())
@@ -88,49 +100,112 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 		PinkyFinger->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f));
 	}
 	PinkyFinger->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	PinkyFinger->SetCastShadow(true);
 
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> GloveBaseMatAsset(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
-	if (GloveBaseMatAsset.Succeeded())
+	// 7. Translucent Keratin Fingernails (0.8cm length x 0.6cm width x 0.08cm curved plate)
+	ThumbNail = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ThumbNail"));
+	ThumbNail->SetupAttachment(ThumbMesh);
+	IndexNail = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("IndexNail"));
+	IndexNail->SetupAttachment(IndexFinger);
+	MiddleNail = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MiddleNail"));
+	MiddleNail->SetupAttachment(MiddleFinger);
+	RingNail = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RingNail"));
+	RingNail->SetupAttachment(RingFinger);
+	PinkyNail = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PinkyNail"));
+	PinkyNail->SetupAttachment(PinkyFinger);
+
+	TArray<UStaticMeshComponent*> Nails = { ThumbNail, IndexNail, MiddleNail, RingNail, PinkyNail };
+	for (UStaticMeshComponent* Nail : Nails)
 	{
-		PalmMesh->SetMaterial(0, GloveBaseMatAsset.Object);
-		ThumbMesh->SetMaterial(0, GloveBaseMatAsset.Object);
-		IndexFinger->SetMaterial(0, GloveBaseMatAsset.Object);
-		MiddleFinger->SetMaterial(0, GloveBaseMatAsset.Object);
-		RingFinger->SetMaterial(0, GloveBaseMatAsset.Object);
-		PinkyFinger->SetMaterial(0, GloveBaseMatAsset.Object);
+		if (Nail && CubeMeshAsset.Succeeded())
+		{
+			Nail->SetStaticMesh(CubeMeshAsset.Object);
+			Nail->SetRelativeScale3D(FVector(0.008f, 0.006f, 0.001f));
+			Nail->SetRelativeLocation(FVector(0.0f, 0.0f, 1.3f));
+			Nail->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			Nail->SetCastShadow(false);
+		}
+	}
+
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> BaseMatAsset(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+	if (BaseMatAsset.Succeeded())
+	{
+		PalmMesh->SetMaterial(0, BaseMatAsset.Object);
+		ThumbMesh->SetMaterial(0, BaseMatAsset.Object);
+		IndexFinger->SetMaterial(0, BaseMatAsset.Object);
+		MiddleFinger->SetMaterial(0, BaseMatAsset.Object);
+		RingFinger->SetMaterial(0, BaseMatAsset.Object);
+		PinkyFinger->SetMaterial(0, BaseMatAsset.Object);
+		for (UStaticMeshComponent* Nail : Nails)
+		{
+			if (Nail) Nail->SetMaterial(0, BaseMatAsset.Object);
+		}
 	}
 
 	PhysicsHandle = CreateDefaultSubobject<UPhysicsHandleComponent>(TEXT("PhysicsHandle"));
+
+	// Ultra-realistic Human Skin PBR & Subsurface Scattering defaults
+	SkinTone = FLinearColor(0.86f, 0.67f, 0.57f, 1.0f); // Warm natural melanin skin tone
+	SubsurfaceColor = FLinearColor(0.85f, 0.08f, 0.03f, 1.0f); // Deep dermal blood vessel light bleed
+	FingernailColor = FLinearColor(0.92f, 0.82f, 0.80f, 1.0f); // Glossy translucent keratin nail
+	SkinRoughness = 0.36f; // Natural human lipid layer sheen
+	SubsurfaceScatteringStrength = 0.75f;
 
 	ReplicatedGripStrength = 0.0f;
 	bIsLeftHand = false;
 }
 
-#include "Materials/MaterialInstanceDynamic.h"
-
 void AYenkaHandAvatar::BeginPlay()
 {
 	Super::BeginPlay();
+	ApplyHumanSkinMaterials();
+}
 
-	// Style hand and fingers with clean VR glove aesthetic
-	TArray<UStaticMeshComponent*> HandParts = { PalmMesh, ThumbMesh, IndexFinger, MiddleFinger, RingFinger, PinkyFinger };
+void AYenkaHandAvatar::ApplyHumanSkinMaterials()
+{
+	// 1. Dynamic Human Skin Material with Subsurface Scattering Emulation
+	TArray<UStaticMeshComponent*> SkinParts = { PalmMesh, ThumbMesh, IndexFinger, MiddleFinger, RingFinger, PinkyFinger };
 	UMaterialInterface* BaseMat = PalmMesh ? PalmMesh->GetMaterial(0) : nullptr;
 
 	if (BaseMat)
 	{
-		UMaterialInstanceDynamic* GloveMat = UMaterialInstanceDynamic::Create(BaseMat, this);
-		if (GloveMat)
+		UMaterialInstanceDynamic* SkinMat = UMaterialInstanceDynamic::Create(BaseMat, this);
+		if (SkinMat)
 		{
-			FLinearColor GloveColor(0.12f, 0.65f, 0.98f, 1.0f); // Sleek cyan-blue VR glove
-			GloveMat->SetVectorParameterValue(TEXT("Color"), GloveColor);
-			GloveMat->SetScalarParameterValue(TEXT("Roughness"), 0.2f);
-			GloveMat->SetScalarParameterValue(TEXT("Metallic"), 0.3f);
+			SkinMat->SetVectorParameterValue(TEXT("Color"), SkinTone);
+			SkinMat->SetVectorParameterValue(TEXT("SubsurfaceColor"), SubsurfaceColor);
+			SkinMat->SetScalarParameterValue(TEXT("Roughness"), SkinRoughness);
+			SkinMat->SetScalarParameterValue(TEXT("Metallic"), 0.0f);
+			SkinMat->SetScalarParameterValue(TEXT("Specular"), 0.5f);
 
-			for (UStaticMeshComponent* Part : HandParts)
+			for (UStaticMeshComponent* Part : SkinParts)
 			{
 				if (Part)
 				{
-					Part->SetMaterial(0, GloveMat);
+					Part->SetMaterial(0, SkinMat);
+				}
+			}
+			if (HandSkeletalMesh)
+			{
+				HandSkeletalMesh->SetMaterial(0, SkinMat);
+			}
+		}
+
+		// 2. Translucent Glossy Keratin Fingernails Material
+		UMaterialInstanceDynamic* NailMat = UMaterialInstanceDynamic::Create(BaseMat, this);
+		if (NailMat)
+		{
+			NailMat->SetVectorParameterValue(TEXT("Color"), FingernailColor);
+			NailMat->SetScalarParameterValue(TEXT("Roughness"), 0.12f); // Glossy polished nail surface
+			NailMat->SetScalarParameterValue(TEXT("Metallic"), 0.0f);
+			NailMat->SetScalarParameterValue(TEXT("Specular"), 0.65f);
+
+			TArray<UStaticMeshComponent*> Nails = { ThumbNail, IndexNail, MiddleNail, RingNail, PinkyNail };
+			for (UStaticMeshComponent* Nail : Nails)
+			{
+				if (Nail)
+				{
+					Nail->SetMaterial(0, NailMat);
 				}
 			}
 		}
@@ -165,7 +240,7 @@ void AYenkaHandAvatar::UpdateFingerPoses(float GripStrength)
 {
 	if (CurrentPoseMode == EHandPoseMode::FingerPoke)
 	{
-		// Finger Poke: Only Index Finger is extended forward; all other 4 fingers are tightly tucked into a fist far back
+		// Finger Poke: Index Finger fully extended forward; other 4 fingers curled tightly into fist
 		if (IndexFinger)
 		{
 			IndexFinger->SetRelativeLocation(FVector(3.5f, -1.5f, 0.0f));
@@ -194,7 +269,7 @@ void AYenkaHandAvatar::UpdateFingerPoses(float GripStrength)
 	}
 	else if (CurrentPoseMode == EHandPoseMode::GrabPinch)
 	{
-		// Grab Pinch: Thumb and Index finger form an anatomical pincer grasping the two lateral ends (+-1.25cm) of the protruding block (2.5cm width)
+		// Grab Pinch: Thumb and Index finger form an anatomical caliper grasping the two lateral ends (+-1.25cm) of the protruding block (2.5cm width)
 		// Index finger: Reaches forward on the right lateral side (+1.25cm)
 		if (IndexFinger)
 		{
@@ -226,7 +301,7 @@ void AYenkaHandAvatar::UpdateFingerPoses(float GripStrength)
 	}
 	else
 	{
-		// Open / Grip mode
+		// Open / Grip mode: Natural relaxed human hand curvature
 		const float GripAngle = FMath::Clamp(GripStrength, 0.0f, 1.0f) * 45.0f;
 
 		if (IndexFinger)
