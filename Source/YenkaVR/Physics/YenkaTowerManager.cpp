@@ -36,7 +36,7 @@ AYenkaTowerManager::AYenkaTowerManager()
 	BlockDimensions = FVector(7.5f, 2.5f, 1.5f);
 	TableSurfaceZ = 0.0f;
 
-	SequentialSpawnInterval = 0.05f;
+	SequentialSpawnInterval = 0.20f; // 200ms per piece allows each block to physically settle before the next is placed
 	bIsBuildingTower = false;
 
 	// 7 Basic colors palette with vibrant wood-stain hues
@@ -202,7 +202,7 @@ void AYenkaTowerManager::SpawnTower()
 	}
 
 	bIsBuildingTower = true;
-	float Interval = (SequentialSpawnInterval > 0.001f) ? SequentialSpawnInterval : 0.05f;
+	float Interval = (SequentialSpawnInterval > 0.001f) ? SequentialSpawnInterval : 0.20f;
 	GetWorldTimerManager().SetTimer(SequentialSpawnTimerHandle, this, &AYenkaTowerManager::SpawnNextBlockFromQueue, Interval, true, 0.0f);
 	UE_LOG(LogYenkaVR, Log, TEXT("Enqueued 54 blocks for sequential piece-by-piece construction (Interval: %.2fs)."), Interval);
 }
