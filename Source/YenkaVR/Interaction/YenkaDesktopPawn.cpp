@@ -35,6 +35,7 @@ AYenkaDesktopPawn::AYenkaDesktopPawn()
 	GrabDistance = 65.0f;
 	LastHitLocation = FVector::ZeroVector;
 	LastHitNormal = FVector::UpVector;
+	LastPrimaryClickTime = -10.0f;
 }
 
 #include "YenkaVR/Physics/YenkaTowerManager.h"
@@ -577,6 +578,12 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 
 void AYenkaDesktopPawn::OnPrimaryClickPressed()
 {
+	float CurrentTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
+	float TimeSinceLastClick = CurrentTime - LastPrimaryClickTime;
+	const float DoubleClickMaxInterval = 0.35f;
+	bool bIsDoubleClick = (TimeSinceLastClick > 0.03f && TimeSinceLastClick <= DoubleClickMaxInterval);
+	LastPrimaryClickTime = CurrentTime;
+
 	AYenkaBlock* TargetPush = LockedPushBlock ? LockedPushBlock : HoveredBlock;
 	if (bIsPokeModeActive && TargetPush)
 	{
@@ -589,13 +596,29 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 			CurrentPushDisplacement = 0.0f;
 		}
 		CurrentPushAdvance = PUSH_STANDBY_SEPARATION;
+
 		if (TargetPush->BlockMesh)
 		{
 			TargetPush->BlockMesh->WakeRigidBody();
-			FVector PushVel = PushLongitudinalAxis * 18.0f;
-			PushVel.Z = 0.0f;
-			TargetPush->BlockMesh->SetPhysicsLinearVelocity(PushVel);
-			TargetPush->BlockMesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+
+			if (bIsDoubleClick)
+			{
+				// Double-click strike ("golpe"): 50% stronger than standard push (1.5 * 18.0 = 27.0 cm/s + instantaneous impulse)
+				const float StrikeVelocity = 27.0f;
+				FVector StrikeVel = PushLongitudinalAxis * StrikeVelocity;
+				StrikeVel.Z = 0.0f;
+				TargetPush->BlockMesh->SetPhysicsLinearVelocity(StrikeVel);
+				TargetPush->BlockMesh->AddImpulse(PushLongitudinalAxis * (StrikeVelocity * TargetPush->BlockMesh->GetMass() * 1.5f), NAME_None, false);
+				TargetPush->BlockMesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+			}
+			else
+			{
+				// Standard push: 18.0 cm/s
+				FVector PushVel = PushLongitudinalAxis * 18.0f;
+				PushVel.Z = 0.0f;
+				TargetPush->BlockMesh->SetPhysicsLinearVelocity(PushVel);
+				TargetPush->BlockMesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+			}
 		}
 		return;
 	}

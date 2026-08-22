@@ -60,6 +60,7 @@ protected:
 	FVector PushLongitudinalAxis;
 	FVector LastHitLocation;
 	FVector LastHitNormal;
+	float LastPrimaryClickTime;
 
 	static constexpr float HAND_LENGTH = 11.0f;
 	static constexpr float PROXIMITY_THRESHOLD = 2.0f * HAND_LENGTH;
