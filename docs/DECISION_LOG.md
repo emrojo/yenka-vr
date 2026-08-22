@@ -22,6 +22,8 @@ This document records all architectural, technical design, and mechanics decisio
 * [ADR-014: Protrusion-Only Selective Grabbing & Tower Structural Integrity Protection](#adr-014-protrusion-only-selective-grabbing--tower-structural-integrity-protection)
 * [ADR-015: High-Power Active Push Velocity ($18.0\text{ cm/s}$ - $24.0\text{ cm/s}$) for Lower-Layer Extraction](#adr-015-high-power-active-push-velocity-180text-cms---240text-cms-for-lower-layer-extraction)
 * [ADR-016: Double-Click Tap Strike Mechanics (+50% Force / 27.0cm/s + Impulse) in Push Mode](#adr-016-double-click-tap-strike-mechanics-50-force--270cms--impulse-in-push-mode)
+* [ADR-017: Standardized Table Surface Elevation ($90.0\text{ cm}$) Above Ground](#adr-017-standardized-table-surface-elevation-900text-cm-above-ground)
+* [ADR-018: Anatomical Index-Thumb Caliper Pinch Pose for Block Extraction](#adr-018-anatomical-index-thumb-caliper-pinch-pose-for-block-extraction)
 
 ---
 
@@ -244,6 +246,36 @@ This document records all architectural, technical design, and mechanics decisio
 * **Consequences:**
   * *(Positive)* Enables authentic high-speed tap-strike strategies for dislodging sticky pieces.
   * *(Positive)* Intuitive desktop interaction pattern (Single Click = Smooth Push, Double Click = Strike / Golpe).
+
+---
+
+### ADR-017: Standardized Table Surface Elevation ($90.0\text{ cm}$) Above Ground
+* **Date:** 2026-08-22
+* **Status:** Accepted
+* **Context:** A standard ergonomic playing height was required for both VR standing/seated comfort and desktop camera focal framing.
+* **Decision:**
+  * Set `AYenkaTowerManager` world elevation to $Z = 90.0\text{ cm}$.
+  * Update fallbacks and camera target anchors across `AYenkaGameMode` and `AYenkaDesktopPawn` to $90.0\text{ cm}$.
+* **Consequences:**
+  * *(Positive)* Ergonomically ideal height for both VR reach and desktop camera framing.
+  * *(Positive)* Uniform table height coordinate referenced cleanly across all modules.
+
+---
+
+### ADR-018: Anatomical Index-Thumb Caliper Pinch Pose for Block Extraction
+* **Date:** 2026-08-22
+* **Status:** Accepted
+* **Context:** In Grab Mode, the previous generic open fist/grip pose did not visually show how the fingers held the piece, creating an unnatural look when extracting blocks.
+* **Decision:**
+  * Redesign `EHandPoseMode::GrabPinch` in `AYenkaHandAvatar` as a precision caliper pinch:
+    * Index finger curves on the right lateral side ($Y = +1.25\text{ cm}$).
+    * Thumb extends on the left lateral side ($Y = -1.25\text{ cm}$).
+    * The two fingertips span exactly $2.5\text{ cm}$, clamping directly onto the outer corners of the protruding Jenga piece.
+    * Middle, ring, and pinky fingers curl into the palm out of the way.
+  * Align the hand root offset in `AYenkaDesktopPawn` so the fingertips clamp precisely at the block face during both hover and drag.
+* **Consequences:**
+  * *(Positive)* Highly photorealistic and anatomically natural pinch pose.
+  * *(Positive)* Visual feedback clearly demonstrates firm contact on the lateral sides of the block.
 
 ---
 

@@ -1,7 +1,7 @@
 # System Requirements Specification - YenkaVR
 
 **Project:** YenkaVR  
-**Version:** 1.2.0  
+**Version:** 1.3.0  
 **Status:** Approved  
 **Last Updated:** 2026-08-22  
 
@@ -22,9 +22,10 @@ This section maintains the immutable history of all requirements defined and agr
 | **v1.0.0** | 2026-08-21 | User & Antigravity | Initial requirements baseline: UE5 + Chaos Physics, turn-owner physics authority, MR Passthrough with dual calibration (auto/manual), No-VR desktop support with virtual hand avatar, spectator bimanual zoom/drag gestures, Steam Lobbies + Room Codes, and 3D spatial VoIP. |
 | **v1.1.0** | 2026-08-22 | User & Antigravity | Physics stabilization via $0.3\text{ mm}$ lateral micro-clearance, Chaos solver configuration (16 position iterations), extraction via `PhysicsHandle`, dynamic procedural wood shaders for blocks and table, articulated 3D hand avatar with grasping kinematics, index finger poke mode, and strictly horizontal hand alignment. |
 | **v1.2.0** | 2026-08-22 | User & Antigravity | 7-color balanced wood-stain palette (`[REQ-ART-03]`), protrusion-only selective grabbing (`[REQ-CROSS-09]`), organic placement error ($\pm 0.2\text{ cm}$) with $\le 1.0\text{ cm}$ safety clamp (`[REQ-PHYS-05]`), sequential top-down FIFO construction with 1.0cm drop clearance and 0.05s interval (`[REQ-PHYS-06]`), non-slip table base (`[REQ-PHYS-07]`), high-power push mechanics (`[REQ-CROSS-10]`), and double-click strike tap mechanics (`[REQ-CROSS-12]`). |
+| **v1.3.0** | 2026-08-22 | User & Antigravity | Standardized tabletop height to 90.0cm above floor level (`[REQ-PHYS-08]`), and implemented anatomical index-thumb caliper pinch grip for protruding block extraction (`[REQ-CROSS-13]`). |
 
 > [!NOTE]
-> Any new requirements or modifications agreed upon in the future must be added to this table with an incremental version tag (`v1.2.0`, etc.) and referenced in [`docs/DECISION_LOG.md`](DECISION_LOG.md).
+> Any new requirements or modifications agreed upon in the future must be added to this table with an incremental version tag (`v1.3.0`, etc.) and referenced in [`docs/DECISION_LOG.md`](DECISION_LOG.md).
 
 ---
 
@@ -76,6 +77,9 @@ This section maintains the immutable history of all requirements defined and agr
 * **`[REQ-PHYS-07]` Table Friction Material & Chaos Solver Hardening:**
   * Dedicated `UPhysicalMaterial` assigned to the tabletop (`Friction = 0.60`, `StaticFriction = 0.65`, `Restitution = 0.0`) preventing base layer slipping.
   * Chaos solver hardened to 24 position iterations and 12 velocity iterations (`PositionSolverIterationCount = 24`, `VelocitySolverIterationCount = 12`) and `MaxDepenetrationVelocity = 6.0`.
+* **`[REQ-PHYS-08]` Standardized Table Surface Height ($90.0\text{ cm}$):**
+  * The game table surface is positioned at a standardized physical elevation of **$Z = 90.0\text{ cm}$** above the ground ($Z = 0.0\text{ cm}$).
+  * Tower generation, physics fall thresholds, spectator cameras, and desktop pawn viewpoints adaptively anchor to $Z = 90.0\text{ cm}$.
 
 ---
 
@@ -132,6 +136,11 @@ This section maintains the immutable history of all requirements defined and agr
   * In inspection/exploration mode, safety clearance is measured strictly from the tip of the extended middle finger ($X = 6.4\text{ cm}$) to the tower surface, guaranteeing zero mesh clipping or collision when examining blocks.
 * **`[REQ-CROSS-12]` Double-Click Strike (+50% Force / 27.0cm/s + Impulse):**
   * In Push Mode (`E` / `F`), performing a rapid double-click on a target block triggers an instantaneous strike ("golpe"), launching the piece with **$27.0\text{ cm/s}$** velocity (+50% bonus over standard push) combined with an instantaneous physical impulse along its longitudinal axis to simulate real-world Jenga tap strikes.
+* **`[REQ-CROSS-13]` Anatomical Index-Thumb Caliper Pinch Grip:**
+  * In Grab Mode (`GrabPinch`), the virtual hand shapes an anatomical pincer caliper:
+    * Index finger curves on the right lateral side ($Y = +1.25\text{ cm}$).
+    * Thumb extends on the left lateral side ($Y = -1.25\text{ cm}$).
+    * The two fingertips clamp directly onto the opposite lateral extremities ($2.5\text{ cm}$ piece width) of the protruding block, while the middle, ring, and pinky fingers remain cleanly tucked into the palm.
 
 ---
 
@@ -201,6 +210,7 @@ This section maintains the immutable history of all requirements defined and agr
 | `[REQ-PHYS-05]` | Organic Placement Error & Boundary Clamp | `Source/YenkaVR/Physics/YenkaTowerManager.cpp` | Implemented |
 | `[REQ-PHYS-06]` | Sequential 1.0cm Drop FIFO Construction | `Source/YenkaVR/Physics/YenkaTowerManager.cpp` | Implemented |
 | `[REQ-PHYS-07]` | High-Friction Table & Solver Hardening | `Source/YenkaVR/Physics/YenkaTowerManager.cpp` | Implemented |
+| `[REQ-PHYS-08]` | Standardized Table Height (90.0cm)     | `Source/YenkaVR/Physics/YenkaTowerManager.cpp` | Implemented |
 | `[REQ-CROSS-02]`| Articulated 3D Hand & Horizontal Lock | `Source/YenkaVR/Interaction/YenkaHandAvatar.cpp` | Implemented |
 | `[REQ-CROSS-03]`| PhysicsHandle Mouse Extraction | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
 | `[REQ-CROSS-04]`| Extended Index Finger Mode | `Source/YenkaVR/Interaction/YenkaHandAvatar.cpp` | Implemented |
@@ -212,6 +222,7 @@ This section maintains the immutable history of all requirements defined and agr
 | `[REQ-CROSS-10]`| High-Power Active Push (18.0 - 24.0 cm/s)| `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
 | `[REQ-CROSS-11]`| Fingertip-Accurate Stand-Off Distance | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
 | `[REQ-CROSS-12]`| Double-Click Strike (+50% Force / 27cm/s)| `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
+| `[REQ-CROSS-13]`| Anatomical Caliper Pinch Grip          | `Source/YenkaVR/Interaction/YenkaHandAvatar.cpp` | Implemented |
 | `[REQ-ART-01]`  | Photorealistic Wood Shaders | `Source/YenkaVR/Physics/YenkaBlock.cpp` | Implemented |
 | `[REQ-ART-03]`  | 7-Color Balanced Wood-Stain Palette | `Source/YenkaVR/Physics/YenkaTowerManager.cpp` | Implemented |
 | `[REQ-XR-01]`   | OpenXR Passthrough | `Source/YenkaVR/Spatial/YenkaPassthroughManager.h` | Specified |

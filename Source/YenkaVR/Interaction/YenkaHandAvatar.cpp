@@ -192,6 +192,38 @@ void AYenkaHandAvatar::UpdateFingerPoses(float GripStrength)
 			PinkyFinger->SetRelativeRotation(FRotator(0.0f, 0.0f, 0.0f)); // Curled vertical into palm
 		}
 	}
+	else if (CurrentPoseMode == EHandPoseMode::GrabPinch)
+	{
+		// Grab Pinch: Thumb and Index finger form an anatomical pincer grasping the two lateral ends (+-1.25cm) of the protruding block (2.5cm width)
+		// Index finger: Reaches forward on the right lateral side (+1.25cm)
+		if (IndexFinger)
+		{
+			IndexFinger->SetRelativeLocation(FVector(2.6f, 0.8f, 0.0f));
+			IndexFinger->SetRelativeRotation(FRotator(90.0f, -20.0f, 0.0f)); // Fingertip at (4.8cm, +1.25cm, 0.0cm)
+		}
+		// Thumb: Reaches forward on the left lateral side (-1.25cm)
+		if (ThumbMesh)
+		{
+			ThumbMesh->SetRelativeLocation(FVector(2.0f, -1.8f, 0.0f));
+			ThumbMesh->SetRelativeRotation(FRotator(0.0f, 32.0f, 0.0f)); // Fingertip at (4.8cm, -1.25cm, 0.0cm)
+		}
+		// Middle, Ring, Pinky: Curled backward into palm out of the way
+		if (MiddleFinger)
+		{
+			MiddleFinger->SetRelativeLocation(FVector(1.0f, -0.2f, -0.6f));
+			MiddleFinger->SetRelativeRotation(FRotator(0.0f, 0.0f, 0.0f));
+		}
+		if (RingFinger)
+		{
+			RingFinger->SetRelativeLocation(FVector(0.9f, 0.6f, -0.6f));
+			RingFinger->SetRelativeRotation(FRotator(0.0f, 0.0f, 0.0f));
+		}
+		if (PinkyFinger)
+		{
+			PinkyFinger->SetRelativeLocation(FVector(0.8f, 1.4f, -0.6f));
+			PinkyFinger->SetRelativeRotation(FRotator(0.0f, 0.0f, 0.0f));
+		}
+	}
 	else
 	{
 		// Open / Grip mode
@@ -234,8 +266,8 @@ float AYenkaHandAvatar::GetExtendedFingertipOffset() const
 	}
 	else if (CurrentPoseMode == EHandPoseMode::GrabPinch)
 	{
-		// Bent fingers during pinch: tip at ~3.5cm
-		return 3.5f;
+		// Pinch caliper fingertips reach at X = 4.8cm
+		return 4.8f;
 	}
 	else // OpenHand
 	{
@@ -253,7 +285,8 @@ FVector AYenkaHandAvatar::GetExtendedFingertipLocalOffset() const
 	}
 	else if (CurrentPoseMode == EHandPoseMode::GrabPinch)
 	{
-		return FVector(3.5f, 0.0f, 0.0f);
+		// Caliper pinch center aligns directly at (4.8cm, 0.0cm, 0.0cm)
+		return FVector(4.8f, 0.0f, 0.0f);
 	}
 	else // OpenHand
 	{

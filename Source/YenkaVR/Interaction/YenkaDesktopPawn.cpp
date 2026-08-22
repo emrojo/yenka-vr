@@ -31,7 +31,7 @@ AYenkaDesktopPawn::AYenkaDesktopPawn()
 	bIsPushingBlock = false;
 	bIsLockedPerpendicular = false;
 	LockedRadialDirection = FVector::ForwardVector;
-	LockedFloorZ = 85.0f;
+	LockedFloorZ = 90.0f;
 	GrabDistance = 65.0f;
 	LastHitLocation = FVector::ZeroVector;
 	LastHitNormal = FVector::UpVector;
@@ -52,7 +52,7 @@ void AYenkaDesktopPawn::BeginPlay()
 	}
 	else
 	{
-		SetActorLocation(FVector(0.0f, 0.0f, 85.0f));
+		SetActorLocation(FVector(0.0f, 0.0f, 90.0f));
 	}
 	CameraBoom->TargetArmLength = 65.0f;
 
@@ -181,7 +181,7 @@ void AYenkaDesktopPawn::PerformLongitudinalPush(AYenkaBlock* Block, const FVecto
 FRotator AYenkaDesktopPawn::GetHorizontalFacingRotation(const FVector& TargetLocation) const
 {
 	AActor* TowerActor = UGameplayStatics::GetActorOfClass(GetWorld(), AYenkaTowerManager::StaticClass());
-	FVector TowerCenter = TowerActor ? TowerActor->GetActorLocation() : FVector(0.0f, 0.0f, 85.0f);
+	FVector TowerCenter = TowerActor ? TowerActor->GetActorLocation() : FVector(0.0f, 0.0f, 90.0f);
 	FVector FacingDir = (TowerCenter - TargetLocation);
 	FacingDir.Z = 0.0f; // strictly on XY horizontal plane
 
@@ -349,7 +349,7 @@ bool AYenkaDesktopPawn::IsBlockProtruding(const AYenkaBlock* Block, FVector& Out
 	if (!Block) return false;
 
 	AActor* TowerActor = UGameplayStatics::GetActorOfClass(GetWorld(), AYenkaTowerManager::StaticClass());
-	FVector TowerCenter = TowerActor ? TowerActor->GetActorLocation() : FVector(0.0f, 0.0f, 85.0f);
+	FVector TowerCenter = TowerActor ? TowerActor->GetActorLocation() : FVector(0.0f, 0.0f, 90.0f);
 	FVector BlockCenter = Block->GetActorLocation();
 
 	FVector ForwardVec = Block->GetActorForwardVector(); // 7.5cm length (+- 3.75cm)
@@ -388,7 +388,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 	if (!PC) return;
 
 	AActor* TowerActor = UGameplayStatics::GetActorOfClass(GetWorld(), AYenkaTowerManager::StaticClass());
-	FVector TowerCenter = TowerActor ? TowerActor->GetActorLocation() : FVector(0.0f, 0.0f, 85.0f);
+	FVector TowerCenter = TowerActor ? TowerActor->GetActorLocation() : FVector(0.0f, 0.0f, 90.0f);
 	const float ProximityRadius = TOWER_BASE_RADIUS + PROXIMITY_THRESHOLD; // 3.75 + 22.0 = 25.75 cm
 
 	FVector WorldLocation, WorldDirection;
@@ -400,7 +400,9 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 			FVector DragTargetLocation = WorldLocation + (WorldDirection * GrabDistance);
 			VirtualHand->PhysicsHandle->SetTargetLocation(DragTargetLocation);
 			FRotator HandRot = GetHorizontalFacingRotation(DragTargetLocation);
-			FTransform HandTarget(HandRot.Quaternion(), DragTargetLocation);
+			FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset();
+			FVector HandPos = DragTargetLocation - HandRot.RotateVector(LocalOffset);
+			FTransform HandTarget(HandRot.Quaternion(), HandPos);
 			VirtualHand->SetHandPoseMode(EHandPoseMode::GrabPinch);
 			VirtualHand->SetTargetHandTransform(HandTarget, 1.0f);
 			return;
@@ -657,7 +659,9 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 			GrabbedBlock->GetActorRotation()
 		);
 		FRotator HandRot = GetHorizontalFacingRotation(ProtrudingPos);
-		FTransform HandTarget(HandRot.Quaternion(), ProtrudingPos);
+		FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset();
+		FVector HandPos = ProtrudingPos - HandRot.RotateVector(LocalOffset);
+		FTransform HandTarget(HandRot.Quaternion(), HandPos);
 		VirtualHand->SetTargetHandTransform(HandTarget, 1.0f);
 	}
 }
