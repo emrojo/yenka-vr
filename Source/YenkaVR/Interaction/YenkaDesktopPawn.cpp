@@ -179,7 +179,10 @@ void AYenkaDesktopPawn::PerformLongitudinalPush(AYenkaBlock* Block, const FVecto
 
 	Block->SetPhysicsActive(true);
 	Block->BlockMesh->WakeRigidBody();
-	Block->BlockMesh->AddImpulse(PushAxis * 0.015f, NAME_None, true);
+	FVector PushVel = PushAxis * 4.0f;
+	PushVel.Z = 0.0f;
+	Block->BlockMesh->SetPhysicsLinearVelocity(PushVel);
+	Block->BlockMesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
 }
 
 FRotator AYenkaDesktopPawn::GetHorizontalFacingRotation(const FVector& TargetLocation) const
@@ -218,7 +221,20 @@ void AYenkaDesktopPawn::OnMouseY(float Val)
 	else if (bIsPokeModeActive && FMath::Abs(Val) > 0.001f)
 	{
 		// Moving mouse forward (+Val) advances finger towards block and pushes; moving backward (-Val) retracts
-		CurrentPushAdvance = FMath::Clamp(CurrentPushAdvance + (Val * 0.4f), 0.0f, PUSH_STANDBY_SEPARATION + 3.0f);
+		CurrentPushAdvance = FMath::Clamp(CurrentPushAdvance + (Val * 0.25f), 0.0f, PUSH_STANDBY_SEPARATION + 0.5f);
+
+		if (Val > 0.01f && CurrentPushAdvance >= PUSH_STANDBY_SEPARATION)
+		{
+			AYenkaBlock* ActivePushBlock = LockedPushBlock ? LockedPushBlock : HoveredBlock;
+			if (ActivePushBlock && ActivePushBlock->BlockMesh)
+			{
+				ActivePushBlock->BlockMesh->WakeRigidBody();
+				FVector PushVel = PushLongitudinalAxis * (FMath::Clamp(Val * 12.0f, 2.0f, 6.0f));
+				PushVel.Z = 0.0f;
+				ActivePushBlock->BlockMesh->SetPhysicsLinearVelocity(PushVel);
+				ActivePushBlock->BlockMesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+			}
+		}
 	}
 }
 
@@ -458,17 +474,22 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 					// Find block face location in world space
 					FVector CurrentFacePos = GetBlockChosenFacePos(ActivePushBlock, ApproachNormal);
 
-					// Push advance is strictly driven by user mouse movement (CurrentPushAdvance), zero on frame 0
-					float EffectiveAdvance = CurrentPushAdvance;
-					if (bIsPushingBlock)
+					if (bIsPushingBlock && ActivePushBlock->BlockMesh)
 					{
-						EffectiveAdvance = FMath::Max(EffectiveAdvance, PUSH_STANDBY_SEPARATION + 0.5f);
+						CurrentPushAdvance = PUSH_STANDBY_SEPARATION;
+						ActivePushBlock->BlockMesh->WakeRigidBody();
+						FVector PushVel = PushLongitudinalAxis * 4.0f;
+						PushVel.Z = 0.0f;
+						ActivePushBlock->BlockMesh->SetPhysicsLinearVelocity(PushVel);
+						ActivePushBlock->BlockMesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
 					}
+
+					float EffectiveAdvance = CurrentPushAdvance;
 
 					if (EffectiveAdvance < PUSH_STANDBY_SEPARATION)
 					{
 						// In the air (Standby to Contact): Hand moves freely towards the block surface
-						float Clearance = PUSH_STANDBY_SEPARATION - EffectiveAdvance; // 20cm -> 0cm
+						float Clearance = PUSH_STANDBY_SEPARATION - EffectiveAdvance; // 3cm -> 0cm
 						FVector TargetFingertipWorld = CurrentFacePos + (ApproachNormal * Clearance);
 						FVector HandPos = TargetFingertipWorld - HandRot.RotateVector(LocalOffset);
 						VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), HandPos), 0.0f);
@@ -476,22 +497,6 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 					else
 					{
 						// In Contact & Pushing: Fingertip stays EXACTLY ON THE SURFACE (Clearance = 0.0cm)!
-						float DesiredPushDepth = EffectiveAdvance - PUSH_STANDBY_SEPARATION; // 0cm -> 4.5cm
-						CurrentPushDisplacement = FMath::Clamp(DesiredPushDepth, 0.0f, 4.5f);
-
-						if (CurrentPushDisplacement > 0.001f)
-						{
-							// Smoothly move the block forward along its longitudinal axis with collision sweep
-							FVector TargetBlockLoc = PushBlockInitialLocation + (PushLongitudinalAxis * CurrentPushDisplacement);
-							FHitResult MoveHit;
-							ActivePushBlock->BlockMesh->WakeRigidBody();
-							ActivePushBlock->SetActorLocation(TargetBlockLoc, true, &MoveHit, ETeleportType::TeleportPhysics);
-
-							// Apply a complementary physics impulse so Chaos simulates friction on adjacent pieces
-							ActivePushBlock->BlockMesh->AddImpulse(PushLongitudinalAxis * 0.02f, NAME_None, true);
-						}
-
-						// Finger sits EXACTLY at the current outer face of the block (ZERO penetration!)
 						FVector UpdatedFacePos = GetBlockChosenFacePos(ActivePushBlock, ApproachNormal);
 						FVector HandPos = UpdatedFacePos - HandRot.RotateVector(LocalOffset);
 						VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), HandPos), 0.0f);
@@ -570,7 +575,7 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 	AYenkaBlock* TargetPush = LockedPushBlock ? LockedPushBlock : HoveredBlock;
 	if (bIsPokeModeActive && TargetPush)
 	{
-		// In poke mode, clicking directly pushes the block along the locked perpendicular axis
+		// In poke mode, clicking smoothly advances to contact and pushes along the locked axis
 		bIsPushingBlock = true;
 		if (!LockedPushBlock)
 		{
@@ -578,7 +583,7 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 			PushBlockInitialLocation = LockedPushBlock->GetActorLocation();
 			CurrentPushDisplacement = 0.0f;
 		}
-		CurrentPushAdvance = FMath::Max(CurrentPushAdvance, PUSH_STANDBY_SEPARATION + 0.5f);
+		CurrentPushAdvance = PUSH_STANDBY_SEPARATION;
 		return;
 	}
 
@@ -623,6 +628,14 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 
 void AYenkaDesktopPawn::OnPrimaryClickReleased()
 {
+	if (bIsPushingBlock)
+	{
+		AYenkaBlock* ActivePushBlock = LockedPushBlock ? LockedPushBlock : HoveredBlock;
+		if (ActivePushBlock && ActivePushBlock->BlockMesh)
+		{
+			ActivePushBlock->BlockMesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
+		}
+	}
 	bIsPushingBlock = false;
 
 	if (GrabbedBlock)
