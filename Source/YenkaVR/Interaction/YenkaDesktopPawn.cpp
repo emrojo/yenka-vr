@@ -242,7 +242,7 @@ void AYenkaDesktopPawn::MoveRight(float Val)
 	}
 }
 
-FVector AYenkaDesktopPawn::GetBlockStandOffLocation(const AYenkaBlock* Block, const FVector& ViewOrigin, FVector& OutApproachNormal, float FingertipOffset) const
+FVector AYenkaDesktopPawn::GetBlockStandOffLocation(const AYenkaBlock* Block, const FVector& ViewOrigin, FVector& OutApproachNormal, float Clearance, float FingertipOffset) const
 {
 	if (!Block)
 	{
@@ -289,9 +289,8 @@ FVector AYenkaDesktopPawn::GetBlockStandOffLocation(const AYenkaBlock* Block, co
 		OutApproachNormal = -RightVec;
 	}
 
-	// Stand-off position: face position offset by clearance PLUS the length of the extended finger
-	// This ensures that the TIP of the finger sits exactly STANDOFF_CLEARANCE (8mm) in front of the block!
-	return ChosenFacePos + (OutApproachNormal * (STANDOFF_CLEARANCE + FingertipOffset));
+	// Stand-off position: face position offset by Clearance PLUS the length of the extended finger
+	return ChosenFacePos + (OutApproachNormal * (Clearance + FingertipOffset));
 }
 
 void AYenkaDesktopPawn::HandleMouseTrace()
@@ -345,51 +344,67 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 
 					if (bIsPokeModeActive || bIsPushingBlock)
 					{
-						// --- PUSH / POKE MODE: Offset using Index Finger Tip length ---
+						// --- PUSH / POKE MODE ---
 						VirtualHand->SetHandPoseMode(EHandPoseMode::FingerPoke);
 						const float PokeFingertipOffset = VirtualHand->GetExtendedFingertipOffset(); // ~6.3cm
-						FVector StandOffPos = GetBlockStandOffLocation(HoveredBlock, WorldLocation, ApproachNormal, PokeFingertipOffset);
+
+						// Standby position stays clearly separated 8cm outside the tower
+						FVector StandbyPos = GetBlockStandOffLocation(HoveredBlock, WorldLocation, ApproachNormal, PUSH_STANDBY_SEPARATION, PokeFingertipOffset);
 
 						FRotator HandRot = (-ApproachNormal).Rotation();
 						HandRot.Pitch = 0.0f;
 						HandRot.Roll = 0.0f;
 
 						LockedRadialDirection = ApproachNormal;
-						LockedFloorZ = StandOffPos.Z;
+						LockedFloorZ = StandbyPos.Z;
 						bIsLockedPerpendicular = true;
 
-						// Check mouse push depth along the approach normal
-						float t = (FMath::Abs(WorldDirection.Z) > 0.001f) ? (StandOffPos.Z - WorldLocation.Z) / WorldDirection.Z : 50.0f;
+						// Project mouse cursor onto horizontal plane at StandbyPos.Z
+						float t = (FMath::Abs(WorldDirection.Z) > 0.001f) ? (StandbyPos.Z - WorldLocation.Z) / WorldDirection.Z : 50.0f;
 						FVector MousePlanePos = WorldLocation + (WorldDirection * t);
-						float MousePushDepth = FVector::DotProduct(StandOffPos - MousePlanePos, ApproachNormal);
 
-						if (MousePushDepth > 0.0f || bIsPushingBlock)
+						// Mouse advance: positive when moving mouse forward towards tower
+						float MouseAdvance = FVector::DotProduct(StandbyPos - MousePlanePos, ApproachNormal);
+
+						if (bIsPushingBlock)
 						{
-							// User deliberately moves mouse forward into piece: close 8mm clearance and push
-							float PushOffset = FMath::Clamp(MousePushDepth, 0.0f, STANDOFF_CLEARANCE + 2.5f);
-							FVector PushingPos = StandOffPos - (ApproachNormal * PushOffset);
-							VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), PushingPos), 0.0f);
+							// Direct click push: advance index finger to block face and exert push force
+							FVector PushContactPos = StandbyPos - (ApproachNormal * (PUSH_STANDBY_SEPARATION + 1.0f));
+							VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), PushContactPos), 0.0f);
 							PerformLongitudinalPush(HoveredBlock, ApproachNormal);
+						}
+						else if (MouseAdvance > 0.0f)
+						{
+							// User deliberately moves mouse forward: hand smoothly advances from 8cm standby towards block
+							float ClampedAdvance = FMath::Clamp(MouseAdvance, 0.0f, PUSH_STANDBY_SEPARATION + 2.5f);
+							FVector CurrentHandPos = StandbyPos - (ApproachNormal * ClampedAdvance);
+							VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), CurrentHandPos), 0.0f);
+
+							if (ClampedAdvance >= PUSH_STANDBY_SEPARATION)
+							{
+								// Fingertip reached contact: push the block forward
+								PerformLongitudinalPush(HoveredBlock, ApproachNormal);
+							}
 						}
 						else
 						{
-							// Idle stand-off: fingertip sits exactly 8mm in front of block face with zero pressure
-							VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), StandOffPos), 0.0f);
+							// Resting standby: hand stays comfortably separated 8cm away from tower
+							VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), StandbyPos), 0.0f);
 						}
 					}
 					else
 					{
-						// --- GRAB / INSPECTION STAND-BY: Offset using Open Hand finger tip length ---
+						// --- GRAB / INSPECTION STAND-BY ---
 						bIsLockedPerpendicular = false;
 						VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
 						const float OpenFingertipOffset = VirtualHand->GetExtendedFingertipOffset(); // ~6.9cm
-						FVector StandOffPos = GetBlockStandOffLocation(HoveredBlock, WorldLocation, ApproachNormal, OpenFingertipOffset);
+						FVector StandbyPos = GetBlockStandOffLocation(HoveredBlock, WorldLocation, ApproachNormal, GRAB_STANDBY_SEPARATION, OpenFingertipOffset);
 
 						FRotator HandRot = (-ApproachNormal).Rotation();
 						HandRot.Pitch = 0.0f;
 						HandRot.Roll = 0.0f;
 
-						VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), StandOffPos), 0.0f);
+						VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), StandbyPos), 0.0f);
 					}
 				}
 				else if (bInProximity)
