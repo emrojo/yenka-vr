@@ -1,6 +1,8 @@
 #include "YenkaDesktopPawn.h"
 #include "YenkaHandAvatar.h"
 #include "YenkaVR/Physics/YenkaBlock.h"
+#include "YenkaVR/UI/YenkaScenarioMenu.h"
+#include "YenkaVR/Environment/YenkaEnvironmentManager.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Engine/World.h"
@@ -102,6 +104,23 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		PlayerInputComponent->BindKey(EKeys::E, IE_Pressed, this, &AYenkaDesktopPawn::OnPokeKeyPressed);
 		PlayerInputComponent->BindKey(EKeys::E, IE_Released, this, &AYenkaDesktopPawn::OnPokeKeyReleased);
 		PlayerInputComponent->BindKey(EKeys::F, IE_Pressed, this, &AYenkaDesktopPawn::OnTogglePokeMode);
+		PlayerInputComponent->BindKey(EKeys::M, IE_Pressed, this, &AYenkaDesktopPawn::OnToggleScenarioMenu);
+
+		// Scenario Theme Hotkeys (1 to 6)
+		PlayerInputComponent->BindKey(EKeys::One, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario1);
+		PlayerInputComponent->BindKey(EKeys::Two, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario2);
+		PlayerInputComponent->BindKey(EKeys::Three, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario3);
+		PlayerInputComponent->BindKey(EKeys::Four, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario4);
+		PlayerInputComponent->BindKey(EKeys::Five, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario5);
+		PlayerInputComponent->BindKey(EKeys::Six, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario6);
+
+		PlayerInputComponent->BindKey(EKeys::NumPadOne, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario1);
+		PlayerInputComponent->BindKey(EKeys::NumPadTwo, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario2);
+		PlayerInputComponent->BindKey(EKeys::NumPadThree, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario3);
+		PlayerInputComponent->BindKey(EKeys::NumPadFour, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario4);
+		PlayerInputComponent->BindKey(EKeys::NumPadFive, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario5);
+		PlayerInputComponent->BindKey(EKeys::NumPadSix, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario6);
+
 		PlayerInputComponent->BindAxisKey(EKeys::MouseX, this, &AYenkaDesktopPawn::OnMouseX);
 		PlayerInputComponent->BindAxisKey(EKeys::MouseY, this, &AYenkaDesktopPawn::OnMouseY);
 		PlayerInputComponent->BindAxisKey(EKeys::MouseWheelAxis, this, &AYenkaDesktopPawn::OnMouseWheel);
@@ -109,6 +128,32 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		PlayerInputComponent->BindAxisKey(EKeys::S, this, &AYenkaDesktopPawn::MoveForward);
 		PlayerInputComponent->BindAxisKey(EKeys::D, this, &AYenkaDesktopPawn::MoveRight);
 		PlayerInputComponent->BindAxisKey(EKeys::A, this, &AYenkaDesktopPawn::MoveRight);
+	}
+}
+
+void AYenkaDesktopPawn::SelectScenarioTheme(int32 ThemeIndex)
+{
+	AYenkaScenarioMenu* Menu = Cast<AYenkaScenarioMenu>(UGameplayStatics::GetActorOfClass(GetWorld(), AYenkaScenarioMenu::StaticClass()));
+	if (Menu)
+	{
+		Menu->SelectThemeByIndex(ThemeIndex);
+	}
+	else
+	{
+		AYenkaEnvironmentManager* EnvMgr = Cast<AYenkaEnvironmentManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AYenkaEnvironmentManager::StaticClass()));
+		if (EnvMgr)
+		{
+			EnvMgr->ApplyEnvironmentTheme(static_cast<EYenkaEnvironmentTheme>(ThemeIndex));
+		}
+	}
+}
+
+void AYenkaDesktopPawn::OnToggleScenarioMenu()
+{
+	AYenkaScenarioMenu* Menu = Cast<AYenkaScenarioMenu>(UGameplayStatics::GetActorOfClass(GetWorld(), AYenkaScenarioMenu::StaticClass()));
+	if (Menu)
+	{
+		Menu->ToggleMenuVisibility();
 	}
 }
 
@@ -420,6 +465,11 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 		bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, WorldLocation, TraceEnd, ECC_Visibility, QueryParams);
 		if (bHit)
 		{
+			if (AYenkaScenarioMenu* ScenarioMenu = Cast<AYenkaScenarioMenu>(HitResult.GetActor()))
+			{
+				ScenarioMenu->ProcessRayHit(HitResult, false);
+			}
+
 			AYenkaBlock* HitBlock = Cast<AYenkaBlock>(HitResult.GetActor());
 			HoveredBlock = HitBlock;
 			LastHitLocation = HitResult.ImpactPoint;
@@ -588,6 +638,28 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 	bool bIsDoubleClick = (TimeSinceLastClick > 0.03f && TimeSinceLastClick <= DoubleClickMaxInterval);
 	LastPrimaryClickTime = CurrentTime;
 
+	// Check if clicking on the 3D Scenario Menu
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC)
+	{
+		FVector WorldLocation, WorldDirection;
+		if (PC->DeprojectMousePositionToWorld(WorldLocation, WorldDirection))
+		{
+			FHitResult MenuHit;
+			FCollisionQueryParams QueryParams;
+			QueryParams.AddIgnoredActor(this);
+			if (VirtualHand) QueryParams.AddIgnoredActor(VirtualHand);
+			if (GetWorld()->LineTraceSingleByChannel(MenuHit, WorldLocation, WorldLocation + (WorldDirection * 500.0f), ECC_Visibility, QueryParams))
+			{
+				if (AYenkaScenarioMenu* ScenarioMenu = Cast<AYenkaScenarioMenu>(MenuHit.GetActor()))
+				{
+					ScenarioMenu->ProcessRayHit(MenuHit, true);
+					return;
+				}
+			}
+		}
+	}
+
 	AYenkaBlock* TargetPush = LockedPushBlock ? LockedPushBlock : HoveredBlock;
 	if (bIsPokeModeActive && TargetPush)
 	{
@@ -637,7 +709,6 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 			return;
 		}
 
-		APlayerController* PC = Cast<APlayerController>(GetController());
 		if (PC)
 		{
 			FVector WorldLocation, WorldDirection;

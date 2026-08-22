@@ -2,6 +2,8 @@
 #include "YenkaGameState.h"
 #include "YenkaPlayerState.h"
 #include "YenkaVR/Physics/YenkaTowerManager.h"
+#include "YenkaVR/Environment/YenkaEnvironmentManager.h"
+#include "YenkaVR/UI/YenkaScenarioMenu.h"
 #include "YenkaVR/Interaction/YenkaVRPawn.h"
 #include "YenkaVR/Interaction/YenkaDesktopPawn.h"
 #include "IXRTrackingSystem.h"
@@ -34,6 +36,22 @@ void AYenkaGameMode::BeginPlay()
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.Owner = this;
 		GetWorld()->SpawnActor<AYenkaTowerManager>(AYenkaTowerManager::StaticClass(), FVector(0.0f, 0.0f, 90.0f), FRotator::ZeroRotator, SpawnParams);
+	}
+
+	// Auto-spawn Environment Manager if not already placed
+	if (!UGameplayStatics::GetActorOfClass(GetWorld(), AYenkaEnvironmentManager::StaticClass()))
+	{
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = this;
+		GetWorld()->SpawnActor<AYenkaEnvironmentManager>(AYenkaEnvironmentManager::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
+	}
+
+	// Auto-spawn 3D Scenario Selection Menu if not already placed
+	if (!UGameplayStatics::GetActorOfClass(GetWorld(), AYenkaScenarioMenu::StaticClass()))
+	{
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = this;
+		GetWorld()->SpawnActor<AYenkaScenarioMenu>(AYenkaScenarioMenu::StaticClass(), FVector(-32.0f, 0.0f, 115.0f), FRotator::ZeroRotator, SpawnParams);
 	}
 }
 

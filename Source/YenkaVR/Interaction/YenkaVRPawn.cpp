@@ -126,6 +126,9 @@ void AYenkaVRPawn::BeginPlay()
 	}
 }
 
+#include "YenkaVR/UI/YenkaScenarioMenu.h"
+#include "YenkaVR/Environment/YenkaEnvironmentManager.h"
+
 void AYenkaVRPawn::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -178,6 +181,31 @@ void AYenkaVRPawn::Tick(float DeltaTime)
 				|| PC->IsInputKeyDown(EKeys::OculusTouch_Right_Thumbstick_Click)
 				|| PC->IsInputKeyDown(EKeys::Gamepad_RightShoulder)
 				|| PC->IsInputKeyDown(EKeys::Gamepad_RightThumbstick);
+
+			// Raycast from active motion controller to interact with the 3D Scenario Menu
+			UMotionControllerComponent* ActiveMC = RightController ? RightController : LeftController;
+			if (ActiveMC)
+			{
+				FHitResult MenuHit;
+				FVector TraceStart = ActiveMC->GetComponentLocation();
+				FVector TraceEnd = TraceStart + (ActiveMC->GetForwardVector() * 300.0f);
+				FCollisionQueryParams QueryParams;
+				QueryParams.AddIgnoredActor(this);
+				if (LeftHandAvatar) QueryParams.AddIgnoredActor(LeftHandAvatar);
+				if (RightHandAvatar) QueryParams.AddIgnoredActor(RightHandAvatar);
+
+				if (GetWorld()->LineTraceSingleByChannel(MenuHit, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
+				{
+					if (AYenkaScenarioMenu* ScenarioMenu = Cast<AYenkaScenarioMenu>(MenuHit.GetActor()))
+					{
+						const bool bTriggerClick = (RightTrigger > 0.65f) || (LeftTrigger > 0.65f)
+							|| PC->IsInputKeyDown(EKeys::OculusTouch_Right_Trigger_Click)
+							|| PC->IsInputKeyDown(EKeys::OculusTouch_Left_Trigger_Click);
+
+						ScenarioMenu->ProcessRayHit(MenuHit, bTriggerClick);
+					}
+				}
+			}
 
 			// Left hand teleport activation
 			if (LeftY > 0.40f || LeftTrigger > 0.40f || LeftGrip > 0.40f || bLeftBtn)

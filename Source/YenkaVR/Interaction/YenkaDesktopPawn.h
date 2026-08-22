@@ -88,4 +88,12 @@ protected:
 	void OnMouseWheel(float Val);
 	void MoveForward(float Val);
 	void MoveRight(float Val);
+	void OnSelectScenario1() { SelectScenarioTheme(0); }
+	void OnSelectScenario2() { SelectScenarioTheme(1); }
+	void OnSelectScenario3() { SelectScenarioTheme(2); }
+	void OnSelectScenario4() { SelectScenarioTheme(3); }
+	void OnSelectScenario5() { SelectScenarioTheme(4); }
+	void OnSelectScenario6() { SelectScenarioTheme(5); }
+	void SelectScenarioTheme(int32 ThemeIndex);
+	void OnToggleScenarioMenu();
 };
