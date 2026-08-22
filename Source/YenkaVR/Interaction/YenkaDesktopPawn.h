@@ -43,6 +43,9 @@ protected:
 	UPROPERTY()
 	AYenkaBlock* GrabbedBlock;
 
+	UPROPERTY()
+	AYenkaBlock* LockedPushBlock;
+
 	bool bIsOrbitingCamera;
 	bool bIsPokeModeActive;
 	bool bIsPushingBlock;
@@ -71,7 +74,7 @@ protected:
 	void OnTogglePokeMode();
 	void PerformLongitudinalPush(AYenkaBlock* Block, const FVector& DirectionNormal);
 	FRotator GetHorizontalFacingRotation(const FVector& TargetLocation) const;
-	FVector GetBlockStandOffLocation(const AYenkaBlock* Block, const FVector& ViewOrigin, FVector& OutApproachNormal, float Clearance = 8.0f, float FingertipOffset = 6.3f) const;
+	FVector GetBlockStandOffLocation(const AYenkaBlock* Block, const FVector& ViewOrigin, FVector& OutApproachNormal, float Clearance = 8.0f, const FVector& LocalFingertipOffset = FVector(6.0f, -1.5f, 0.0f)) const;
 	void OnMouseX(float Val);
 	void OnMouseY(float Val);
 	void OnMouseWheel(float Val);

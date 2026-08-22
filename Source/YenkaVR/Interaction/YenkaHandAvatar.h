@@ -67,6 +67,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Yenka|Hand")
 	float GetExtendedFingertipOffset() const;
 
+	UFUNCTION(BlueprintPure, Category = "Yenka|Hand")
+	FVector GetExtendedFingertipLocalOffset() const;
+
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Yenka|Hand")
 	EHandPoseMode CurrentPoseMode;
 

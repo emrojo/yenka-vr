@@ -244,6 +244,24 @@ float AYenkaHandAvatar::GetExtendedFingertipOffset() const
 	}
 }
 
+FVector AYenkaHandAvatar::GetExtendedFingertipLocalOffset() const
+{
+	if (CurrentPoseMode == EHandPoseMode::FingerPoke)
+	{
+		// Index finger: Location X = 3.5cm, Y = -1.5cm, half-length = 2.5cm -> tip at (6.0cm, -1.5cm, 0.0cm)
+		return FVector(6.0f, -1.5f, 0.0f);
+	}
+	else if (CurrentPoseMode == EHandPoseMode::GrabPinch)
+	{
+		return FVector(3.5f, 0.0f, 0.0f);
+	}
+	else // OpenHand
+	{
+		// Middle finger: Location X = 3.8cm, Y = -0.4cm, half-length = 2.6cm -> tip at (6.4cm, -0.4cm, 0.0f)
+		return FVector(6.4f, -0.4f, 0.0f);
+	}
+}
+
 void AYenkaHandAvatar::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
