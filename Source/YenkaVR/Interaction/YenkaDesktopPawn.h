@@ -172,6 +172,7 @@ protected:
 	void OnKeyVPressed();
 	void OnKeyQPressed();
 	void OnKeyMPressed();
+	void OnKeyBPressed();
 
 	// --- Custom Gesture System (Creation, Naming, JSON Persistence & Cycling) ---
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Gestures")

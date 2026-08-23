@@ -188,7 +188,7 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		PlayerInputComponent->BindKey(EKeys::Y, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYawPlus);
 		PlayerInputComponent->BindKey(EKeys::H, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYawMinus);
 		PlayerInputComponent->BindKey(EKeys::T, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibPitchPlus);
-		PlayerInputComponent->BindKey(EKeys::B, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibRollMinus);
+		PlayerInputComponent->BindKey(EKeys::B, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyBPressed);
 		PlayerInputComponent->BindKey(EKeys::X, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyXPressed);
 		PlayerInputComponent->BindKey(EKeys::Z, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyZPressed);
 		PlayerInputComponent->BindKey(EKeys::C, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyCPressed);
@@ -200,7 +200,7 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		PlayerInputComponent->BindKey(EKeys::O, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibZMinus);
 		PlayerInputComponent->BindKey(EKeys::R, IE_Pressed, this, &AYenkaDesktopPawn::ResetHandCalibration);
 
-		// Scenario Theme / Finger Selection Hotkeys (1 to 7)
+		// Scenario Theme / Finger Selection Hotkeys (1 to 7, 0)
 		PlayerInputComponent->BindKey(EKeys::One, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario1);
 		PlayerInputComponent->BindKey(EKeys::Two, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario2);
 		PlayerInputComponent->BindKey(EKeys::Three, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario3);
@@ -208,7 +208,7 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		PlayerInputComponent->BindKey(EKeys::Five, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario5);
 		PlayerInputComponent->BindKey(EKeys::Six, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario6);
 		PlayerInputComponent->BindKey(EKeys::Seven, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario7);
-		PlayerInputComponent->BindKey(EKeys::Zero, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario6);
+		PlayerInputComponent->BindKey(EKeys::Zero, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyVPressed);
 
 		PlayerInputComponent->BindAxisKey(EKeys::MouseX, this, &AYenkaDesktopPawn::OnMouseX);
 		PlayerInputComponent->BindAxisKey(EKeys::MouseY, this, &AYenkaDesktopPawn::OnMouseY);
@@ -291,7 +291,7 @@ void AYenkaDesktopPawn::OnPhalanxPitchPlus()
 {
 	if (bIsPhalanxEditMode)
 	{
-		if (SelectedFinger == 6)
+		if (SelectedFinger == 6 || SelectedFinger == 7)
 		{
 			AdjustHandPitch(+5.0f);
 		}
@@ -310,7 +310,7 @@ void AYenkaDesktopPawn::OnPhalanxPitchMinus()
 {
 	if (bIsPhalanxEditMode)
 	{
-		if (SelectedFinger == 6)
+		if (SelectedFinger == 6 || SelectedFinger == 7)
 		{
 			AdjustHandPitch(-5.0f);
 		}
@@ -329,7 +329,7 @@ void AYenkaDesktopPawn::OnPhalanxYawPlus()
 {
 	if (bIsPhalanxEditMode)
 	{
-		if (SelectedFinger == 6)
+		if (SelectedFinger == 6 || SelectedFinger == 7)
 		{
 			AdjustHandYaw(+5.0f);
 		}
@@ -348,7 +348,7 @@ void AYenkaDesktopPawn::OnPhalanxYawMinus()
 {
 	if (bIsPhalanxEditMode)
 	{
-		if (SelectedFinger == 6)
+		if (SelectedFinger == 6 || SelectedFinger == 7)
 		{
 			AdjustHandYaw(-5.0f);
 		}
@@ -367,7 +367,7 @@ void AYenkaDesktopPawn::OnPhalanxRollPlus()
 {
 	if (bIsPhalanxEditMode)
 	{
-		if (SelectedFinger == 6)
+		if (SelectedFinger == 6 || SelectedFinger == 7)
 		{
 			AdjustHandRoll(+5.0f);
 		}
@@ -386,7 +386,7 @@ void AYenkaDesktopPawn::OnPhalanxRollMinus()
 {
 	if (bIsPhalanxEditMode)
 	{
-		if (SelectedFinger == 6)
+		if (SelectedFinger == 6 || SelectedFinger == 7)
 		{
 			AdjustHandRoll(-5.0f);
 		}
@@ -405,7 +405,7 @@ void AYenkaDesktopPawn::OnResetSelectedPhalanx()
 {
 	if (bIsPhalanxEditMode)
 	{
-		if (SelectedFinger == 6)
+		if (SelectedFinger == 6 || SelectedFinger == 7)
 		{
 			PokeHandRotationOffset = FRotator(0.0f, -90.0f, 0.0f);
 			GrabHandRotationOffset = FRotator(0.0f, -90.0f, 0.0f);
@@ -768,13 +768,23 @@ void AYenkaDesktopPawn::SelectScenarioTheme(int32 ThemeIndex)
 {
 	if (bIsPhalanxEditMode)
 	{
-		// In Phalanx Edit Mode, keys 1 to 5 select fingers!
+		// In Phalanx Edit Mode, keys 1 to 5 select fingers, 6 selects wrist, 7 selects forearm, 0 selects all!
 		if (ThemeIndex >= 0 && ThemeIndex <= 4)
 		{
 			SelectedFinger = ThemeIndex + 1; // 1: Thumb, 2: Index, 3: Middle, 4: Ring, 5: Pinky
 			return;
 		}
-		else if (ThemeIndex == 5)
+		else if (ThemeIndex == 5) // Key 6
+		{
+			SelectedFinger = 6; // Wrist Rotation (Muñeca)
+			return;
+		}
+		else if (ThemeIndex == 6) // Key 7
+		{
+			SelectedFinger = 7; // Forearm Rotation (Antebrazo / Eje Z Profundidad)
+			return;
+		}
+		else if (ThemeIndex >= 7) // Key 0 or other
 		{
 			SelectedFinger = 0; // All fingers
 			return;
@@ -818,6 +828,22 @@ void AYenkaDesktopPawn::OnKeyMPressed()
 	else
 	{
 		OnToggleScenarioMenu();
+	}
+}
+
+void AYenkaDesktopPawn::OnKeyBPressed()
+{
+	if (bIsPhalanxEditMode)
+	{
+		SelectedFinger = 7; // Select Antebrazo (Forearm / Eje Z Profundidad)
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(9993, 2.5f, FColor(255, 200, 50), TEXT("💪 SELECCIONADO: ANTEBRAZO (Rotación en Eje Z de Profundidad)"));
+		}
+	}
+	else
+	{
+		OnCalibRollMinus();
 	}
 }
 
@@ -982,17 +1008,26 @@ void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
 
 		if (bIsPhalanxEditMode && VirtualHand)
 		{
-			// --- PHALANX & WRIST EDIT MODE HUD ---
-			static const TCHAR* FingerNames[] = { TEXT("Todos los Dedos"), TEXT("Pulgar"), TEXT("Índice"), TEXT("Medio"), TEXT("Anular"), TEXT("Meñique"), TEXT("🖐️ MUÑECA (Rotación de Muñeca)") };
+			// --- PHALANX, WRIST & FOREARM EDIT MODE HUD ---
+			static const TCHAR* FingerNames[] = {
+				TEXT("Todos los Dedos"),
+				TEXT("Pulgar"),
+				TEXT("Índice"),
+				TEXT("Medio"),
+				TEXT("Anular"),
+				TEXT("Meñique"),
+				TEXT("🖐️ MUÑECA (Rotación de Muñeca)"),
+				TEXT("💪 ANTEBRAZO (Rotación en Eje Z / Profundidad)")
+			};
 			static const TCHAR* PhalanxNames[] = { TEXT("Todas las Falanges"), TEXT("Proximal (Base)"), TEXT("Media (Centro)"), TEXT("Distal (Punta)") };
 
-			const TCHAR* ActiveFingerName = (SelectedFinger >= 0 && SelectedFinger <= 6) ? FingerNames[SelectedFinger] : TEXT("Desconocido");
-			const TCHAR* ActivePhalanxName = (SelectedFinger == 6) ? TEXT("Orientación Espacial") : ((SelectedPhalanx >= 0 && SelectedPhalanx <= 3) ? PhalanxNames[SelectedPhalanx] : TEXT("Desconocido"));
+			const TCHAR* ActiveFingerName = (SelectedFinger >= 0 && SelectedFinger <= 7) ? FingerNames[SelectedFinger] : TEXT("Desconocido");
+			const TCHAR* ActivePhalanxName = (SelectedFinger >= 6) ? TEXT("Orientación Espacial") : ((SelectedPhalanx >= 0 && SelectedPhalanx <= 3) ? PhalanxNames[SelectedPhalanx] : TEXT("Desconocido"));
 
 			if (SelectedFinger == 6)
 			{
 				FString Line1 = FString::Printf(TEXT("=== 🖐️ MODO EDICIÓN: ROTACIÓN DE MUÑECA [Pulsa F4 o K para Salir] ==="));
-				FString Line2 = FString::Printf(TEXT("🎯 SELECCIÓN: [ %s ] (Teclas: 1-5 Dedos, 6: Muñeca, 0: Todos)"), ActiveFingerName);
+				FString Line2 = FString::Printf(TEXT("🎯 SELECCIÓN: [ %s ] (Teclas: 1-5 Dedos | 6 o M: Muñeca | 7 o B: Antebrazo | 0: Todos)"), ActiveFingerName);
 				FString Line3 = FString::Printf(TEXT("⌨️ 3 EJES MUÑECA: [ Arriba/Abajo: Pitch +-5° | Izq/Der: Yaw +-5° | Q/E: Roll +-5° | Espacio: Reset Muñeca | F5: Guardar ]"));
 				FString Line4 = FString::Printf(TEXT("📊 ROTACIÓN ACTUAL DE MUÑECA: [ Pitch: %+.0f° | Yaw: %+.0f° | Roll: %+.0f° ]"),
 					PokeHandRotationOffset.Pitch, PokeHandRotationOffset.Yaw, PokeHandRotationOffset.Roll);
@@ -1009,6 +1044,26 @@ void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
 				GEngine->AddOnScreenDebugMessage(1006, 0.20f, FColor(255, 160, 50), Line6);
 				return;
 			}
+			else if (SelectedFinger == 7)
+			{
+				FString Line1 = FString::Printf(TEXT("=== 💪 MODO EDICIÓN: ROTACIÓN DE ANTEBRAZO (EJE Z DE PROFUNDIDAD) [Pulsa F4 para Salir] ==="));
+				FString Line2 = FString::Printf(TEXT("🎯 SELECCIÓN: [ %s ] (Teclas: 1-5 Dedos | 6 o M: Muñeca | 7 o B: Antebrazo | 0: Todos)"), ActiveFingerName);
+				FString Line3 = FString::Printf(TEXT("⌨️ 3 EJES ANTEBRAZO: [ Izq/Der: Giro Eje Z +-5° | Q/E: Torsión Profundidad +-5° | Arriba/Abajo: Pitch +-5° | Espacio: Reset ]"));
+				FString Line4 = FString::Printf(TEXT("📊 ROTACIÓN ANTEBRAZO / MANO: [ Eje Z (Yaw): %+.0f° | Profundidad (Roll): %+.0f° | Inclinación (Pitch): %+.0f° ]"),
+					PokeHandRotationOffset.Yaw, PokeHandRotationOffset.Roll, PokeHandRotationOffset.Pitch);
+				FString Line5 = FString::Printf(TEXT("📊 POSICIÓN ESPACIAL: [ X: %+.1f cm | Y: %+.1f cm | Z: %+.1f cm ]"),
+					PokeHandLocationOffset.X, PokeHandLocationOffset.Y, PokeHandLocationOffset.Z);
+				FString Line6 = FString::Printf(TEXT("🏷️ GESTO: [ %s ] | 📂 GUARDADOS (%d): [ y ] para Ciclar | F5: Guardar"),
+					*VirtualHand->GetDetectedGestureDescription(), CustomGesturesList.Num());
+
+				GEngine->AddOnScreenDebugMessage(1001, 0.20f, FColor(255, 100, 255), Line1);
+				GEngine->AddOnScreenDebugMessage(1002, 0.20f, FColor(255, 200, 50), Line2);
+				GEngine->AddOnScreenDebugMessage(1003, 0.20f, FColor(50, 255, 255), Line3);
+				GEngine->AddOnScreenDebugMessage(1004, 0.20f, FColor(120, 255, 120), Line4);
+				GEngine->AddOnScreenDebugMessage(1005, 0.20f, FColor(120, 255, 180), Line5);
+				GEngine->AddOnScreenDebugMessage(1006, 0.20f, FColor(255, 160, 50), Line6);
+				return;
+			}
 
 			FFingerPhalanges Thumb = VirtualHand->ThumbPhalanges;
 			FFingerPhalanges Index = VirtualHand->IndexPhalanges;
@@ -1017,7 +1072,7 @@ void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
 			FFingerPhalanges Pinky = VirtualHand->PinkyPhalanges;
 
 			FString Line1 = FString::Printf(TEXT("=== 🖐️ MODO EDICIÓN DE FALANGES (3 EJES: PITCH, YAW, ROLL) [Pulsa F4 o K para Salir] ==="));
-			FString Line2 = FString::Printf(TEXT("🎯 SELECCIÓN: [ DEDO (%d): %s | FALANGE (%d): %s ]  (Teclas: 1-5 Dedo, 6: Muñeca, 0: Todos | Z/X/C/V: Falange)"),
+			FString Line2 = FString::Printf(TEXT("🎯 SELECCIÓN: [ DEDO (%d): %s | FALANGE (%d): %s ]  (Teclas: 1-5 Dedo, 6/M: Muñeca, 7/B: Antebrazo, 0: Todos | Z/X/C/V: Falange)"),
 				SelectedFinger, ActiveFingerName, SelectedPhalanx, ActivePhalanxName);
 			FString Line3 = FString::Printf(TEXT("⌨️ 3 EJES: [ Arriba/Abajo: Pitch | Izq/Der: Yaw | Q/E: Roll | Espacio: Reset | F5 o ENTER: Guardar Gesto ]"));
 			FString Line4 = FString::Printf(TEXT("📊 PULGAR: [P:%+.0f° Y:%+.0f° R:%+.0f°, P:%+.0f° Y:%+.0f° R:%+.0f°, P:%+.0f° Y:%+.0f° R:%+.0f°] | ÍNDICE: [P:%+.0f° Y:%+.0f° R:%+.0f°, P:%+.0f° Y:%+.0f° R:%+.0f°, P:%+.0f° Y:%+.0f° R:%+.0f°]"),
