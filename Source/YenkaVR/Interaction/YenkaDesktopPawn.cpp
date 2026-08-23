@@ -59,6 +59,11 @@ AYenkaDesktopPawn::AYenkaDesktopPawn()
 	bIsPhalanxEditMode = false;
 	SelectedFinger = 2;  // Index Finger by default
 	SelectedPhalanx = 1; // Proximal Phalanx by default
+
+	VerticalGrabLocationOffset = FVector(-1.0f, 4.0f, -1.5f);
+	VerticalGrabRotationOffset = FRotator(75.0f, 180.0f, 180.0f);
+	CraneGrabPhase = ECraneGrabPhase::Inactive;
+	CraneGrabPhaseTime = 0.0f;
 }
 
 #include "YenkaVR/Physics/YenkaTowerManager.h"
@@ -131,6 +136,16 @@ void AYenkaDesktopPawn::BeginPlay()
 	{
 		PokeHandLocationOffset = CustomTransformsList[PointPosIdx].LocationOffset;
 		PokeHandRotationOffset = CustomTransformsList[PointPosIdx].RotationOffset;
+	}
+
+	int32 VerticalGrabPosIdx = CustomTransformsList.IndexOfByPredicate([](const FCustomHandTransform& T) {
+		return T.TransformName.Equals(TEXT("VerticalGrab-1"), ESearchCase::IgnoreCase) ||
+		       T.TransformName.Equals(TEXT("VerticalGrab"), ESearchCase::IgnoreCase);
+	});
+	if (VerticalGrabPosIdx != INDEX_NONE)
+	{
+		VerticalGrabLocationOffset = CustomTransformsList[VerticalGrabPosIdx].LocationOffset;
+		VerticalGrabRotationOffset = CustomTransformsList[VerticalGrabPosIdx].RotationOffset;
 	}
 }
 
@@ -256,11 +271,22 @@ void AYenkaDesktopPawn::CheckForLiveJsonModifications()
 				PokeHandRotationOffset = CustomTransformsList[PointPosIdx].RotationOffset;
 			}
 
+			int32 VerticalGrabPosIdx = CustomTransformsList.IndexOfByPredicate([](const FCustomHandTransform& T) {
+				return T.TransformName.Equals(TEXT("VerticalGrab-1"), ESearchCase::IgnoreCase) ||
+				       T.TransformName.Equals(TEXT("VerticalGrab"), ESearchCase::IgnoreCase);
+			});
+			if (VerticalGrabPosIdx != INDEX_NONE)
+			{
+				VerticalGrabLocationOffset = CustomTransformsList[VerticalGrabPosIdx].LocationOffset;
+				VerticalGrabRotationOffset = CustomTransformsList[VerticalGrabPosIdx].RotationOffset;
+			}
+
 			if (GEngine)
 			{
 				GEngine->AddOnScreenDebugMessage(9994, 4.0f, FColor::Green,
-					FString::Printf(TEXT("⚡ AUTO-RECARGADO CustomTransforms.json [Grab: Y=%.0f° P=%.0f° R=%.0f°]"),
-						GrabHandRotationOffset.Yaw, GrabHandRotationOffset.Pitch, GrabHandRotationOffset.Roll));
+					FString::Printf(TEXT("⚡ AUTO-RECARGADO CustomTransforms.json [Grab: Y=%.0f° P=%.0f° R=%.0f° | VertGrab: Y=%.0f° P=%.0f° R=%.0f°]"),
+						GrabHandRotationOffset.Yaw, GrabHandRotationOffset.Pitch, GrabHandRotationOffset.Roll,
+						VerticalGrabRotationOffset.Yaw, VerticalGrabRotationOffset.Pitch, VerticalGrabRotationOffset.Roll));
 			}
 		}
 	}
@@ -2445,9 +2471,12 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 	FVector WorldLocation, WorldDirection;
 	if (PC->DeprojectMousePositionToWorld(WorldLocation, WorldDirection))
 	{
-		// 1. If currently in Crane Mode (Vertical Grab Drag)
-		if (bIsCraneGrabbing && GrabbedBlock && VirtualHand && VirtualHand->PhysicsHandle)
+		// 1. If currently executing Crane Grab sequence (Descending, Grasping, Ascending, Carrying)
+		if (CraneGrabPhase != ECraneGrabPhase::Inactive && GrabbedBlock && VirtualHand)
 		{
+			float DeltaTime = GetWorld() ? GetWorld()->GetDeltaSeconds() : 0.016f;
+			CraneGrabPhaseTime += DeltaTime;
+
 			// Query highest block on the tower
 			TArray<AActor*> AllBlocks;
 			UGameplayStatics::GetAllActorsOfClass(GetWorld(), AYenkaBlock::StaticClass(), AllBlocks);
@@ -2460,40 +2489,133 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 				}
 			}
 
-			// Raycast mouse against a reference horizontal plane to determine XY position
-			float RefZ = CraneCurrentZ;
-			FVector PlaneIntersection = CraneInitialGrabPos;
-			if (FMath::Abs(WorldDirection.Z) > 0.001f)
+			if (CraneGrabPhase == ECraneGrabPhase::Descending)
 			{
-				float T = (RefZ - WorldLocation.Z) / WorldDirection.Z;
-				if (T > 0.0f)
+				// Step 1: Hand in OpenHand descends smoothly to touch the piece top surface
+				const float DescendDuration = 0.20f;
+				float Alpha = FMath::Clamp(CraneGrabPhaseTime / DescendDuration, 0.0f, 1.0f);
+				float SmoothAlpha = FMath::SmoothStep(0.0f, 1.0f, Alpha);
+
+				FVector CurrentHandTargetPos = FMath::Lerp(CraneDescendStartPos, CraneBlockTargetPos, SmoothAlpha);
+				VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
+
+				FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
+				FRotator BaseRot = GetHorizontalFacingRotation(CurrentHandTargetPos);
+				BaseRot.Pitch = 0.0f;
+				BaseRot.Roll = 0.0f;
+				FQuat HandQuat = BaseRot.Quaternion() * GrabHandRotationOffset.Quaternion();
+				FVector HandPos = CurrentHandTargetPos - HandQuat.RotateVector(LocalOffset);
+				VirtualHand->SetTargetHandTransformWithCollision(FTransform(HandQuat, HandPos), 0.0f, LockedFloorZ, GrabbedBlock);
+
+				if (Alpha >= 1.0f)
 				{
-					PlaneIntersection = WorldLocation + (WorldDirection * T);
+					CraneGrabPhase = ECraneGrabPhase::Grasping;
+					CraneGrabPhaseTime = 0.0f;
 				}
+				return;
 			}
+			else if (CraneGrabPhase == ECraneGrabPhase::Grasping)
+			{
+				// Step 2: Hand on the block closes into VerticalGrab using VerticalGrab-1 transform
+				VirtualHand->SetHandPoseMode(EHandPoseMode::VerticalGrab);
 
-			// Calculate smooth elevation based on continuous S-curve (5cm over table, 6cm over tower)
-			float TargetZ = CalculateCraneTargetZ(PlaneIntersection, HighestBlockZ);
+				FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + VerticalGrabLocationOffset;
+				FRotator VerticalHandRot = VerticalGrabRotationOffset;
+				VerticalHandRot.Yaw += CraneUserYaw;
 
-			// Smoothly interpolate current Z towards TargetZ for organic fluid movement
-			float DeltaTime = GetWorld() ? GetWorld()->GetDeltaSeconds() : 0.016f;
-			CraneCurrentZ = FMath::FInterpTo(CraneCurrentZ, TargetZ, DeltaTime, 14.0f);
+				FVector HandPos = CraneBlockTargetPos + FVector(0.0f, 0.0f, 0.5f) - VerticalHandRot.RotateVector(LocalOffset);
+				VirtualHand->SetTargetHandTransformWithCollision(FTransform(VerticalHandRot.Quaternion(), HandPos), 1.0f, LockedFloorZ, GrabbedBlock);
 
-			FVector TargetLocation = PlaneIntersection;
-			TargetLocation.Z = CraneCurrentZ;
+				const float GraspDuration = 0.15f;
+				if (CraneGrabPhaseTime >= GraspDuration)
+				{
+					if (VirtualHand->PhysicsHandle && GrabbedBlock->BlockMesh)
+					{
+						GrabbedBlock->BlockMesh->WakeRigidBody();
+						VirtualHand->PhysicsHandle->GrabComponentAtLocationWithRotation(
+							GrabbedBlock->BlockMesh,
+							NAME_None,
+							CraneBlockTargetPos,
+							FRotator(0.0f, CraneUserYaw, 0.0f)
+						);
+					}
+					CraneGrabPhase = ECraneGrabPhase::Ascending;
+					CraneGrabPhaseTime = 0.0f;
+				}
+				return;
+			}
+			else if (CraneGrabPhase == ECraneGrabPhase::Ascending)
+			{
+				// Step 3: Hand and grabbed piece lift smoothly together up to crane elevation height
+				const float AscendDuration = 0.25f;
+				float Alpha = FMath::Clamp(CraneGrabPhaseTime / AscendDuration, 0.0f, 1.0f);
+				float SmoothAlpha = FMath::SmoothStep(0.0f, 1.0f, Alpha);
 
-			// Target horizontal rotation is driven by CraneUserYaw (adjusted via mouse wheel)
-			CraneTargetRotation = FRotator(0.0f, CraneUserYaw, 0.0f);
+				float CurrentZ = FMath::Lerp(CraneBlockTargetPos.Z, CraneTargetElevatedZ, SmoothAlpha);
+				CraneCurrentZ = CurrentZ;
 
-			VirtualHand->PhysicsHandle->SetTargetLocationAndRotation(TargetLocation, CraneTargetRotation);
+				FVector TargetLocation = CraneBlockTargetPos;
+				TargetLocation.Z = CurrentZ;
+				CraneTargetRotation = FRotator(0.0f, CraneUserYaw, 0.0f);
 
-			// Maintain vertical claw gesture centered over the block
-			VirtualHand->SetHandPoseMode(EHandPoseMode::VerticalGrab);
-			FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
-			FRotator VerticalHandRot = FRotator(90.0f, CraneTargetRotation.Yaw, 0.0f);
-			FVector HandPos = TargetLocation + FVector(0.0f, 0.0f, 3.5f) - VerticalHandRot.RotateVector(LocalOffset);
-			VirtualHand->SetTargetHandTransformWithCollision(FTransform(VerticalHandRot.Quaternion(), HandPos), 1.0f, LockedFloorZ, GrabbedBlock);
-			return;
+				if (VirtualHand->PhysicsHandle)
+				{
+					VirtualHand->PhysicsHandle->SetTargetLocationAndRotation(TargetLocation, CraneTargetRotation);
+				}
+
+				VirtualHand->SetHandPoseMode(EHandPoseMode::VerticalGrab);
+				FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + VerticalGrabLocationOffset;
+				FRotator VerticalHandRot = VerticalGrabRotationOffset;
+				VerticalHandRot.Yaw += CraneUserYaw;
+
+				FVector HandPos = TargetLocation + FVector(0.0f, 0.0f, 0.5f) - VerticalHandRot.RotateVector(LocalOffset);
+				VirtualHand->SetTargetHandTransformWithCollision(FTransform(VerticalHandRot.Quaternion(), HandPos), 1.0f, LockedFloorZ, GrabbedBlock);
+
+				if (Alpha >= 1.0f)
+				{
+					CraneGrabPhase = ECraneGrabPhase::Carrying;
+					bIsCraneGrabbing = true;
+				}
+				return;
+			}
+			else if (CraneGrabPhase == ECraneGrabPhase::Carrying)
+			{
+				// Step 4: Full crane drag in XY with S-curve elevation and mouse wheel Yaw rotation
+				float RefZ = CraneCurrentZ;
+				FVector PlaneIntersection = CraneInitialGrabPos;
+				if (FMath::Abs(WorldDirection.Z) > 0.001f)
+				{
+					float T = (RefZ - WorldLocation.Z) / WorldDirection.Z;
+					if (T > 0.0f)
+					{
+						PlaneIntersection = WorldLocation + (WorldDirection * T);
+					}
+				}
+
+				// Calculate smooth elevation based on continuous S-curve (5cm over table, 6cm over tower)
+				float TargetZ = CalculateCraneTargetZ(PlaneIntersection, HighestBlockZ);
+
+				// Smoothly interpolate current Z towards TargetZ for organic fluid movement
+				CraneCurrentZ = FMath::FInterpTo(CraneCurrentZ, TargetZ, DeltaTime, 14.0f);
+
+				FVector TargetLocation = PlaneIntersection;
+				TargetLocation.Z = CraneCurrentZ;
+
+				// Target horizontal rotation is driven by CraneUserYaw (adjusted via mouse wheel)
+				CraneTargetRotation = FRotator(0.0f, CraneUserYaw, 0.0f);
+
+				VirtualHand->PhysicsHandle->SetTargetLocationAndRotation(TargetLocation, CraneTargetRotation);
+
+				// Maintain vertical claw gesture with VerticalGrab-1 transform centered over the block
+				VirtualHand->SetHandPoseMode(EHandPoseMode::VerticalGrab);
+				FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + VerticalGrabLocationOffset;
+				FRotator VerticalHandRot = VerticalGrabRotationOffset;
+				VerticalHandRot.Yaw += CraneUserYaw;
+
+				FVector HandPos = TargetLocation + FVector(0.0f, 0.0f, 0.5f) - VerticalHandRot.RotateVector(LocalOffset);
+				VirtualHand->SetTargetHandTransformWithCollision(FTransform(VerticalHandRot.Quaternion(), HandPos), 1.0f, LockedFloorZ, GrabbedBlock);
+				return;
+			}
 		}
 
 		// 2. If currently dragging a block with Physics Handle (Pull Mode)
@@ -2611,35 +2733,18 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 
 				if (FaceType == EBlockFaceType::TopFace)
 				{
-					if (IsBlockTopFaceAccessible(HoveredBlock, InteractionConfig.VerticalGrabMinClearance))
-					{
-						// ==========================================
-						// CONTEXT 1: VERTICAL GRAB (Cara superior accesible)
-						// ==========================================
-						bIsLockedPerpendicular = false;
-						VirtualHand->SetHandPoseMode(EHandPoseMode::VerticalGrab);
+					// Default gesture is always OpenHand while hovering
+					bIsLockedPerpendicular = false;
+					VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
 
-						FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
-						FVector StandbyPos = HitResult.ImpactPoint + FVector(0.0f, 0.0f, 2.5f);
-						FRotator VerticalHandRot = FRotator(90.0f, HoveredBlock->GetActorRotation().Yaw, 0.0f);
-						FVector HandPos = StandbyPos - VerticalHandRot.RotateVector(LocalOffset);
-						VirtualHand->SetTargetHandTransformWithCollision(FTransform(VerticalHandRot.Quaternion(), HandPos), 0.0f, LockedFloorZ, HoveredBlock);
-					}
-					else
-					{
-						// Cara superior bloqueada sin espacio -> OpenHand
-						bIsLockedPerpendicular = false;
-						VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
+					FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
+					FRotator BaseRot = GetHorizontalFacingRotation(HitResult.ImpactPoint);
+					BaseRot.Pitch = 0.0f;
+					BaseRot.Roll = 0.0f;
+					FQuat HandQuat = BaseRot.Quaternion() * GrabHandRotationOffset.Quaternion();
 
-						FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
-						FRotator BaseRot = GetHorizontalFacingRotation(HitResult.ImpactPoint);
-						BaseRot.Pitch = 0.0f;
-						BaseRot.Roll = 0.0f;
-						FQuat HandQuat = BaseRot.Quaternion() * GrabHandRotationOffset.Quaternion();
-
-						FVector SafeHandPos = HitResult.ImpactPoint - HandQuat.RotateVector(LocalOffset);
-						VirtualHand->SetTargetHandTransformWithCollision(FTransform(HandQuat, SafeHandPos), 0.0f, LockedFloorZ, HoveredBlock);
-					}
+					FVector SafeHandPos = HitResult.ImpactPoint + FVector(0.0f, 0.0f, 3.0f) - HandQuat.RotateVector(LocalOffset);
+					VirtualHand->SetTargetHandTransformWithCollision(FTransform(HandQuat, SafeHandPos), 0.0f, LockedFloorZ, HoveredBlock);
 				}
 				else if (FaceType == EBlockFaceType::LargeSideFace && bIsProtruding)
 				{
@@ -2786,9 +2891,8 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 		if (FaceType == EBlockFaceType::TopFace && IsBlockTopFaceAccessible(HoveredBlock, InteractionConfig.VerticalGrabMinClearance))
 		{
 			// ==========================================
-			// 1. INITIATE CRANE / VERTICAL GRAB
+			// 1. INITIATE CRANE / VERTICAL GRAB SEQUENCE
 			// ==========================================
-			bIsCraneGrabbing = true;
 			GrabbedBlock = HoveredBlock;
 			if (GrabbedBlock->BlockMesh)
 			{
@@ -2796,7 +2900,6 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 			}
 			CraneInitialGrabPos = LastHitLocation;
 
-			// Initialize crane elevation smoothly based on initial grab location
 			TArray<AActor*> AllBlocks;
 			UGameplayStatics::GetAllActorsOfClass(GetWorld(), AYenkaBlock::StaticClass(), AllBlocks);
 			float HighestBlockZ = 90.0f;
@@ -2807,17 +2910,18 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 					HighestBlockZ = FMath::Max(HighestBlockZ, Actor->GetActorLocation().Z);
 				}
 			}
-			CraneCurrentZ = CalculateCraneTargetZ(LastHitLocation, HighestBlockZ);
+			CraneTargetElevatedZ = CalculateCraneTargetZ(LastHitLocation, HighestBlockZ);
+			CraneCurrentZ = CraneTargetElevatedZ;
 			CraneUserYaw = GrabbedBlock->GetActorRotation().Yaw;
 			CraneTargetRotation = FRotator(0.0f, CraneUserYaw, 0.0f);
 
-			VirtualHand->SetHandPoseMode(EHandPoseMode::VerticalGrab);
-			VirtualHand->PhysicsHandle->GrabComponentAtLocationWithRotation(
-				GrabbedBlock->BlockMesh,
-				NAME_None,
-				LastHitLocation,
-				CraneTargetRotation
-			);
+			CraneDescendStartPos = VirtualHand ? VirtualHand->GetActorLocation() : (LastHitLocation + FVector(0.0f, 0.0f, 5.0f));
+			CraneBlockTargetPos = LastHitLocation;
+			CraneGrabPhase = ECraneGrabPhase::Descending;
+			CraneGrabPhaseTime = 0.0f;
+			bIsCraneGrabbing = false;
+
+			VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
 			return;
 		}
 		else if (FaceType == EBlockFaceType::LargeSideFace && bIsProtruding)
@@ -2902,7 +3006,7 @@ void AYenkaDesktopPawn::OnPrimaryClickReleased()
 {
 	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 
-	if (bIsCraneGrabbing)
+	if (bIsCraneGrabbing || CraneGrabPhase != ECraneGrabPhase::Inactive)
 	{
 		if (VirtualHand && VirtualHand->PhysicsHandle)
 		{
@@ -2913,7 +3017,16 @@ void AYenkaDesktopPawn::OnPrimaryClickReleased()
 			GrabbedBlock->BlockMesh->WakeRigidBody();
 		}
 		bIsCraneGrabbing = false;
+		CraneGrabPhase = ECraneGrabPhase::Inactive;
+		CraneGrabPhaseTime = 0.0f;
 		GrabbedBlock = nullptr;
+		if (VirtualHand)
+		{
+			VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
+			FRotator HandRot = GetHorizontalFacingRotation(LastHitLocation);
+			FTransform HandTarget(HandRot.Quaternion(), LastHitLocation);
+			VirtualHand->SetTargetHandTransformWithCollision(HandTarget, 0.0f, LockedFloorZ, nullptr);
+		}
 		return;
 	}
 

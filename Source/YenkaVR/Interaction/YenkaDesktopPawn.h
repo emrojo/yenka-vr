@@ -37,6 +37,16 @@ struct FYenkaInteractionConfig
 };
 
 UENUM(BlueprintType)
+enum class ECraneGrabPhase : uint8
+{
+	Inactive,
+	Descending,   // Mano en OpenHand bajando hasta tocar la cara superior de la pieza
+	Grasping,     // Mano sobre la pieza cerrándose y transicionando a VerticalGrab
+	Ascending,    // Mano y pieza subiendo juntas a la cota de elevación de grúa
+	Carrying      // Transporte libre en grúa mientras se mantenga el botón izquierdo
+};
+
+UENUM(BlueprintType)
 enum class EBlockFaceType : uint8
 {
 	None,
@@ -104,6 +114,21 @@ protected:
 	bool bIsCraneGrabbing;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Crane")
+	ECraneGrabPhase CraneGrabPhase;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Crane")
+	float CraneGrabPhaseTime;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Crane")
+	FVector CraneDescendStartPos;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Crane")
+	FVector CraneBlockTargetPos;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Crane")
+	float CraneTargetElevatedZ;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Crane")
 	float CraneCurrentZ;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Crane")
@@ -114,6 +139,12 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Crane")
 	FRotator CraneTargetRotation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Hand Calibration")
+	FVector VerticalGrabLocationOffset;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Hand Calibration")
+	FRotator VerticalGrabRotationOffset;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Config")
 	FYenkaInteractionConfig InteractionConfig;
