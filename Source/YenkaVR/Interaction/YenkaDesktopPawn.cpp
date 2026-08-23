@@ -727,6 +727,7 @@ void AYenkaDesktopPawn::LoadCustomGestureByName(const FString& Name)
 
 void AYenkaDesktopPawn::CycleNextCustomGesture()
 {
+	LoadCustomGesturesFromDisk();
 	if (CustomGesturesList.Num() == 0)
 	{
 		if (GEngine)
@@ -741,6 +742,7 @@ void AYenkaDesktopPawn::CycleNextCustomGesture()
 
 void AYenkaDesktopPawn::CyclePrevCustomGesture()
 {
+	LoadCustomGesturesFromDisk();
 	if (CustomGesturesList.Num() == 0)
 	{
 		if (GEngine)
@@ -751,6 +753,20 @@ void AYenkaDesktopPawn::CyclePrevCustomGesture()
 	}
 	int32 PrevIdx = (ActiveCustomGestureIndex - 1 + CustomGesturesList.Num()) % CustomGesturesList.Num();
 	LoadCustomGestureByIndex(PrevIdx);
+}
+
+void AYenkaDesktopPawn::ReloadHandGestures()
+{
+	LoadCustomGesturesFromDisk();
+	if (ActiveCustomGestureIndex >= 0 && CustomGesturesList.IsValidIndex(ActiveCustomGestureIndex))
+	{
+		LoadCustomGestureByIndex(ActiveCustomGestureIndex);
+	}
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(9992, 3.5f, FColor::Green,
+			FString::Printf(TEXT("🔄 GESTOS RECARGADOS DEL JSON (Total: %d)"), CustomGesturesList.Num()));
+	}
 }
 
 void AYenkaDesktopPawn::DeleteHandGesture(const FString& Name)
@@ -942,28 +958,37 @@ void AYenkaDesktopPawn::LoadCustomTransformByName(const FString& Name)
 
 void AYenkaDesktopPawn::CycleNextCustomTransform()
 {
-	if (CustomTransformsList.Num() == 0)
-	{
-		LoadCustomTransformsFromDisk();
-		if (CustomTransformsList.Num() == 0) return;
-	}
+	LoadCustomTransformsFromDisk();
+	if (CustomTransformsList.Num() == 0) return;
 	int32 NextIdx = (ActiveCustomTransformIndex + 1) % CustomTransformsList.Num();
 	LoadCustomTransformByIndex(NextIdx);
 }
 
 void AYenkaDesktopPawn::CyclePrevCustomTransform()
 {
-	if (CustomTransformsList.Num() == 0)
-	{
-		LoadCustomTransformsFromDisk();
-		if (CustomTransformsList.Num() == 0) return;
-	}
+	LoadCustomTransformsFromDisk();
+	if (CustomTransformsList.Num() == 0) return;
 	int32 PrevIdx = (ActiveCustomTransformIndex - 1 + CustomTransformsList.Num()) % CustomTransformsList.Num();
 	LoadCustomTransformByIndex(PrevIdx);
 }
 
+void AYenkaDesktopPawn::ReloadHandTransforms()
+{
+	LoadCustomTransformsFromDisk();
+	if (ActiveCustomTransformIndex >= 0 && CustomTransformsList.IsValidIndex(ActiveCustomTransformIndex))
+	{
+		LoadCustomTransformByIndex(ActiveCustomTransformIndex);
+	}
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(9991, 3.5f, FColor::Green,
+			FString::Printf(TEXT("🔄 TRANSFORMACIONES RECARGADAS DEL JSON (Total: %d)"), CustomTransformsList.Num()));
+	}
+}
+
 void AYenkaDesktopPawn::ListHandTransforms()
 {
+	LoadCustomTransformsFromDisk();
 	if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 6.0f, FColor::White, FString::Printf(TEXT("=== BIBLIOTECA DE TRANSFORMACIONES (%d guardadas) ==="), CustomTransformsList.Num()));

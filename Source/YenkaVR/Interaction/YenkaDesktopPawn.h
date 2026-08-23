@@ -256,6 +256,12 @@ protected:
 	UFUNCTION(Exec)
 	void ListHandTransforms();
 
+	UFUNCTION(Exec)
+	void ReloadHandTransforms();
+
+	UFUNCTION(Exec)
+	void ReloadHandGestures();
+
 	void OnKeyHPressed();
 
 	UFUNCTION(Exec)
