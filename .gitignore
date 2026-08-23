@@ -47,15 +47,8 @@ Thumbs.db
 [Dd]esktop.ini
 
 # Crash reports and logs
-Saved/Logs/
-Saved/Crashes/
-
-# Unreal Engine configuration backups / autosaves
-Saved/AutoScreenshots/
-Saved/Autosaves/
-Saved/Backup/
-Saved/Config/WindowsServer/
-Saved/Config/WindowsEditor/
+Saved/
+!Saved/HandGestures/
 
 # Keep tracked folders
 !Source/
