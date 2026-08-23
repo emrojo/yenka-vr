@@ -109,16 +109,10 @@ struct FCustomHandTransform
 	FString TransformName = TEXT("DefaultTransform");
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Transform")
-	FVector PokeLocationOffset = FVector(-5.50f, 8.50f, -0.50f);
+	FVector LocationOffset = FVector(-5.50f, 8.50f, -0.50f);
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Transform")
-	FRotator PokeRotationOffset = FRotator(0.0f, -90.0f, 0.0f);
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Transform")
-	FVector GrabLocationOffset = FVector(-5.50f, 8.50f, -0.50f);
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Transform")
-	FRotator GrabRotationOffset = FRotator(90.0f, -90.0f, 0.0f);
+	FRotator RotationOffset = FRotator(0.0f, -90.0f, 0.0f);
 };
 
 USTRUCT(BlueprintType)

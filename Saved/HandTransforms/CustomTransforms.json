@@ -1,23 +1,26 @@
 {
 	"transforms": [
 		{
-			"transformName": "DefaultCalibration",
-			"pokeLocationOffset": {
+			"transformName": "StandardHorizontal",
+			"locationOffset": {
 				"x": -5.5,
 				"y": 8.5,
 				"z": -0.5
 			},
-			"pokeRotationOffset": {
+			"rotationOffset": {
 				"pitch": 0,
 				"yaw": -90,
 				"roll": 0
-			},
-			"grabLocationOffset": {
+			}
+		},
+		{
+			"transformName": "VerticalPitch90",
+			"locationOffset": {
 				"x": -5.5,
 				"y": 8.5,
 				"z": -0.5
 			},
-			"grabRotationOffset": {
+			"rotationOffset": {
 				"pitch": 90,
 				"yaw": -90,
 				"roll": 0

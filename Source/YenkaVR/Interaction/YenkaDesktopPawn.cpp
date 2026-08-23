@@ -785,17 +785,21 @@ bool AYenkaDesktopPawn::LoadCustomTransformsFromDisk()
 		}
 	}
 
-	// Ensure default StandardCalibration preset is present if list was empty
+	// Ensure default presets are present if list was empty
 	if (CustomTransformsList.Num() == 0)
 	{
-		FCustomHandTransform DefaultTransform;
-		DefaultTransform.TransformName = TEXT("DefaultCalibration");
-		DefaultTransform.PokeLocationOffset = FVector(-5.50f, 8.50f, -0.50f);
-		DefaultTransform.PokeRotationOffset = FRotator(0.0f, -90.0f, 0.0f);
-		DefaultTransform.GrabLocationOffset = FVector(-5.50f, 8.50f, -0.50f);
-		DefaultTransform.GrabRotationOffset = FRotator(90.0f, -90.0f, 0.0f);
+		FCustomHandTransform Standard;
+		Standard.TransformName = TEXT("StandardHorizontal");
+		Standard.LocationOffset = FVector(-5.50f, 8.50f, -0.50f);
+		Standard.RotationOffset = FRotator(0.0f, -90.0f, 0.0f);
+		CustomTransformsList.Add(Standard);
 
-		CustomTransformsList.Add(DefaultTransform);
+		FCustomHandTransform Vertical;
+		Vertical.TransformName = TEXT("VerticalPitch90");
+		Vertical.LocationOffset = FVector(-5.50f, 8.50f, -0.50f);
+		Vertical.RotationOffset = FRotator(90.0f, -90.0f, 0.0f);
+		CustomTransformsList.Add(Vertical);
+
 		SaveCustomTransformsToDisk();
 	}
 
@@ -804,12 +808,14 @@ bool AYenkaDesktopPawn::LoadCustomTransformsFromDisk()
 
 void AYenkaDesktopPawn::SaveHandTransform(const FString& Name)
 {
+	const bool bInPoke = (bIsPokeModeActive || bIsPushingBlock || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke));
+	const FVector ActivePos = bInPoke ? PokeHandLocationOffset : GrabHandLocationOffset;
+	const FRotator ActiveRot = bInPoke ? PokeHandRotationOffset : GrabHandRotationOffset;
+
 	FCustomHandTransform NewTransform;
 	NewTransform.TransformName = Name.IsEmpty() ? TEXT("CustomTransform") : Name;
-	NewTransform.PokeLocationOffset = PokeHandLocationOffset;
-	NewTransform.PokeRotationOffset = PokeHandRotationOffset;
-	NewTransform.GrabLocationOffset = GrabHandLocationOffset;
-	NewTransform.GrabRotationOffset = GrabHandRotationOffset;
+	NewTransform.LocationOffset = ActivePos;
+	NewTransform.RotationOffset = ActiveRot;
 
 	int32 ExistingIndex = CustomTransformsList.IndexOfByPredicate([&Name](const FCustomHandTransform& T) {
 		return T.TransformName.Equals(Name, ESearchCase::IgnoreCase);
@@ -830,7 +836,8 @@ void AYenkaDesktopPawn::SaveHandTransform(const FString& Name)
 	if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(9991, 4.0f, FColor::Green,
-			FString::Printf(TEXT("✅ TRANSFORMACIÓN GUARDADA: \"%s\" (Total: %d)"), *Name, CustomTransformsList.Num()));
+			FString::Printf(TEXT("✅ TRANSFORMACIÓN GUARDADA: \"%s\" [Pos: (%.1f, %.1f, %.1f) | Rot: (P:%.0f, Y:%.0f, R:%.0f)] (Total: %d)"),
+				*Name, ActivePos.X, ActivePos.Y, ActivePos.Z, ActiveRot.Pitch, ActiveRot.Yaw, ActiveRot.Roll, CustomTransformsList.Num()));
 	}
 }
 
@@ -858,15 +865,25 @@ void AYenkaDesktopPawn::LoadCustomTransformByIndex(int32 Index)
 	ActiveCustomTransformIndex = Index;
 	const FCustomHandTransform& Transform = CustomTransformsList[Index];
 
-	PokeHandLocationOffset = Transform.PokeLocationOffset;
-	PokeHandRotationOffset = Transform.PokeRotationOffset;
-	GrabHandLocationOffset = Transform.GrabLocationOffset;
-	GrabHandRotationOffset = Transform.GrabRotationOffset;
+	const bool bInPoke = (bIsPokeModeActive || bIsPushingBlock || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke));
+	if (bInPoke)
+	{
+		PokeHandLocationOffset = Transform.LocationOffset;
+		PokeHandRotationOffset = Transform.RotationOffset;
+	}
+	else
+	{
+		GrabHandLocationOffset = Transform.LocationOffset;
+		GrabHandRotationOffset = Transform.RotationOffset;
+	}
 
 	if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(9989, 3.0f, FColor::Cyan,
-			FString::Printf(TEXT("📍 TRANSFORMACIÓN CARGADA [%d/%d]: \"%s\""), Index + 1, CustomTransformsList.Num(), *Transform.TransformName));
+			FString::Printf(TEXT("📍 TRANSFORMACIÓN CARGADA [%d/%d]: \"%s\" [Pos: (%.1f, %.1f, %.1f) | Rot: (P:%.0f, Y:%.0f, R:%.0f)]"),
+				Index + 1, CustomTransformsList.Num(), *Transform.TransformName,
+				Transform.LocationOffset.X, Transform.LocationOffset.Y, Transform.LocationOffset.Z,
+				Transform.RotationOffset.Pitch, Transform.RotationOffset.Yaw, Transform.RotationOffset.Roll));
 	}
 }
 
@@ -906,10 +923,10 @@ void AYenkaDesktopPawn::ListHandTransforms()
 		{
 			const FCustomHandTransform& T = CustomTransformsList[i];
 			GEngine->AddOnScreenDebugMessage(-1, 6.0f, FColor::Cyan,
-				FString::Printf(TEXT(" [%d] %s (Empujar: [%.1f, %.1f, %.1f] | Agarrar: [%.1f, %.1f, %.1f])"),
+				FString::Printf(TEXT(" [%d] %s -> Pos: [%.1f, %.1f, %.1f] | Rot: [P:%.0f, Y:%.0f, R:%.0f]"),
 					i + 1, *T.TransformName,
-					T.PokeLocationOffset.X, T.PokeLocationOffset.Y, T.PokeLocationOffset.Z,
-					T.GrabLocationOffset.X, T.GrabLocationOffset.Y, T.GrabLocationOffset.Z));
+					T.LocationOffset.X, T.LocationOffset.Y, T.LocationOffset.Z,
+					T.RotationOffset.Pitch, T.RotationOffset.Yaw, T.RotationOffset.Roll));
 		}
 	}
 }
