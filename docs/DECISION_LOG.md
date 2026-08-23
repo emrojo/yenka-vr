@@ -397,17 +397,17 @@ This document records all architectural, technical design, and mechanics decisio
 ### ADR-027: 3D Crane Block Manipulation with Smooth S-Curve Elevation & Safe Tower Clearance
 * **Date:** 2026-08-23
 * **Status:** Accepted
-* **Context:** Moving an extracted piece toward the top of the tower could cause collisions with the tower body or protruding blocks if the elevation curve did not clear the tower perimeter at a safe distance.
+* **Context:** Moving an extracted piece toward the top of the tower could cause collisions with the tower body or protruding blocks if the elevation curve did not clear the tower perimeter at a safe distance. Furthermore, players need to rotate the piece in the horizontal plane to place it neatly on the topmost layer.
 * **Decision:**
   * Engage Crane Mode (`bIsCraneGrabbing`) on vertical grab.
   * 2D mouse drag translates the block horizontally in $XY$.
-  * Automated Hermite SmoothStep cubic curve ($S(t) = 3t^2 - 2t^3$) with safe clearance:
-    * $R_{\text{inner}} = 12.5\text{ cm}$ ($8.75\text{ cm} > 7.5\text{ cm}$ separation from tower perimeter): achieves $100\%$ apex elevation ($3.0\text{ cm}$ above tower top) *before* reaching the tower zone.
-    * $R_{\text{outer}} = 22.0\text{ cm}$: settles at $5.0\text{ cm}$ above table surface.
-  * Rotation aligns orthogonally ($0^\circ$ vs $90^\circ$) when directly hovering above the topmost layer.
+  * Automated Hermite SmoothStep cubic curve ($S(t) = 3t^2 - 2t^3$) with expanded safe clearance:
+    * $R_{\text{inner}} = 20.0\text{ cm}$ ($16.25\text{ cm}$ buffer from tower perimeter): achieves $100\%$ apex elevation ($6.0\text{ cm}$ above tower top) well before reaching the tower zone.
+    * $R_{\text{outer}} = 30.0\text{ cm}$: settles at $5.0\text{ cm}$ above table surface.
+  * Enable horizontal rotation of the suspended piece via mouse wheel (`OnMouseWheel`, $\pm 15^\circ$ per step) in Crane Mode.
   * Live hot-reloading from `Saved/Config/YenkaInteractionConfig.json`.
 * **Consequences:**
-  * *(Positive)* Intuitive, completely collision-free crane-like transport of blocks onto the top of the tower without discrete vertical jumps.
+  * *(Positive)* Intuitive, completely collision-free crane-like transport and precise manual horizontal alignment of blocks onto the top of the tower.
 
 ---
 

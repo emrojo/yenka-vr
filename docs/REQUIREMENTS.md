@@ -165,11 +165,11 @@ This section maintains the immutable history of all requirements defined and agr
     * **`VerticalGrab` (Top-Down Claw):** Automatically activated when hovering over the top face of a block with clearance ($\ge 0.5\text{ cm}$) on both sides of the upper layer.
     * **`OpenHand` (Neutral):** Displayed in all other cases (tabletop, air, blocked top faces, or flush/unprotruding large side faces).
 * **`[REQ-CROSS-20]` 3D Crane Block Manipulation with Smooth S-Curve Elevation & Safe Tower Clearance:**
-  * Grabbing an accessible top face in `VerticalGrab` enters 3D crane mode: 2D mouse drag translates the block horizontally in $XY$ without requiring mouse wheel inputs.
+  * Grabbing an accessible top face in `VerticalGrab` enters 3D crane mode: 2D mouse drag translates the block horizontally in $XY$.
   * Elevation is governed by an automated continuous Hermite SmoothStep cubic curve ($S(t) = 3t^2 - 2t^3$):
-    * Away from tower (table region, $r \ge R_{\text{outer}} = 22.0\text{ cm}$): elevation holds steady at $5.0\text{ cm}$ above tabletop (`CraneTableClearanceHeight`).
-    * Proximity clearance zone ($r \le R_{\text{inner}} = 12.5\text{ cm}$): elevation achieves $100\%$ apex height ($3.0\text{ cm}$ above the tower top) at a distance strictly greater than the longest block dimension ($L_{\text{block}} = 7.5\text{ cm}$) from the tower perimeter ($R_{\text{tower}} = 3.75\text{ cm}$), completely preventing lateral collisions with tower walls or protruding blocks.
-  * When positioned directly above the highest layer, rotation automatically assists orthogonal alignment ($0^\circ$ / $90^\circ$).
+    * Away from tower (table region, $r \ge R_{\text{outer}} = 30.0\text{ cm}$): elevation holds steady at $5.0\text{ cm}$ above tabletop (`CraneTableClearanceHeight`).
+    * Proximity clearance zone ($r \le R_{\text{inner}} = 20.0\text{ cm}$): elevation achieves $100\%$ apex height ($6.0\text{ cm}$ above the highest tower block, `CraneTowerTopClearanceHeight`), providing a generous $16.25\text{ cm}$ clearance buffer from the tower perimeter ($R_{\text{tower}} = 3.75\text{ cm}$), fully eliminating lateral collisions with tower walls or protruding blocks.
+  * **Horizontal Rotation:** The mouse wheel (`OnMouseWheel`) rotates the suspended block horizontally around the Yaw axis ($\pm 15^\circ$ per step) in Crane Mode.
   * Clearance heights, transition radii, and protrusion thresholds are parameterized in `Saved/Config/YenkaInteractionConfig.json` and hot-reloaded live on save (`Ctrl+S`).
 
 ---
