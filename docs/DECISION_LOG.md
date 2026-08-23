@@ -31,6 +31,8 @@ This document records all architectural, technical design, and mechanics decisio
 * [ADR-023: Dynamic JSON-Backed Gesture Library & Default Posture Ingestion](#adr-023-dynamic-json-backed-gesture-library--default-posture-ingestion)
 * [ADR-024: Real-Time Live File Watcher & Instant JSON Transform Synchronization](#adr-024-real-time-live-file-watcher--instant-json-transform-synchronization)
 * [ADR-025: Strictly Horizontal Perpendicular Block Pulling & Invariant Extraction Orientation](#adr-025-strictly-horizontal-perpendicular-block-pulling--invariant-extraction-orientation)
+* [ADR-026: Context-Aware Intelligent Gesture Selection Matrix](#adr-026-context-aware-intelligent-gesture-selection-matrix)
+* [ADR-027: 3D Crane Block Manipulation & Top-of-Tower Placement Assist](#adr-027-3d-crane-block-manipulation--top-of-tower-placement-assist)
 
 ---
 
@@ -374,6 +376,36 @@ This document records all architectural, technical design, and mechanics decisio
 * **Consequences:**
   * *(Positive)* Completely stable hand posture during extraction without angle drift or snapping.
   * *(Positive)* Effortless, clean block extraction along its slot without downward table drag friction.
+
+---
+
+### ADR-026: Context-Aware Intelligent Gesture Selection Matrix
+* **Date:** 2026-08-23
+* **Status:** Accepted
+* **Context:** Switching between pushing, pulling, and grabbing previously required manual key toggles or mode states, causing friction and confusion when players moved their cursor across different blocks and block faces.
+* **Decision:**
+  * Implement an automatic 4-way gesture matrix evaluated every frame in `HandleMouseTrace`:
+    1. **`FingerPoke` (Push):** Activated when cursor is on an end/side face of a block that is flush or recessed inside the tower.
+    2. **`GrabPinch` (Pull):** Activated when cursor is on an end/side face of a block that protrudes ($\ge 0.4\text{ cm}$) from the tower.
+    3. **`VerticalGrab` (Top-Down Claw):** Activated when cursor is on the top face of a block with clearance ($\ge 0.5\text{ cm}$) on both sides of the layer above.
+    4. **`OpenHand` (Neutral):** Displayed in all other cases (table, ambient air, or blocked top faces).
+* **Consequences:**
+  * *(Positive)* Natural, fluid interaction where the virtual hand intuitively anticipates player intent based purely on cursor placement.
+
+---
+
+### ADR-027: 3D Crane Block Manipulation & Top-of-Tower Placement Assist
+* **Date:** 2026-08-23
+* **Status:** Accepted
+* **Context:** In standard Jenga rules, extracted blocks must be lifted and placed on the highest level of the tower. Pulling horizontally only extracts the piece, requiring a separate top-down crane mechanism to transport and place the piece on top.
+* **Decision:**
+  * When initiating a grab on an accessible top face in `VerticalGrab`, engage Crane Mode (`bIsCraneGrabbing`).
+  * Translate the piece in 3D: $XY$ plane follows the mouse ray intersection at `CraneCurrentZ`, and mouse wheel adjusts elevation smoothly.
+  * When hovered above the top of the tower, dynamically calculate layer index and assist rotation alignment to the orthogonal layer grid ($0^\circ$ vs $90^\circ$).
+  * Parameterize clearance and elevation in `Saved/Config/YenkaInteractionConfig.json` with live hot-reloading on save.
+* **Consequences:**
+  * *(Positive)* Intuitive, satisfying crane-like placement of blocks onto the top of the tower.
+  * *(Positive)* Zero-friction game balance tuning via live JSON configuration.
 
 ---
 

@@ -158,6 +158,16 @@ This section maintains the immutable history of all requirements defined and agr
 * **`[REQ-CROSS-18]` Strictly Horizontal Perpendicular Block Pulling & Locked Extraction Pose:**
   * When initiating a pull interaction, the hand rotation is permanently locked (`LockedPullHandQuat`) along the block's outward normal with the configured `GrabHandRotationOffset`, remaining 100% invariant throughout the entire pull interaction.
   * Mouse cursor rays are intersected with the horizontal plane of the active layer ($Z = \text{LockedPullPlaneZ}$) and projected onto the outward normal vector ($\text{LockedPullDirection}$), exerting extraction force strictly horizontal and perpendicular to the tower face without downward or vertical dragging into the table.
+* **`[REQ-CROSS-19]` Context-Aware Intelligent Gesture Selection Matrix:**
+  * Cursor hovering dynamically transitions the hand posture in real time:
+    * **`FingerPoke` (Push):** Automatically activated when hovering over an end/side face of a block that is flush or recessed inside the tower.
+    * **`GrabPinch` (Pull):** Automatically activated when hovering over an end/side face of a block that protrudes ($\ge 0.4\text{ cm}$) beyond the tower boundary.
+    * **`VerticalGrab` (Top-Down Claw):** Automatically activated when hovering over the top face of a block with clearance ($\ge 0.5\text{ cm}$) on both sides of the upper layer.
+    * **`OpenHand` (Neutral):** Displayed in all other cases (tabletop, air, or inaccessible block faces).
+* **`[REQ-CROSS-20]` 3D Crane-Like Block Placement & Live Interaction Config:**
+  * Grabbing an accessible top face in `VerticalGrab` enters 3D crane mode: mouse drag translates the block in $XY$, and mouse wheel controls vertical elevation.
+  * When lifted above the top of the tower, rotation automatically assists alignment to the alternating orthogonal grid ($0^\circ$ / $90^\circ$) for placement on the top layer.
+  * Interaction thresholds are parameterized in `Saved/Config/YenkaInteractionConfig.json` and hot-reloaded live on save (`Ctrl+S`).
 
 ---
 
@@ -245,6 +255,8 @@ This section maintains the immutable history of all requirements defined and agr
 | `[REQ-CROSS-16]`| Live File Watcher & Instant JSON Sync  | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
 | `[REQ-CROSS-17]`| Decoupled Push Block Lock Release     | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
 | `[REQ-CROSS-18]`| Perpendicular Pull & Locked Rotation  | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
+| `[REQ-CROSS-19]`| Context-Aware Intelligent Gesture Matrix | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
+| `[REQ-CROSS-20]`| 3D Crane Manipulation & Top Placement | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
 | `[REQ-ART-01]`  | Photorealistic Wood Shaders | `Source/YenkaVR/Physics/YenkaBlock.cpp` | Implemented |
 | `[REQ-OPT-01]`  | PC VR 90FPS & Quest 2 Lens Optimization | `Config/DefaultEngine.ini` | Implemented |
 | `[REQ-VR-01]`   | Parabolic Arc Teleportation & Snap Turn | `Source/YenkaVR/Interaction/YenkaVRPawn.cpp` | Implemented |
