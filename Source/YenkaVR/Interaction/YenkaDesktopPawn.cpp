@@ -289,9 +289,16 @@ void AYenkaDesktopPawn::OnKeyQPressed()
 
 void AYenkaDesktopPawn::OnPhalanxPitchPlus()
 {
-	if (bIsPhalanxEditMode && VirtualHand)
+	if (bIsPhalanxEditMode)
 	{
-		VirtualHand->SetPhalanxPitch(SelectedFinger, SelectedPhalanx, +5.0f);
+		if (SelectedFinger == 6)
+		{
+			AdjustHandPitch(+5.0f);
+		}
+		else if (VirtualHand)
+		{
+			VirtualHand->SetPhalanxPitch(SelectedFinger, SelectedPhalanx, +5.0f);
+		}
 	}
 	else
 	{
@@ -301,9 +308,16 @@ void AYenkaDesktopPawn::OnPhalanxPitchPlus()
 
 void AYenkaDesktopPawn::OnPhalanxPitchMinus()
 {
-	if (bIsPhalanxEditMode && VirtualHand)
+	if (bIsPhalanxEditMode)
 	{
-		VirtualHand->SetPhalanxPitch(SelectedFinger, SelectedPhalanx, -5.0f);
+		if (SelectedFinger == 6)
+		{
+			AdjustHandPitch(-5.0f);
+		}
+		else if (VirtualHand)
+		{
+			VirtualHand->SetPhalanxPitch(SelectedFinger, SelectedPhalanx, -5.0f);
+		}
 	}
 	else
 	{
@@ -313,9 +327,16 @@ void AYenkaDesktopPawn::OnPhalanxPitchMinus()
 
 void AYenkaDesktopPawn::OnPhalanxYawPlus()
 {
-	if (bIsPhalanxEditMode && VirtualHand)
+	if (bIsPhalanxEditMode)
 	{
-		VirtualHand->SetPhalanxYaw(SelectedFinger, SelectedPhalanx, +5.0f);
+		if (SelectedFinger == 6)
+		{
+			AdjustHandYaw(+5.0f);
+		}
+		else if (VirtualHand)
+		{
+			VirtualHand->SetPhalanxYaw(SelectedFinger, SelectedPhalanx, +5.0f);
+		}
 	}
 	else
 	{
@@ -325,9 +346,16 @@ void AYenkaDesktopPawn::OnPhalanxYawPlus()
 
 void AYenkaDesktopPawn::OnPhalanxYawMinus()
 {
-	if (bIsPhalanxEditMode && VirtualHand)
+	if (bIsPhalanxEditMode)
 	{
-		VirtualHand->SetPhalanxYaw(SelectedFinger, SelectedPhalanx, -5.0f);
+		if (SelectedFinger == 6)
+		{
+			AdjustHandYaw(-5.0f);
+		}
+		else if (VirtualHand)
+		{
+			VirtualHand->SetPhalanxYaw(SelectedFinger, SelectedPhalanx, -5.0f);
+		}
 	}
 	else
 	{
@@ -337,9 +365,16 @@ void AYenkaDesktopPawn::OnPhalanxYawMinus()
 
 void AYenkaDesktopPawn::OnPhalanxRollPlus()
 {
-	if (bIsPhalanxEditMode && VirtualHand)
+	if (bIsPhalanxEditMode)
 	{
-		VirtualHand->SetPhalanxRoll(SelectedFinger, SelectedPhalanx, +5.0f);
+		if (SelectedFinger == 6)
+		{
+			AdjustHandRoll(+5.0f);
+		}
+		else if (VirtualHand)
+		{
+			VirtualHand->SetPhalanxRoll(SelectedFinger, SelectedPhalanx, +5.0f);
+		}
 	}
 	else
 	{
@@ -349,9 +384,16 @@ void AYenkaDesktopPawn::OnPhalanxRollPlus()
 
 void AYenkaDesktopPawn::OnPhalanxRollMinus()
 {
-	if (bIsPhalanxEditMode && VirtualHand)
+	if (bIsPhalanxEditMode)
 	{
-		VirtualHand->SetPhalanxRoll(SelectedFinger, SelectedPhalanx, -5.0f);
+		if (SelectedFinger == 6)
+		{
+			AdjustHandRoll(-5.0f);
+		}
+		else if (VirtualHand)
+		{
+			VirtualHand->SetPhalanxRoll(SelectedFinger, SelectedPhalanx, -5.0f);
+		}
 	}
 	else
 	{
@@ -361,9 +403,17 @@ void AYenkaDesktopPawn::OnPhalanxRollMinus()
 
 void AYenkaDesktopPawn::OnResetSelectedPhalanx()
 {
-	if (bIsPhalanxEditMode && VirtualHand)
+	if (bIsPhalanxEditMode)
 	{
-		VirtualHand->ResetPhalanx(SelectedFinger, SelectedPhalanx);
+		if (SelectedFinger == 6)
+		{
+			PokeHandRotationOffset = FRotator(0.0f, -90.0f, 0.0f);
+			GrabHandRotationOffset = FRotator(0.0f, -90.0f, 0.0f);
+		}
+		else if (VirtualHand)
+		{
+			VirtualHand->ResetPhalanx(SelectedFinger, SelectedPhalanx);
+		}
 	}
 }
 
@@ -952,12 +1002,33 @@ void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
 
 		if (bIsPhalanxEditMode && VirtualHand)
 		{
-			// --- PHALANX EDIT MODE HUD ---
-			static const TCHAR* FingerNames[] = { TEXT("Todos los Dedos"), TEXT("Pulgar"), TEXT("Índice"), TEXT("Medio"), TEXT("Anular"), TEXT("Meñique") };
+			// --- PHALANX & WRIST EDIT MODE HUD ---
+			static const TCHAR* FingerNames[] = { TEXT("Todos los Dedos"), TEXT("Pulgar"), TEXT("Índice"), TEXT("Medio"), TEXT("Anular"), TEXT("Meñique"), TEXT("🖐️ MUÑECA (Rotación de Muñeca)") };
 			static const TCHAR* PhalanxNames[] = { TEXT("Todas las Falanges"), TEXT("Proximal (Base)"), TEXT("Media (Centro)"), TEXT("Distal (Punta)") };
 
-			const TCHAR* ActiveFingerName = (SelectedFinger >= 0 && SelectedFinger <= 5) ? FingerNames[SelectedFinger] : TEXT("Desconocido");
-			const TCHAR* ActivePhalanxName = (SelectedPhalanx >= 0 && SelectedPhalanx <= 3) ? PhalanxNames[SelectedPhalanx] : TEXT("Desconocido");
+			const TCHAR* ActiveFingerName = (SelectedFinger >= 0 && SelectedFinger <= 6) ? FingerNames[SelectedFinger] : TEXT("Desconocido");
+			const TCHAR* ActivePhalanxName = (SelectedFinger == 6) ? TEXT("Orientación Espacial") : ((SelectedPhalanx >= 0 && SelectedPhalanx <= 3) ? PhalanxNames[SelectedPhalanx] : TEXT("Desconocido"));
+
+			if (SelectedFinger == 6)
+			{
+				FString Line1 = FString::Printf(TEXT("=== 🖐️ MODO EDICIÓN: ROTACIÓN DE MUÑECA [Pulsa F4 o K para Salir] ==="));
+				FString Line2 = FString::Printf(TEXT("🎯 SELECCIÓN: [ %s ] (Teclas: 1-5 Dedos, 6: Muñeca, 0: Todos)"), ActiveFingerName);
+				FString Line3 = FString::Printf(TEXT("⌨️ 3 EJES MUÑECA: [ Arriba/Abajo: Pitch +-5° | Izq/Der: Yaw +-5° | Q/E: Roll +-5° | Espacio: Reset Muñeca | F5: Guardar ]"));
+				FString Line4 = FString::Printf(TEXT("📊 ROTACIÓN ACTUAL DE MUÑECA: [ Pitch: %+.0f° | Yaw: %+.0f° | Roll: %+.0f° ]"),
+					PokeHandRotationOffset.Pitch, PokeHandRotationOffset.Yaw, PokeHandRotationOffset.Roll);
+				FString Line5 = FString::Printf(TEXT("📊 POSICIÓN ESPACIAL: [ X: %+.1f cm | Y: %+.1f cm | Z: %+.1f cm ]"),
+					PokeHandLocationOffset.X, PokeHandLocationOffset.Y, PokeHandLocationOffset.Z);
+				FString Line6 = FString::Printf(TEXT("🏷️ GESTO: [ %s ] | 📂 GUARDADOS (%d): [ y ] para Ciclar | Supr: Borrar"),
+					*VirtualHand->GetDetectedGestureDescription(), CustomGesturesList.Num());
+
+				GEngine->AddOnScreenDebugMessage(1001, 0.20f, FColor(255, 100, 255), Line1);
+				GEngine->AddOnScreenDebugMessage(1002, 0.20f, FColor(255, 220, 50), Line2);
+				GEngine->AddOnScreenDebugMessage(1003, 0.20f, FColor(50, 255, 255), Line3);
+				GEngine->AddOnScreenDebugMessage(1004, 0.20f, FColor(120, 255, 120), Line4);
+				GEngine->AddOnScreenDebugMessage(1005, 0.20f, FColor(120, 255, 180), Line5);
+				GEngine->AddOnScreenDebugMessage(1006, 0.20f, FColor(255, 160, 50), Line6);
+				return;
+			}
 
 			FFingerPhalanges Thumb = VirtualHand->ThumbPhalanges;
 			FFingerPhalanges Index = VirtualHand->IndexPhalanges;
@@ -966,7 +1037,7 @@ void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
 			FFingerPhalanges Pinky = VirtualHand->PinkyPhalanges;
 
 			FString Line1 = FString::Printf(TEXT("=== 🖐️ MODO EDICIÓN DE FALANGES (3 EJES: PITCH, YAW, ROLL) [Pulsa F4 o K para Salir] ==="));
-			FString Line2 = FString::Printf(TEXT("🎯 SELECCIÓN: [ DEDO (%d): %s | FALANGE (%d): %s ]  (Teclas: 1-5 Dedo, 0 Todos | Z: Base, X: Media, C: Punta, V: Todas)"),
+			FString Line2 = FString::Printf(TEXT("🎯 SELECCIÓN: [ DEDO (%d): %s | FALANGE (%d): %s ]  (Teclas: 1-5 Dedo, 6: Muñeca, 0: Todos | Z/X/C/V: Falange)"),
 				SelectedFinger, ActiveFingerName, SelectedPhalanx, ActivePhalanxName);
 			FString Line3 = FString::Printf(TEXT("⌨️ 3 EJES: [ Arriba/Abajo: Pitch | Izq/Der: Yaw | Q/E: Roll | Espacio: Reset | F5 o ENTER: Guardar Gesto ]"));
 			FString Line4 = FString::Printf(TEXT("📊 PULGAR: [P:%+.0f° Y:%+.0f° R:%+.0f°, P:%+.0f° Y:%+.0f° R:%+.0f°, P:%+.0f° Y:%+.0f° R:%+.0f°] | ÍNDICE: [P:%+.0f° Y:%+.0f° R:%+.0f°, P:%+.0f° Y:%+.0f° R:%+.0f°, P:%+.0f° Y:%+.0f° R:%+.0f°]"),
