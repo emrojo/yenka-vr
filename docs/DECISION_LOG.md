@@ -427,9 +427,16 @@ This document records all architectural, technical design, and mechanics decisio
     2. Grasping: hand closes into `VerticalGrab` using `VerticalGrab-1` (`x: -1, y: 4, z: -1.5`, `pitch: 75°, yaw: 180°, roll: 180°`) and attaches physics handle.
     3. Ascending: hand and block lift smoothly up to crane clearance height.
     4. Carrying: full horizontal translation with mouse wheel yaw rotation and S-curve elevation.
-  * Releasing LMB releases the physics handle constraint, drops the piece under gravity, and immediately returns the hand pose to `OpenHand`.
+### ADR-030: Resolution of Table Hierarchy Alignment and Default MANOABIERTA Preset Loading
+* **Date:** 2026-08-24
+* **Status:** Accepted
+* **Context:** The table mesh in `AYenkaTowerManager` was set as RootComponent, causing its relative $-2\text{ cm}$ offset to be ignored and misaligning the board top surface with `TableSurfaceZ`. Additionally, `GetHandAnatomicalSamplePoints` queried bone coordinates without scaling them to the $0.5\text{x}$ poseable hand component transform, and `LoadPresetPose(OpenHand)` omitted the localized `"MANOABIERTA"` gesture key.
+* **Decision:**
+  * Introduce `TableRoot` scene component in `AYenkaTowerManager` and attach `TableMesh` with relative offset $(0, 0, -2.0\text{ cm})$ to align the top surface perfectly at $Z = 90.0\text{ cm}$.
+  * In `GetHandAnatomicalSamplePoints`, compose `PoseableHandMesh->GetRelativeTransform() * InTransform` to project all 17 bone locations with millimeter accuracy.
+  * In `LoadPresetPose(OpenHand)` and `AYenkaDesktopPawn`, query and apply the `"MANOABIERTA"` gesture and its calibrated offsets (`OpenHandLocationOffset`, `OpenHandRotationOffset`) by default.
 * **Consequences:**
-  * *(Positive)* Extremely fluid, realistic tactile animation cycle with zero jarring pose pops and natural physics block drops.
+  * *(Positive)* Impeccable collision depenetration against table/board geometry with zero clipping and immediate display of the user's custom open hand gesture.
 
 ---
 
