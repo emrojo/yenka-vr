@@ -199,6 +199,9 @@ public:
 	void ApplyPhalanxTransforms();
 	FRotator GetPhalanxDeltaRotationForBone(FName BoneName) const;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Gesture")
+	bool bIsCustomGestureActive = false;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Phalanx")
 	FFingerPhalanges ThumbPhalanges;
 

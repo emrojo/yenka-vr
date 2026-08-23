@@ -453,7 +453,10 @@ void AYenkaHandAvatar::SetHandPoseMode(EHandPoseMode NewPoseMode)
 	if (CurrentPoseMode != NewPoseMode)
 	{
 		CurrentPoseMode = NewPoseMode;
-		LoadPresetPose(NewPoseMode);
+		if (!bIsCustomGestureActive)
+		{
+			LoadPresetPose(NewPoseMode);
+		}
 		UpdateFingerPoses(ReplicatedGripStrength);
 	}
 }
@@ -595,6 +598,7 @@ void AYenkaHandAvatar::ResetAllPhalanges()
 	RingPhalanges = FFingerPhalanges();
 	PinkyPhalanges = FFingerPhalanges();
 	HandAxialRotation = 0.0f;
+	bIsCustomGestureActive = false;
 	ApplyPhalanxTransforms();
 }
 
@@ -602,6 +606,7 @@ void AYenkaHandAvatar::LoadPresetPose(EHandPoseMode Mode)
 {
 	CurrentPoseMode = Mode;
 	HandAxialRotation = 0.0f;
+	bIsCustomGestureActive = false;
 
 	if (Mode == EHandPoseMode::FingerPoke)
 	{
@@ -730,6 +735,7 @@ void AYenkaHandAvatar::ApplyCustomGesture(const FCustomHandGesture& InGesture)
 	RingPhalanges = InGesture.Ring;
 	PinkyPhalanges = InGesture.Pinky;
 	HandAxialRotation = InGesture.HandAxialRotation;
+	bIsCustomGestureActive = true;
 	ApplyPhalanxTransforms();
 }
 
