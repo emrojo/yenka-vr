@@ -1,0 +1,27 @@
+{
+	"transforms": [
+		{
+			"transformName": "DefaultCalibration",
+			"pokeLocationOffset": {
+				"x": -5.5,
+				"y": 8.5,
+				"z": -0.5
+			},
+			"pokeRotationOffset": {
+				"pitch": 0,
+				"yaw": -90,
+				"roll": 0
+			},
+			"grabLocationOffset": {
+				"x": -5.5,
+				"y": 8.5,
+				"z": -0.5
+			},
+			"grabRotationOffset": {
+				"pitch": 90,
+				"yaw": -90,
+				"roll": 0
+			}
+		}
+	]
+}
