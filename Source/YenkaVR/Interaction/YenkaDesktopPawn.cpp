@@ -132,7 +132,7 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		PlayerInputComponent->BindKey(EKeys::F2, IE_Pressed, this, &AYenkaDesktopPawn::SetGestureGrab);
 		PlayerInputComponent->BindKey(EKeys::G, IE_Pressed, this, &AYenkaDesktopPawn::SetGestureGrab);
 		PlayerInputComponent->BindKey(EKeys::F3, IE_Pressed, this, &AYenkaDesktopPawn::SetGestureOpen);
-		PlayerInputComponent->BindKey(EKeys::V, IE_Pressed, this, &AYenkaDesktopPawn::SetGestureOpen);
+		PlayerInputComponent->BindKey(EKeys::V, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyVPressed);
 		PlayerInputComponent->BindKey(EKeys::Tab, IE_Pressed, this, &AYenkaDesktopPawn::CycleGesture);
 
 		// Hand Calibration & Phalanx Hotkeys
@@ -243,11 +243,15 @@ void AYenkaDesktopPawn::OnKeyCPressed()
 	}
 }
 
-void AYenkaDesktopPawn::OnKeyAPressed()
+void AYenkaDesktopPawn::OnKeyVPressed()
 {
 	if (bIsPhalanxEditMode)
 	{
 		SelectedPhalanx = 0; // All Phalanges
+	}
+	else
+	{
+		SetGestureOpen();
 	}
 }
 
@@ -543,7 +547,7 @@ void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
 			FFingerPhalanges Pinky = VirtualHand->PinkyPhalanges;
 
 			FString Line1 = FString::Printf(TEXT("=== 🖐️ MODO EDICIÓN DE FALANGES ACTIVO [Pulsa F4 o K para Salir] ==="));
-			FString Line2 = FString::Printf(TEXT("🎯 SELECCIÓN: [ DEDO (%d): %s | FALANGE (%d): %s ]  (Teclas: 1-5 Elegir Dedo | Z, X, C, A Elegir Falange)"),
+			FString Line2 = FString::Printf(TEXT("🎯 SELECCIÓN: [ DEDO (%d): %s | FALANGE (%d): %s ]  (Teclas: 1-5 Dedo, 0 Todos | Z: Base, X: Media, C: Punta, V: Todas)"),
 				SelectedFinger, ActiveFingerName, SelectedPhalanx, ActivePhalanxName);
 			FString Line3 = FString::Printf(TEXT("⌨️ ARTICULACIÓN: [ Flechas Arriba/Abajo: Flexión +-5° | Izq/Der: Lateral +-5° | Espacio: Reset Falange ]"));
 			FString Line4 = FString::Printf(TEXT("📊 PULGAR: [%+.0f°/%+.0f°, %+.0f°/%+.0f°, %+.0f°/%+.0f°] | ÍNDICE: [%+.0f°/%+.0f°, %+.0f°/%+.0f°, %+.0f°/%+.0f°]"),
@@ -708,6 +712,7 @@ void AYenkaDesktopPawn::OnMouseWheel(float Val)
 
 void AYenkaDesktopPawn::MoveForward(float Val)
 {
+	if (bIsPhalanxEditMode) return;
 	if (FMath::Abs(Val) > 0.01f)
 	{
 		FVector Forward = FollowCamera ? FollowCamera->GetForwardVector() : GetActorForwardVector();
@@ -718,6 +723,7 @@ void AYenkaDesktopPawn::MoveForward(float Val)
 
 void AYenkaDesktopPawn::MoveRight(float Val)
 {
+	if (bIsPhalanxEditMode) return;
 	if (FMath::Abs(Val) > 0.01f)
 	{
 		FVector Right = FollowCamera ? FollowCamera->GetRightVector() : GetActorRightVector();

@@ -162,7 +162,7 @@ protected:
 	void OnKeyZPressed();
 	void OnKeyXPressed();
 	void OnKeyCPressed();
-	void OnKeyAPressed();
+	void OnKeyVPressed();
 
 	void OnSelectScenario1() { SelectScenarioTheme(0); }
 	void OnSelectScenario2() { SelectScenarioTheme(1); }
