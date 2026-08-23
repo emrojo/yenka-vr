@@ -222,21 +222,25 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 void AYenkaDesktopPawn::TogglePhalanxEditMode()
 {
+	if (bIsNamingCustomGesture) return;
 	bIsPhalanxEditMode = !bIsPhalanxEditMode;
 }
 
 void AYenkaDesktopPawn::SelectFinger(int32 FingerIdx)
 {
+	if (bIsNamingCustomGesture) return;
 	SelectedFinger = FingerIdx;
 }
 
 void AYenkaDesktopPawn::SelectPhalanx(int32 PhalanxIdx)
 {
+	if (bIsNamingCustomGesture) return;
 	SelectedPhalanx = PhalanxIdx;
 }
 
 void AYenkaDesktopPawn::OnKeyZPressed()
 {
+	if (bIsNamingCustomGesture) return;
 	if (bIsPhalanxEditMode)
 	{
 		SelectedPhalanx = 1; // Proximal (Base)
@@ -249,6 +253,7 @@ void AYenkaDesktopPawn::OnKeyZPressed()
 
 void AYenkaDesktopPawn::OnKeyXPressed()
 {
+	if (bIsNamingCustomGesture) return;
 	if (bIsPhalanxEditMode)
 	{
 		SelectedPhalanx = 2; // Intermediate (Middle)
@@ -261,6 +266,7 @@ void AYenkaDesktopPawn::OnKeyXPressed()
 
 void AYenkaDesktopPawn::OnKeyCPressed()
 {
+	if (bIsNamingCustomGesture) return;
 	if (bIsPhalanxEditMode)
 	{
 		SelectedPhalanx = 3; // Distal (Tip)
@@ -269,6 +275,7 @@ void AYenkaDesktopPawn::OnKeyCPressed()
 
 void AYenkaDesktopPawn::OnKeyVPressed()
 {
+	if (bIsNamingCustomGesture) return;
 	if (bIsPhalanxEditMode)
 	{
 		SelectedPhalanx = 0; // All Phalanges
@@ -281,6 +288,7 @@ void AYenkaDesktopPawn::OnKeyVPressed()
 
 void AYenkaDesktopPawn::OnKeyQPressed()
 {
+	if (bIsNamingCustomGesture) return;
 	if (bIsPhalanxEditMode)
 	{
 		OnPhalanxRollMinus();
@@ -289,6 +297,7 @@ void AYenkaDesktopPawn::OnKeyQPressed()
 
 void AYenkaDesktopPawn::OnPhalanxPitchPlus()
 {
+	if (bIsNamingCustomGesture) return;
 	if (bIsPhalanxEditMode)
 	{
 		if (SelectedFinger == 7 && VirtualHand)
@@ -312,6 +321,7 @@ void AYenkaDesktopPawn::OnPhalanxPitchPlus()
 
 void AYenkaDesktopPawn::OnPhalanxPitchMinus()
 {
+	if (bIsNamingCustomGesture) return;
 	if (bIsPhalanxEditMode)
 	{
 		if (SelectedFinger == 7 && VirtualHand)
@@ -335,6 +345,7 @@ void AYenkaDesktopPawn::OnPhalanxPitchMinus()
 
 void AYenkaDesktopPawn::OnPhalanxYawPlus()
 {
+	if (bIsNamingCustomGesture) return;
 	if (bIsPhalanxEditMode)
 	{
 		if (SelectedFinger == 7 && VirtualHand)
@@ -358,6 +369,7 @@ void AYenkaDesktopPawn::OnPhalanxYawPlus()
 
 void AYenkaDesktopPawn::OnPhalanxYawMinus()
 {
+	if (bIsNamingCustomGesture) return;
 	if (bIsPhalanxEditMode)
 	{
 		if (SelectedFinger == 7 && VirtualHand)
@@ -381,6 +393,7 @@ void AYenkaDesktopPawn::OnPhalanxYawMinus()
 
 void AYenkaDesktopPawn::OnPhalanxRollPlus()
 {
+	if (bIsNamingCustomGesture) return;
 	if (bIsPhalanxEditMode)
 	{
 		if (SelectedFinger == 7 && VirtualHand)
@@ -404,6 +417,7 @@ void AYenkaDesktopPawn::OnPhalanxRollPlus()
 
 void AYenkaDesktopPawn::OnPhalanxRollMinus()
 {
+	if (bIsNamingCustomGesture) return;
 	if (bIsPhalanxEditMode)
 	{
 		if (SelectedFinger == 7 && VirtualHand)
@@ -427,6 +441,7 @@ void AYenkaDesktopPawn::OnPhalanxRollMinus()
 
 void AYenkaDesktopPawn::OnResetSelectedPhalanx()
 {
+	if (bIsNamingCustomGesture) return;
 	if (bIsPhalanxEditMode)
 	{
 		if (SelectedFinger == 7 && VirtualHand)
@@ -506,16 +521,19 @@ void AYenkaDesktopPawn::OnKeyBackspacePressed()
 
 void AYenkaDesktopPawn::OnKeyLeftBracketPressed()
 {
+	if (bIsNamingCustomGesture) return;
 	CyclePrevCustomGesture();
 }
 
 void AYenkaDesktopPawn::OnKeyRightBracketPressed()
 {
+	if (bIsNamingCustomGesture) return;
 	CycleNextCustomGesture();
 }
 
 void AYenkaDesktopPawn::OnKeyDeletePressed()
 {
+	if (bIsNamingCustomGesture) return;
 	if (CustomGesturesList.IsValidIndex(ActiveCustomGestureIndex))
 	{
 		FString DeletedName = CustomGesturesList[ActiveCustomGestureIndex].GestureName;
@@ -669,11 +687,13 @@ void AYenkaDesktopPawn::ListHandGestures()
 
 void AYenkaDesktopPawn::OnKeyHPressed()
 {
+	if (bIsNamingCustomGesture) return;
 	CycleHandModel();
 }
 
 void AYenkaDesktopPawn::CycleHandModel()
 {
+	if (bIsNamingCustomGesture) return;
 	if (VirtualHand)
 	{
 		VirtualHand->CycleHandModel();
@@ -878,6 +898,8 @@ void AYenkaDesktopPawn::OnAnyKeyPressed(FKey Key)
 
 void AYenkaDesktopPawn::SelectScenarioTheme(int32 ThemeIndex)
 {
+	if (bIsNamingCustomGesture) return;
+
 	if (bIsPhalanxEditMode)
 	{
 		// In Phalanx Edit Mode: 1-5 fingers, 6: wrist, 7: wrist-to-index axial rotation, 0: all!
@@ -920,6 +942,7 @@ void AYenkaDesktopPawn::SelectScenarioTheme(int32 ThemeIndex)
 
 void AYenkaDesktopPawn::OnToggleScenarioMenu()
 {
+	if (bIsNamingCustomGesture) return;
 	AYenkaScenarioMenu* Menu = Cast<AYenkaScenarioMenu>(UGameplayStatics::GetActorOfClass(GetWorld(), AYenkaScenarioMenu::StaticClass()));
 	if (Menu)
 	{
@@ -929,6 +952,7 @@ void AYenkaDesktopPawn::OnToggleScenarioMenu()
 
 void AYenkaDesktopPawn::OnKeyMPressed()
 {
+	if (bIsNamingCustomGesture) return;
 	if (bIsPhalanxEditMode)
 	{
 		SelectedFinger = 6; // Select Muñeca (Wrist / Whole Hand Rotation Mode)
@@ -945,6 +969,7 @@ void AYenkaDesktopPawn::OnKeyMPressed()
 
 void AYenkaDesktopPawn::OnKeyBPressed()
 {
+	if (bIsNamingCustomGesture) return;
 	if (bIsPhalanxEditMode)
 	{
 		SelectedFinger = 7; // Select Eje Muñeca-Índice
@@ -961,42 +986,49 @@ void AYenkaDesktopPawn::OnKeyBPressed()
 
 void AYenkaDesktopPawn::AdjustHandOffsetX(float Delta)
 {
+	if (bIsNamingCustomGesture) return;
 	PokeHandLocationOffset.X += Delta;
 	GrabHandLocationOffset.X += Delta;
 }
 
 void AYenkaDesktopPawn::AdjustHandOffsetY(float Delta)
 {
+	if (bIsNamingCustomGesture) return;
 	PokeHandLocationOffset.Y += Delta;
 	GrabHandLocationOffset.Y += Delta;
 }
 
 void AYenkaDesktopPawn::AdjustHandOffsetZ(float Delta)
 {
+	if (bIsNamingCustomGesture) return;
 	PokeHandLocationOffset.Z += Delta;
 	GrabHandLocationOffset.Z += Delta;
 }
 
 void AYenkaDesktopPawn::AdjustHandPitch(float Delta)
 {
+	if (bIsNamingCustomGesture) return;
 	PokeHandRotationOffset.Pitch = FRotator::NormalizeAxis(PokeHandRotationOffset.Pitch + Delta);
 	GrabHandRotationOffset.Pitch = FRotator::NormalizeAxis(GrabHandRotationOffset.Pitch + Delta);
 }
 
 void AYenkaDesktopPawn::AdjustHandYaw(float Delta)
 {
+	if (bIsNamingCustomGesture) return;
 	PokeHandRotationOffset.Yaw = FRotator::NormalizeAxis(PokeHandRotationOffset.Yaw + Delta);
 	GrabHandRotationOffset.Yaw = FRotator::NormalizeAxis(GrabHandRotationOffset.Yaw + Delta);
 }
 
 void AYenkaDesktopPawn::AdjustHandRoll(float Delta)
 {
+	if (bIsNamingCustomGesture) return;
 	PokeHandRotationOffset.Roll = FRotator::NormalizeAxis(PokeHandRotationOffset.Roll + Delta);
 	GrabHandRotationOffset.Roll = FRotator::NormalizeAxis(GrabHandRotationOffset.Roll + Delta);
 }
 
 void AYenkaDesktopPawn::QuickRotateYaw90()
 {
+	if (bIsNamingCustomGesture) return;
 	if (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke))
 	{
 		PokeHandRotationOffset.Yaw = FRotator::NormalizeAxis(PokeHandRotationOffset.Yaw + 90.0f);
@@ -1009,6 +1041,7 @@ void AYenkaDesktopPawn::QuickRotateYaw90()
 
 void AYenkaDesktopPawn::QuickRotateRoll90()
 {
+	if (bIsNamingCustomGesture) return;
 	if (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke))
 	{
 		PokeHandRotationOffset.Roll = FRotator::NormalizeAxis(PokeHandRotationOffset.Roll + 90.0f);
@@ -1021,6 +1054,7 @@ void AYenkaDesktopPawn::QuickRotateRoll90()
 
 void AYenkaDesktopPawn::QuickRotatePitch90()
 {
+	if (bIsNamingCustomGesture) return;
 	if (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke))
 	{
 		PokeHandRotationOffset.Pitch = FRotator::NormalizeAxis(PokeHandRotationOffset.Pitch + 90.0f);
@@ -1033,6 +1067,7 @@ void AYenkaDesktopPawn::QuickRotatePitch90()
 
 void AYenkaDesktopPawn::ResetHandCalibration()
 {
+	if (bIsNamingCustomGesture) return;
 	GrabHandLocationOffset = FVector(-5.50f, 8.50f, -0.50f);
 	GrabHandRotationOffset = FRotator(0.0f, -90.0f, 0.0f);
 	PokeHandLocationOffset = FVector(-5.50f, 8.50f, -0.50f);
@@ -1047,6 +1082,7 @@ void AYenkaDesktopPawn::ResetHandCalibration()
 
 void AYenkaDesktopPawn::SetGesturePush()
 {
+	if (bIsNamingCustomGesture) return;
 	ActiveGesturePreview = EHandPoseMode::FingerPoke;
 	bForceGesturePreview = true;
 	bIsPokeModeActive = true;
@@ -1059,6 +1095,7 @@ void AYenkaDesktopPawn::SetGesturePush()
 
 void AYenkaDesktopPawn::SetGestureGrab()
 {
+	if (bIsNamingCustomGesture) return;
 	ActiveGesturePreview = EHandPoseMode::GrabPinch;
 	bForceGesturePreview = true;
 	bIsPokeModeActive = false;
@@ -1071,6 +1108,7 @@ void AYenkaDesktopPawn::SetGestureGrab()
 
 void AYenkaDesktopPawn::SetGestureOpen()
 {
+	if (bIsNamingCustomGesture) return;
 	ActiveGesturePreview = EHandPoseMode::OpenHand;
 	bForceGesturePreview = true;
 	bIsPokeModeActive = false;
@@ -1083,6 +1121,7 @@ void AYenkaDesktopPawn::SetGestureOpen()
 
 void AYenkaDesktopPawn::CycleGesture()
 {
+	if (bIsNamingCustomGesture) return;
 	bForceGesturePreview = true;
 	if (ActiveGesturePreview == EHandPoseMode::OpenHand)
 	{
@@ -1253,6 +1292,7 @@ void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
 
 void AYenkaDesktopPawn::OnSecondaryClickPressed()
 {
+	if (bIsNamingCustomGesture) return;
 	bIsOrbitingCamera = true;
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (PC)
@@ -1263,6 +1303,7 @@ void AYenkaDesktopPawn::OnSecondaryClickPressed()
 
 void AYenkaDesktopPawn::OnSecondaryClickReleased()
 {
+	if (bIsNamingCustomGesture) return;
 	bIsOrbitingCamera = false;
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (PC)
@@ -1273,6 +1314,7 @@ void AYenkaDesktopPawn::OnSecondaryClickReleased()
 
 void AYenkaDesktopPawn::OnPokeKeyPressed()
 {
+	if (bIsNamingCustomGesture) return;
 	if (bIsPhalanxEditMode)
 	{
 		OnPhalanxRollPlus();
@@ -1283,6 +1325,7 @@ void AYenkaDesktopPawn::OnPokeKeyPressed()
 
 void AYenkaDesktopPawn::OnPokeKeyReleased()
 {
+	if (bIsNamingCustomGesture) return;
 	if (bIsPhalanxEditMode) return;
 	if (!bIsPushingBlock)
 	{
@@ -1292,6 +1335,7 @@ void AYenkaDesktopPawn::OnPokeKeyReleased()
 
 void AYenkaDesktopPawn::OnTogglePokeMode()
 {
+	if (bIsNamingCustomGesture) return;
 	if (bIsPhalanxEditMode) return;
 	bIsPokeModeActive = !bIsPokeModeActive;
 }
@@ -1319,6 +1363,7 @@ FRotator AYenkaDesktopPawn::GetHorizontalFacingRotation(const FVector& TargetLoc
 
 void AYenkaDesktopPawn::OnMouseX(float Val)
 {
+	if (bIsNamingCustomGesture) return;
 	if (bIsOrbitingCamera && FMath::Abs(Val) > 0.001f)
 	{
 		AddControllerYawInput(Val * 2.5f);
@@ -1327,6 +1372,7 @@ void AYenkaDesktopPawn::OnMouseX(float Val)
 
 void AYenkaDesktopPawn::OnMouseY(float Val)
 {
+	if (bIsNamingCustomGesture) return;
 	if (bIsOrbitingCamera && FMath::Abs(Val) > 0.001f)
 	{
 		AddControllerPitchInput(-Val * 2.5f);
@@ -1354,6 +1400,7 @@ void AYenkaDesktopPawn::OnMouseY(float Val)
 
 void AYenkaDesktopPawn::OnMouseWheel(float Val)
 {
+	if (bIsNamingCustomGesture) return;
 	if (CameraBoom && FMath::Abs(Val) > 0.001f)
 	{
 		CameraBoom->TargetArmLength = FMath::Clamp(CameraBoom->TargetArmLength - (Val * 8.0f), 30.0f, 250.0f);
@@ -1681,6 +1728,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 
 void AYenkaDesktopPawn::OnPrimaryClickPressed()
 {
+	if (bIsNamingCustomGesture) return;
 	float CurrentTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
 	float TimeSinceLastClick = CurrentTime - LastPrimaryClickTime;
 	const float DoubleClickMaxInterval = 0.35f;
@@ -1794,6 +1842,7 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 
 void AYenkaDesktopPawn::OnPrimaryClickReleased()
 {
+	if (bIsNamingCustomGesture) return;
 	if (bIsPushingBlock)
 	{
 		AYenkaBlock* ActivePushBlock = LockedPushBlock ? LockedPushBlock : HoveredBlock;
