@@ -1,4 +1,5 @@
 #include "YenkaEnvironmentManager.h"
+#include "YenkaTextureGenerator.h"
 #include "YenkaVR/Physics/YenkaTowerManager.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/PointLightComponent.h"
@@ -205,12 +206,9 @@ void AYenkaEnvironmentManager::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// Initialize Dynamic Material Instances from base material
-	UMaterialInterface* BaseMat = FloorMesh ? FloorMesh->GetMaterial(0) : nullptr;
-	if (!BaseMat)
-	{
-		BaseMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
-	}
+	UMaterialInterface* BaseMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+	UMaterialInterface* VistaBaseMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/EngineMaterials/EmissiveTexturedMaterial.EmissiveTexturedMaterial"));
+	if (!VistaBaseMat) VistaBaseMat = BaseMat;
 
 	if (BaseMat)
 	{
@@ -218,7 +216,6 @@ void AYenkaEnvironmentManager::BeginPlay()
 		CarpetDynMat = UMaterialInstanceDynamic::Create(BaseMat, this);
 		TableDynMat = UMaterialInstanceDynamic::Create(BaseMat, this);
 		WallDynMat = UMaterialInstanceDynamic::Create(BaseMat, this);
-		VistaDynMat = UMaterialInstanceDynamic::Create(BaseMat, this);
 		FeaturePropDynMat = UMaterialInstanceDynamic::Create(BaseMat, this);
 
 		if (FloorMesh && FloorDynMat) FloorMesh->SetMaterial(0, FloorDynMat);
@@ -236,8 +233,13 @@ void AYenkaEnvironmentManager::BeginPlay()
 		if (LeftWallMesh && WallDynMat) LeftWallMesh->SetMaterial(0, WallDynMat);
 		if (RightWallMesh && WallDynMat) RightWallMesh->SetMaterial(0, WallDynMat);
 
-		if (WindowVistaMesh && VistaDynMat) WindowVistaMesh->SetMaterial(0, VistaDynMat);
 		if (FeaturePropMesh && FeaturePropDynMat) FeaturePropMesh->SetMaterial(0, FeaturePropDynMat);
+	}
+
+	if (VistaBaseMat)
+	{
+		VistaDynMat = UMaterialInstanceDynamic::Create(VistaBaseMat, this);
+		if (WindowVistaMesh && VistaDynMat) WindowVistaMesh->SetMaterial(0, VistaDynMat);
 	}
 
 	ApplyEnvironmentTheme(CurrentTheme);
@@ -277,6 +279,17 @@ void AYenkaEnvironmentManager::ApplyEnvironmentTheme(EYenkaEnvironmentTheme NewT
 	if (RightWallMesh) RightWallMesh->SetVisibility(!bIsMR);
 
 	FString ThemeDisplayName = TEXT("Ático Moderno");
+
+	// Update panoramic window vista texture
+	if (!bIsMR && VistaDynMat)
+	{
+		UTexture2D* VistaTex = FYenkaTextureGenerator::CreateVistaTexture(1024, 512, CurrentTheme);
+		if (VistaTex)
+		{
+			VistaDynMat->SetTextureParameterValue(TEXT("Texture"), VistaTex);
+			VistaDynMat->SetTextureParameterValue(TEXT("BaseColor"), VistaTex);
+		}
+	}
 
 	switch (CurrentTheme)
 	{
@@ -319,24 +332,31 @@ void AYenkaEnvironmentManager::ApplyEnvironmentTheme(EYenkaEnvironmentTheme NewT
 	case EYenkaEnvironmentTheme::ModernPenthouse:
 	{
 		ThemeDisplayName = TEXT("Ático de Lujo Moderno");
+
+		UTexture2D* MarbleTex = FYenkaTextureGenerator::CreateMarbleTexture(512, 512, FColor(10, 10, 14), FColor(230, 235, 245), 14.0f);
+		UTexture2D* FloorWoodTex = FYenkaTextureGenerator::CreateWoodTexture(512, 512, FColor(28, 18, 12), FColor(12, 8, 5), 18.0f, 1.2f);
+		UTexture2D* RugTex = FYenkaTextureGenerator::CreateCarpetTexture(512, 512, FColor(45, 45, 50), FColor(170, 170, 180));
+
 		// Floor: Rich dark smoked oak parquet
 		if (FloorDynMat)
 		{
+			if (FloorWoodTex) FloorDynMat->SetTextureParameterValue(TEXT("Texture"), FloorWoodTex);
 			FloorDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.08f, 0.05f, 0.03f, 1.0f));
 			FloorDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.25f);
-			FloorDynMat->SetScalarParameterValue(TEXT("Metallic"), 0.0f);
 		}
-		// Area Rug: Cream & Charcoal modern geometric rug
+		// Area Rug: Modern geometric rug
 		if (CarpetDynMat)
 		{
+			if (RugTex) CarpetDynMat->SetTextureParameterValue(TEXT("Texture"), RugTex);
 			CarpetDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.20f, 0.20f, 0.22f, 1.0f));
 			CarpetDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.90f);
 		}
-		// Table Desk: Polished Nero Marquina Black Marble with Golden Brass Legs
+		// Table Desk: Polished Nero Marquina Black Marble
 		if (TableDynMat)
 		{
+			if (MarbleTex) TableDynMat->SetTextureParameterValue(TEXT("Texture"), MarbleTex);
 			TableDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.03f, 0.03f, 0.04f, 1.0f));
-			TableDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.10f); // Ultra polished
+			TableDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.10f);
 			TableDynMat->SetScalarParameterValue(TEXT("Metallic"), 0.20f);
 		}
 		// Walls: Contemporary architectural slate grey
@@ -344,12 +364,6 @@ void AYenkaEnvironmentManager::ApplyEnvironmentTheme(EYenkaEnvironmentTheme NewT
 		{
 			WallDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.14f, 0.15f, 0.17f, 1.0f));
 			WallDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.70f);
-		}
-		// Window Vista: Luminous Night City Skyline
-		if (VistaDynMat)
-		{
-			VistaDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.15f, 0.35f, 0.70f, 1.0f));
-			VistaDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.10f);
 		}
 		if (FeaturePropMesh) FeaturePropMesh->SetVisibility(false);
 		if (WindowVistaMesh) WindowVistaMesh->SetVisibility(true);
@@ -377,6 +391,7 @@ void AYenkaEnvironmentManager::ApplyEnvironmentTheme(EYenkaEnvironmentTheme NewT
 			UMaterialInstanceDynamic* TableMat = Cast<UMaterialInstanceDynamic>(TowerMgr->TableMesh->GetMaterial(0));
 			if (TableMat)
 			{
+				if (MarbleTex) TableMat->SetTextureParameterValue(TEXT("Texture"), MarbleTex);
 				TableMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.04f, 0.04f, 0.05f, 1.0f));
 				TableMat->SetScalarParameterValue(TEXT("Roughness"), 0.12f);
 			}
@@ -387,35 +402,38 @@ void AYenkaEnvironmentManager::ApplyEnvironmentTheme(EYenkaEnvironmentTheme NewT
 	case EYenkaEnvironmentTheme::CozyCabin:
 	{
 		ThemeDisplayName = TEXT("Cabaña de Montaña");
+
+		UTexture2D* TableWoodTex = FYenkaTextureGenerator::CreateWoodTexture(512, 512, FColor(105, 55, 25), FColor(50, 22, 10), 14.0f, 1.8f);
+		UTexture2D* FloorWoodTex = FYenkaTextureGenerator::CreateWoodTexture(512, 512, FColor(80, 42, 20), FColor(42, 20, 8), 16.0f, 1.5f);
+		UTexture2D* CabinRugTex = FYenkaTextureGenerator::CreateCarpetTexture(512, 512, FColor(120, 32, 25), FColor(200, 150, 65));
+
 		// Floor: Rustic pine planks
 		if (FloorDynMat)
 		{
+			if (FloorWoodTex) FloorDynMat->SetTextureParameterValue(TEXT("Texture"), FloorWoodTex);
 			FloorDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.24f, 0.13f, 0.06f, 1.0f));
 			FloorDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.55f);
 		}
 		// Area Rug: Warm red-brown woven wool rug
 		if (CarpetDynMat)
 		{
+			if (CabinRugTex) CarpetDynMat->SetTextureParameterValue(TEXT("Texture"), CabinRugTex);
 			CarpetDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.35f, 0.10f, 0.08f, 1.0f));
 			CarpetDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.95f);
 		}
 		// Table: Heavy hand-carved solid rustic oak table
 		if (TableDynMat)
 		{
+			if (TableWoodTex) TableDynMat->SetTextureParameterValue(TEXT("Texture"), TableWoodTex);
 			TableDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.28f, 0.15f, 0.08f, 1.0f));
 			TableDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.45f);
 		}
 		// Walls: Warm cedar log cabin wood
 		if (WallDynMat)
 		{
+			if (FloorWoodTex) WallDynMat->SetTextureParameterValue(TEXT("Texture"), FloorWoodTex);
 			WallDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.20f, 0.11f, 0.05f, 1.0f));
 			WallDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.65f);
-		}
-		// Window Vista: Snowy Alpine Mountain Peaks in sunset
-		if (VistaDynMat)
-		{
-			VistaDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.85f, 0.70f, 0.60f, 1.0f));
-			VistaDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.30f);
 		}
 		// Feature Prop: Stone Fireplace Hearth
 		if (FeaturePropMesh)
@@ -452,6 +470,7 @@ void AYenkaEnvironmentManager::ApplyEnvironmentTheme(EYenkaEnvironmentTheme NewT
 			UMaterialInstanceDynamic* TableMat = Cast<UMaterialInstanceDynamic>(TowerMgr->TableMesh->GetMaterial(0));
 			if (TableMat)
 			{
+				if (TableWoodTex) TableMat->SetTextureParameterValue(TEXT("Texture"), TableWoodTex);
 				TableMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.32f, 0.18f, 0.09f, 1.0f));
 				TableMat->SetScalarParameterValue(TEXT("Roughness"), 0.50f);
 			}
@@ -462,35 +481,36 @@ void AYenkaEnvironmentManager::ApplyEnvironmentTheme(EYenkaEnvironmentTheme NewT
 	case EYenkaEnvironmentTheme::ZenGarden:
 	{
 		ThemeDisplayName = TEXT("Jardín Zen Japonés");
+
+		UTexture2D* TatamiTex = FYenkaTextureGenerator::CreateTatamiTexture(512, 512);
+		UTexture2D* UrushiTex = FYenkaTextureGenerator::CreateWoodTexture(512, 512, FColor(145, 20, 16), FColor(70, 8, 8), 24.0f, 0.8f);
+
 		// Floor: Japanese woven Tatami matting
 		if (FloorDynMat)
 		{
+			if (TatamiTex) FloorDynMat->SetTextureParameterValue(TEXT("Texture"), TatamiTex);
 			FloorDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.48f, 0.46f, 0.30f, 1.0f));
 			FloorDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.75f);
 		}
 		// Rug: Dark charcoal Zen bamboo mat
 		if (CarpetDynMat)
 		{
+			if (TatamiTex) CarpetDynMat->SetTextureParameterValue(TEXT("Texture"), TatamiTex);
 			CarpetDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.15f, 0.14f, 0.12f, 1.0f));
 			CarpetDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.80f);
 		}
 		// Table: Deep Red Japanese Urushi Lacquer Wood
 		if (TableDynMat)
 		{
+			if (UrushiTex) TableDynMat->SetTextureParameterValue(TEXT("Texture"), UrushiTex);
 			TableDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.45f, 0.06f, 0.05f, 1.0f));
-			TableDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.16f); // High gloss
+			TableDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.16f);
 		}
 		// Walls: Clean bamboo timber & white shoji screen
 		if (WallDynMat)
 		{
 			WallDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.85f, 0.82f, 0.74f, 1.0f));
 			WallDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.60f);
-		}
-		// Window Vista: Blooming Cherry Blossom (Sakura) Garden
-		if (VistaDynMat)
-		{
-			VistaDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.95f, 0.55f, 0.70f, 1.0f));
-			VistaDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.40f);
 		}
 		if (FeaturePropMesh) FeaturePropMesh->SetVisibility(false);
 		if (WindowVistaMesh) WindowVistaMesh->SetVisibility(true);
@@ -518,6 +538,7 @@ void AYenkaEnvironmentManager::ApplyEnvironmentTheme(EYenkaEnvironmentTheme NewT
 			UMaterialInstanceDynamic* TableMat = Cast<UMaterialInstanceDynamic>(TowerMgr->TableMesh->GetMaterial(0));
 			if (TableMat)
 			{
+				if (UrushiTex) TableMat->SetTextureParameterValue(TEXT("Texture"), UrushiTex);
 				TableMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.42f, 0.06f, 0.05f, 1.0f));
 				TableMat->SetScalarParameterValue(TEXT("Roughness"), 0.18f);
 			}
@@ -528,9 +549,13 @@ void AYenkaEnvironmentManager::ApplyEnvironmentTheme(EYenkaEnvironmentTheme NewT
 	case EYenkaEnvironmentTheme::SpaceObservatory:
 	{
 		ThemeDisplayName = TEXT("Observatorio Espacial");
+
+		UTexture2D* CarbonTex = FYenkaTextureGenerator::CreateCarbonFiberTexture(512, 512);
+
 		// Floor: Brushed titanium orbital plating
 		if (FloorDynMat)
 		{
+			if (CarbonTex) FloorDynMat->SetTextureParameterValue(TEXT("Texture"), CarbonTex);
 			FloorDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.06f, 0.08f, 0.11f, 1.0f));
 			FloorDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.28f);
 			FloorDynMat->SetScalarParameterValue(TEXT("Metallic"), 0.85f);
@@ -538,6 +563,7 @@ void AYenkaEnvironmentManager::ApplyEnvironmentTheme(EYenkaEnvironmentTheme NewT
 		// Rug: Deep navy-violet energy deck plate
 		if (CarpetDynMat)
 		{
+			if (CarbonTex) CarpetDynMat->SetTextureParameterValue(TEXT("Texture"), CarbonTex);
 			CarpetDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.05f, 0.08f, 0.18f, 1.0f));
 			CarpetDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.30f);
 			CarpetDynMat->SetScalarParameterValue(TEXT("Metallic"), 0.50f);
@@ -545,6 +571,7 @@ void AYenkaEnvironmentManager::ApplyEnvironmentTheme(EYenkaEnvironmentTheme NewT
 		// Table: Holographic Carbon Composite with Cyan Trim
 		if (TableDynMat)
 		{
+			if (CarbonTex) TableDynMat->SetTextureParameterValue(TEXT("Texture"), CarbonTex);
 			TableDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.03f, 0.05f, 0.09f, 1.0f));
 			TableDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.18f);
 			TableDynMat->SetScalarParameterValue(TEXT("Metallic"), 0.70f);
@@ -555,12 +582,6 @@ void AYenkaEnvironmentManager::ApplyEnvironmentTheme(EYenkaEnvironmentTheme NewT
 			WallDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.03f, 0.04f, 0.06f, 1.0f));
 			WallDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.40f);
 			WallDynMat->SetScalarParameterValue(TEXT("Metallic"), 0.70f);
-		}
-		// Window Vista: Deep Cosmic Nebula & Starfield
-		if (VistaDynMat)
-		{
-			VistaDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.40f, 0.10f, 0.90f, 1.0f));
-			VistaDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.05f);
 		}
 		if (FeaturePropMesh) FeaturePropMesh->SetVisibility(false);
 		if (WindowVistaMesh) WindowVistaMesh->SetVisibility(true);
@@ -573,12 +594,12 @@ void AYenkaEnvironmentManager::ApplyEnvironmentTheme(EYenkaEnvironmentTheme NewT
 		}
 		if (AccentLight1)
 		{
-			AccentLight1->SetLightColor(FLinearColor(0.0f, 0.85f, 1.0f)); // Bright cyan
+			AccentLight1->SetLightColor(FLinearColor(0.0f, 0.85f, 1.0f));
 			AccentLight1->SetIntensity(2200.0f);
 		}
 		if (AccentLight2)
 		{
-			AccentLight2->SetLightColor(FLinearColor(0.70f, 0.15f, 1.0f)); // Electric violet
+			AccentLight2->SetLightColor(FLinearColor(0.70f, 0.15f, 1.0f));
 			AccentLight2->SetIntensity(2200.0f);
 		}
 		if (FireplaceLight) FireplaceLight->SetIntensity(0.0f);
@@ -588,6 +609,7 @@ void AYenkaEnvironmentManager::ApplyEnvironmentTheme(EYenkaEnvironmentTheme NewT
 			UMaterialInstanceDynamic* TableMat = Cast<UMaterialInstanceDynamic>(TowerMgr->TableMesh->GetMaterial(0));
 			if (TableMat)
 			{
+				if (CarbonTex) TableMat->SetTextureParameterValue(TEXT("Texture"), CarbonTex);
 				TableMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.03f, 0.06f, 0.09f, 1.0f));
 				TableMat->SetScalarParameterValue(TEXT("Roughness"), 0.20f);
 			}
@@ -598,21 +620,29 @@ void AYenkaEnvironmentManager::ApplyEnvironmentTheme(EYenkaEnvironmentTheme NewT
 	case EYenkaEnvironmentTheme::VictorianLibrary:
 	{
 		ThemeDisplayName = TEXT("Biblioteca Victoriana");
+
+		UTexture2D* TableWalnutTex = FYenkaTextureGenerator::CreateWoodTexture(512, 512, FColor(65, 30, 15), FColor(30, 12, 6), 18.0f, 1.1f);
+		UTexture2D* FloorWoodTex = FYenkaTextureGenerator::CreateWoodTexture(512, 512, FColor(55, 24, 12), FColor(24, 10, 5), 20.0f, 1.2f);
+		UTexture2D* PersianRugTex = FYenkaTextureGenerator::CreateCarpetTexture(512, 512, FColor(135, 20, 28), FColor(220, 185, 75));
+
 		// Floor: Rich mahogany floor
 		if (FloorDynMat)
 		{
+			if (FloorWoodTex) FloorDynMat->SetTextureParameterValue(TEXT("Texture"), FloorWoodTex);
 			FloorDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.18f, 0.08f, 0.04f, 1.0f));
 			FloorDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.35f);
 		}
 		// Area Rug: Ornate Persian Burgundy & Gold rug
 		if (CarpetDynMat)
 		{
+			if (PersianRugTex) CarpetDynMat->SetTextureParameterValue(TEXT("Texture"), PersianRugTex);
 			CarpetDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.40f, 0.06f, 0.08f, 1.0f));
 			CarpetDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.95f);
 		}
 		// Table: Vintage English Walnut with brass legs
 		if (TableDynMat)
 		{
+			if (TableWalnutTex) TableDynMat->SetTextureParameterValue(TEXT("Texture"), TableWalnutTex);
 			TableDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.16f, 0.08f, 0.04f, 1.0f));
 			TableDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.30f);
 		}
@@ -622,18 +652,13 @@ void AYenkaEnvironmentManager::ApplyEnvironmentTheme(EYenkaEnvironmentTheme NewT
 			WallDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.05f, 0.12f, 0.08f, 1.0f));
 			WallDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.80f);
 		}
-		// Window Vista: Stately manor garden in soft fog
-		if (VistaDynMat)
-		{
-			VistaDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.45f, 0.55f, 0.48f, 1.0f));
-			VistaDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.40f);
-		}
 		// Feature Prop: Antique Mahogany Bookshelves
 		if (FeaturePropMesh)
 		{
 			FeaturePropMesh->SetVisibility(true);
 			if (FeaturePropDynMat)
 			{
+				if (TableWalnutTex) FeaturePropDynMat->SetTextureParameterValue(TEXT("Texture"), TableWalnutTex);
 				FeaturePropDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.16f, 0.06f, 0.03f, 1.0f));
 				FeaturePropDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.40f);
 			}
@@ -648,12 +673,12 @@ void AYenkaEnvironmentManager::ApplyEnvironmentTheme(EYenkaEnvironmentTheme NewT
 		}
 		if (AccentLight1)
 		{
-			AccentLight1->SetLightColor(FLinearColor(0.20f, 0.85f, 0.45f)); // Emerald lamp glow
+			AccentLight1->SetLightColor(FLinearColor(0.20f, 0.85f, 0.45f));
 			AccentLight1->SetIntensity(1500.0f);
 		}
 		if (AccentLight2)
 		{
-			AccentLight2->SetLightColor(FLinearColor(1.0f, 0.78f, 0.45f)); // Warm amber
+			AccentLight2->SetLightColor(FLinearColor(1.0f, 0.78f, 0.45f));
 			AccentLight2->SetIntensity(1500.0f);
 		}
 		if (FireplaceLight) FireplaceLight->SetIntensity(0.0f);
@@ -663,6 +688,7 @@ void AYenkaEnvironmentManager::ApplyEnvironmentTheme(EYenkaEnvironmentTheme NewT
 			UMaterialInstanceDynamic* TableMat = Cast<UMaterialInstanceDynamic>(TowerMgr->TableMesh->GetMaterial(0));
 			if (TableMat)
 			{
+				if (TableWalnutTex) TableMat->SetTextureParameterValue(TEXT("Texture"), TableWalnutTex);
 				TableMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.14f, 0.07f, 0.04f, 1.0f));
 				TableMat->SetScalarParameterValue(TEXT("Roughness"), 0.35f);
 			}
@@ -674,21 +700,28 @@ void AYenkaEnvironmentManager::ApplyEnvironmentTheme(EYenkaEnvironmentTheme NewT
 	default:
 	{
 		ThemeDisplayName = TEXT("Estudio Minimalista");
-		// Floor: Polished white architectural concrete floor
+
+		UTexture2D* WhiteQuartzTex = FYenkaTextureGenerator::CreateMarbleTexture(512, 512, FColor(235, 235, 240), FColor(190, 190, 200), 8.0f);
+		UTexture2D* GreyRugTex = FYenkaTextureGenerator::CreateCarpetTexture(512, 512, FColor(160, 160, 165), FColor(210, 210, 215));
+
+		// Floor: Polished architectural concrete floor
 		if (FloorDynMat)
 		{
+			if (WhiteQuartzTex) FloorDynMat->SetTextureParameterValue(TEXT("Texture"), WhiteQuartzTex);
 			FloorDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.35f, 0.35f, 0.36f, 1.0f));
 			FloorDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.20f);
 		}
-		// Area Rug: Scandinavian light grey felt rug
+		// Area Rug: Scandinavian felt rug
 		if (CarpetDynMat)
 		{
+			if (GreyRugTex) CarpetDynMat->SetTextureParameterValue(TEXT("Texture"), GreyRugTex);
 			CarpetDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.55f, 0.55f, 0.55f, 1.0f));
 			CarpetDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.90f);
 		}
 		// Table: Matte White Quartz Designer Desk
 		if (TableDynMat)
 		{
+			if (WhiteQuartzTex) TableDynMat->SetTextureParameterValue(TEXT("Texture"), WhiteQuartzTex);
 			TableDynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.85f, 0.85f, 0.88f, 1.0f));
 			TableDynMat->SetScalarParameterValue(TEXT("Roughness"), 0.25f);
 		}
@@ -724,6 +757,7 @@ void AYenkaEnvironmentManager::ApplyEnvironmentTheme(EYenkaEnvironmentTheme NewT
 			UMaterialInstanceDynamic* TableMat = Cast<UMaterialInstanceDynamic>(TowerMgr->TableMesh->GetMaterial(0));
 			if (TableMat)
 			{
+				if (WhiteQuartzTex) TableMat->SetTextureParameterValue(TEXT("Texture"), WhiteQuartzTex);
 				TableMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.80f, 0.80f, 0.82f, 1.0f));
 				TableMat->SetScalarParameterValue(TEXT("Roughness"), 0.25f);
 			}
