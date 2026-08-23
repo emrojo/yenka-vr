@@ -941,6 +941,11 @@ void AYenkaDesktopPawn::LoadCustomTransformByIndex(int32 Index)
 		GrabHandRotationOffset = Transform.RotationOffset;
 	}
 
+	if (VirtualHand)
+	{
+		VirtualHand->UpdateFingerPoses(0.0f);
+	}
+
 	if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(9989, 3.0f, FColor::Cyan,
@@ -1976,6 +1981,29 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 		if (VirtualHand)
 		{
 			VirtualHand->SetActorHiddenInGame(false);
+
+			// Position the hand in front of the player's camera for clear editing & observation
+			FVector CamLoc = FollowCamera ? FollowCamera->GetComponentLocation() : GetActorLocation();
+			FRotator CamRot = FollowCamera ? FollowCamera->GetComponentRotation() : GetActorRotation();
+			FVector CamFwd = CamRot.Vector();
+			FVector CamRight = FRotationMatrix(CamRot).GetUnitAxis(EAxis::Y);
+			FVector CamUp = FRotationMatrix(CamRot).GetUnitAxis(EAxis::Z);
+
+			FVector EditAnchorPos = CamLoc + (CamFwd * 50.0f) + (CamRight * 10.0f) - (CamUp * 6.0f);
+
+			// Base rotation faces the camera with wrist pointing back
+			FRotator BaseRot = (-CamFwd).Rotation();
+			BaseRot.Pitch = 0.0f;
+			BaseRot.Roll = 0.0f;
+
+			const bool bInPoke = (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke));
+			const FRotator ActiveRotOffset = bInPoke ? PokeHandRotationOffset : GrabHandRotationOffset;
+			const FVector ActiveLocOffset = bInPoke ? PokeHandLocationOffset : GrabHandLocationOffset;
+
+			FRotator HandRot = BaseRot + ActiveRotOffset;
+			FVector FinalHandPos = EditAnchorPos - HandRot.RotateVector(ActiveLocOffset);
+
+			VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), FinalHandPos), 0.0f);
 		}
 		return;
 	}
@@ -2101,6 +2129,20 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 						VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), HandPos), 0.0f);
 					}
 				}
+				else
+				{
+					// Poke mode active without a hovered block: hover freely in front of cursor with Poke offsets
+					bIsLockedPerpendicular = false;
+					VirtualHand->SetHandPoseMode(EHandPoseMode::FingerPoke);
+					FVector TargetPos = bHit ? HitResult.ImpactPoint : (WorldLocation + (WorldDirection * 60.0f));
+					FRotator BaseRot = GetHorizontalFacingRotation(TargetPos);
+					BaseRot.Pitch = 0.0f;
+					BaseRot.Roll = 0.0f;
+					FRotator HandRot = BaseRot + PokeHandRotationOffset;
+					FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + PokeHandLocationOffset;
+					FVector SafeHandPos = TargetPos - HandRot.RotateVector(LocalOffset);
+					VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), SafeHandPos), 0.0f);
+				}
 			}
 			else if (bHit)
 			{
@@ -2134,8 +2176,12 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 					{
 						// Block is flush/not protruding: hand hovers outside in inspection mode (fingertips strictly outside tower at block height)
 						bIsLockedPerpendicular = false;
-						VirtualHand->SetHandPoseMode(bForceGesturePreview ? ActiveGesturePreview : EHandPoseMode::OpenHand);
-						FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
+						const bool bInPoke = (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke));
+						const FRotator ActiveRotOffset = bInPoke ? PokeHandRotationOffset : GrabHandRotationOffset;
+						const FVector ActiveLocOffset = bInPoke ? PokeHandLocationOffset : GrabHandLocationOffset;
+
+						VirtualHand->SetHandPoseMode(bForceGesturePreview ? ActiveGesturePreview : (bInPoke ? EHandPoseMode::FingerPoke : EHandPoseMode::OpenHand));
+						FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + ActiveLocOffset;
 
 						FVector Diff = HitResult.ImpactPoint - TowerCenter;
 						float Angle = FMath::Atan2(Diff.Y, Diff.X);
@@ -2144,7 +2190,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 						FRotator BaseRot = GetHorizontalFacingRotation(TargetFingertipPos);
 						BaseRot.Pitch = 0.0f;
 						BaseRot.Roll = 0.0f;
-						FRotator InspectRot = BaseRot + GrabHandRotationOffset;
+						FRotator InspectRot = BaseRot + ActiveRotOffset;
 
 						FVector SafeHandPos = TargetFingertipPos - InspectRot.RotateVector(LocalOffset);
 						VirtualHand->SetTargetHandTransform(FTransform(InspectRot.Quaternion(), SafeHandPos), 0.0f);
@@ -2154,8 +2200,12 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 				{
 					// --- PROXIMITY TO TABLE (No Block Hovered) ---
 					bIsLockedPerpendicular = false;
-					VirtualHand->SetHandPoseMode(bForceGesturePreview ? ActiveGesturePreview : EHandPoseMode::OpenHand);
-					FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
+					const bool bInPoke = (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke));
+					const FRotator ActiveRotOffset = bInPoke ? PokeHandRotationOffset : GrabHandRotationOffset;
+					const FVector ActiveLocOffset = bInPoke ? PokeHandLocationOffset : GrabHandLocationOffset;
+
+					VirtualHand->SetHandPoseMode(bForceGesturePreview ? ActiveGesturePreview : (bInPoke ? EHandPoseMode::FingerPoke : EHandPoseMode::OpenHand));
+					FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + ActiveLocOffset;
 
 					FVector Diff = HitResult.ImpactPoint - TowerCenter;
 					float Angle = FMath::Atan2(Diff.Y, Diff.X);
@@ -2164,7 +2214,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 					FRotator BaseRot = GetHorizontalFacingRotation(TargetFingertipPos);
 					BaseRot.Pitch = 0.0f;
 					BaseRot.Roll = 0.0f;
-					FRotator InspectRot = BaseRot + GrabHandRotationOffset;
+					FRotator InspectRot = BaseRot + ActiveRotOffset;
 
 					FVector SafeHandPos = TargetFingertipPos - InspectRot.RotateVector(LocalOffset);
 					VirtualHand->SetTargetHandTransform(FTransform(InspectRot.Quaternion(), SafeHandPos), 0.0f);
@@ -2173,15 +2223,47 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 				{
 					// --- OUTSIDE PROXIMITY: Free 3D movement ---
 					bIsLockedPerpendicular = false;
-					VirtualHand->SetHandPoseMode(bForceGesturePreview ? ActiveGesturePreview : EHandPoseMode::OpenHand);
-					FTransform HandTarget(FRotationMatrix::MakeFromX(WorldDirection).ToQuat(), HitResult.ImpactPoint);
-					VirtualHand->SetTargetHandTransform(HandTarget, 0.0f);
+					const bool bInPoke = (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke));
+					const FRotator ActiveRotOffset = bInPoke ? PokeHandRotationOffset : GrabHandRotationOffset;
+					const FVector ActiveLocOffset = bInPoke ? PokeHandLocationOffset : GrabHandLocationOffset;
+
+					VirtualHand->SetHandPoseMode(bForceGesturePreview ? ActiveGesturePreview : (bInPoke ? EHandPoseMode::FingerPoke : EHandPoseMode::OpenHand));
+					FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + ActiveLocOffset;
+
+					FRotator BaseRot = GetHorizontalFacingRotation(HitResult.ImpactPoint);
+					BaseRot.Pitch = 0.0f;
+					BaseRot.Roll = 0.0f;
+					FRotator HandRot = BaseRot + ActiveRotOffset;
+
+					FVector SafeHandPos = HitResult.ImpactPoint - HandRot.RotateVector(LocalOffset);
+					VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), SafeHandPos), 0.0f);
 				}
 			}
 			else
 			{
-				bIsLockedPerpendicular = false;
-				VirtualHand->SetActorHiddenInGame(true);
+				if (bForceGesturePreview || bIsPokeModeActive)
+				{
+					bIsLockedPerpendicular = false;
+					const bool bInPoke = (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke));
+					const FRotator ActiveRotOffset = bInPoke ? PokeHandRotationOffset : GrabHandRotationOffset;
+					const FVector ActiveLocOffset = bInPoke ? PokeHandLocationOffset : GrabHandLocationOffset;
+
+					FVector FreeTargetPos = WorldLocation + (WorldDirection * 60.0f);
+					FRotator BaseRot = (-WorldDirection).Rotation();
+					BaseRot.Pitch = 0.0f;
+					BaseRot.Roll = 0.0f;
+					FRotator HandRot = BaseRot + ActiveRotOffset;
+					FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + ActiveLocOffset;
+					FVector SafeHandPos = FreeTargetPos - HandRot.RotateVector(LocalOffset);
+
+					VirtualHand->SetHandPoseMode(bForceGesturePreview ? ActiveGesturePreview : (bInPoke ? EHandPoseMode::FingerPoke : EHandPoseMode::OpenHand));
+					VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), SafeHandPos), 0.0f);
+				}
+				else
+				{
+					bIsLockedPerpendicular = false;
+					VirtualHand->SetActorHiddenInGame(true);
+				}
 			}
 		}
 	}
