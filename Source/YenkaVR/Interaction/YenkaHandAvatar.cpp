@@ -490,48 +490,133 @@ FString AYenkaHandAvatar::GetDetectedGestureDescription() const
 	return TEXT("🎨 GESTO PERSONALIZADO (Custom Pose)");
 }
 
-static void RotatePhalanxBone(UPoseableMeshComponent* Mesh, const TArray<FName>& BoneNames, float FlexionAngle, float LateralAngle)
+FRotator AYenkaHandAvatar::GetPhalanxDeltaRotationForBone(FName BoneName) const
 {
-	if (!Mesh) return;
-	for (const FName& Name : BoneNames)
+	FString Name = BoneName.ToString().ToLower();
+
+	// Thumb
+	if (Name.Contains(TEXT("thumb")))
 	{
-		if (Mesh->GetBoneIndex(Name) != INDEX_NONE)
+		if (Name.Contains(TEXT("01")) || Name.Contains(TEXT("metacarpal")) || (Name.Contains(TEXT("proximal")) && !Name.Contains(TEXT("intermediate")) && !Name.Contains(TEXT("distal"))))
 		{
-			FRotator BoneRot(-FlexionAngle, LateralAngle, 0.0f);
-			Mesh->SetBoneRotationByName(Name, BoneRot, EBoneSpaces::ComponentSpace);
-			break;
+			return FRotator(ThumbPhalanges.Proximal.FlexionAngle, ThumbPhalanges.Proximal.LateralAngle, 0.0f);
+		}
+		if (Name.Contains(TEXT("02")) || Name.Contains(TEXT("intermediate")) || Name.Contains(TEXT("proximal")))
+		{
+			return FRotator(ThumbPhalanges.Intermediate.FlexionAngle, ThumbPhalanges.Intermediate.LateralAngle, 0.0f);
+		}
+		if (Name.Contains(TEXT("03")) || Name.Contains(TEXT("distal")))
+		{
+			return FRotator(ThumbPhalanges.Distal.FlexionAngle, ThumbPhalanges.Distal.LateralAngle, 0.0f);
 		}
 	}
+
+	// Index
+	if (Name.Contains(TEXT("index")))
+	{
+		if (Name.Contains(TEXT("01")) || Name.Contains(TEXT("metacarpal")) || (Name.Contains(TEXT("proximal")) && !Name.Contains(TEXT("intermediate")) && !Name.Contains(TEXT("distal"))))
+		{
+			return FRotator(IndexPhalanges.Proximal.FlexionAngle, IndexPhalanges.Proximal.LateralAngle, 0.0f);
+		}
+		if (Name.Contains(TEXT("02")) || Name.Contains(TEXT("intermediate")))
+		{
+			return FRotator(IndexPhalanges.Intermediate.FlexionAngle, IndexPhalanges.Intermediate.LateralAngle, 0.0f);
+		}
+		if (Name.Contains(TEXT("03")) || Name.Contains(TEXT("distal")))
+		{
+			return FRotator(IndexPhalanges.Distal.FlexionAngle, IndexPhalanges.Distal.LateralAngle, 0.0f);
+		}
+	}
+
+	// Middle
+	if (Name.Contains(TEXT("middle")))
+	{
+		if (Name.Contains(TEXT("01")) || Name.Contains(TEXT("metacarpal")) || (Name.Contains(TEXT("proximal")) && !Name.Contains(TEXT("intermediate")) && !Name.Contains(TEXT("distal"))))
+		{
+			return FRotator(MiddlePhalanges.Proximal.FlexionAngle, MiddlePhalanges.Proximal.LateralAngle, 0.0f);
+		}
+		if (Name.Contains(TEXT("02")) || Name.Contains(TEXT("intermediate")))
+		{
+			return FRotator(MiddlePhalanges.Intermediate.FlexionAngle, MiddlePhalanges.Intermediate.LateralAngle, 0.0f);
+		}
+		if (Name.Contains(TEXT("03")) || Name.Contains(TEXT("distal")))
+		{
+			return FRotator(MiddlePhalanges.Distal.FlexionAngle, MiddlePhalanges.Distal.LateralAngle, 0.0f);
+		}
+	}
+
+	// Ring
+	if (Name.Contains(TEXT("ring")))
+	{
+		if (Name.Contains(TEXT("01")) || Name.Contains(TEXT("metacarpal")) || (Name.Contains(TEXT("proximal")) && !Name.Contains(TEXT("intermediate")) && !Name.Contains(TEXT("distal"))))
+		{
+			return FRotator(RingPhalanges.Proximal.FlexionAngle, RingPhalanges.Proximal.LateralAngle, 0.0f);
+		}
+		if (Name.Contains(TEXT("02")) || Name.Contains(TEXT("intermediate")))
+		{
+			return FRotator(RingPhalanges.Intermediate.FlexionAngle, RingPhalanges.Intermediate.LateralAngle, 0.0f);
+		}
+		if (Name.Contains(TEXT("03")) || Name.Contains(TEXT("distal")))
+		{
+			return FRotator(RingPhalanges.Distal.FlexionAngle, RingPhalanges.Distal.LateralAngle, 0.0f);
+		}
+	}
+
+	// Pinky
+	if (Name.Contains(TEXT("pinky")) || Name.Contains(TEXT("little")))
+	{
+		if (Name.Contains(TEXT("01")) || Name.Contains(TEXT("metacarpal")) || (Name.Contains(TEXT("proximal")) && !Name.Contains(TEXT("intermediate")) && !Name.Contains(TEXT("distal"))))
+		{
+			return FRotator(PinkyPhalanges.Proximal.FlexionAngle, PinkyPhalanges.Proximal.LateralAngle, 0.0f);
+		}
+		if (Name.Contains(TEXT("02")) || Name.Contains(TEXT("intermediate")))
+		{
+			return FRotator(PinkyPhalanges.Intermediate.FlexionAngle, PinkyPhalanges.Intermediate.LateralAngle, 0.0f);
+		}
+		if (Name.Contains(TEXT("03")) || Name.Contains(TEXT("distal")))
+		{
+			return FRotator(PinkyPhalanges.Distal.FlexionAngle, PinkyPhalanges.Distal.LateralAngle, 0.0f);
+		}
+	}
+
+	return FRotator::ZeroRotator;
 }
 
 void AYenkaHandAvatar::ApplyPhalanxTransforms()
 {
-	if (PoseableHandMesh)
+	if (PoseableHandMesh && PoseableHandMesh->GetSkinnedAsset())
 	{
-		// Thumb
-		RotatePhalanxBone(PoseableHandMesh, {TEXT("thumb_01_r"), TEXT("thumb_01_l"), TEXT("thumb_metacarpal_r"), TEXT("thumb_metacarpal_l"), TEXT("thumb_proximal_r"), TEXT("thumb_proximal_l")}, ThumbPhalanges.Proximal.FlexionAngle, ThumbPhalanges.Proximal.LateralAngle);
-		RotatePhalanxBone(PoseableHandMesh, {TEXT("thumb_02_r"), TEXT("thumb_02_l"), TEXT("thumb_intermediate_r"), TEXT("thumb_intermediate_l"), TEXT("thumb_proximal_r"), TEXT("thumb_proximal_l")}, ThumbPhalanges.Intermediate.FlexionAngle, ThumbPhalanges.Intermediate.LateralAngle);
-		RotatePhalanxBone(PoseableHandMesh, {TEXT("thumb_03_r"), TEXT("thumb_03_l"), TEXT("thumb_distal_r"), TEXT("thumb_distal_l")}, ThumbPhalanges.Distal.FlexionAngle, ThumbPhalanges.Distal.LateralAngle);
+		const FReferenceSkeleton& RefSkeleton = PoseableHandMesh->GetSkinnedAsset()->GetRefSkeleton();
+		const int32 NumBones = RefSkeleton.GetNum();
+		const TArray<FTransform>& RefBonePoses = RefSkeleton.GetRefBonePose();
 
-		// Index
-		RotatePhalanxBone(PoseableHandMesh, {TEXT("index_01_r"), TEXT("index_01_l"), TEXT("index_metacarpal_r"), TEXT("index_metacarpal_l"), TEXT("index_proximal_r"), TEXT("index_proximal_l")}, IndexPhalanges.Proximal.FlexionAngle, IndexPhalanges.Proximal.LateralAngle);
-		RotatePhalanxBone(PoseableHandMesh, {TEXT("index_02_r"), TEXT("index_02_l"), TEXT("index_intermediate_r"), TEXT("index_intermediate_l")}, IndexPhalanges.Intermediate.FlexionAngle, IndexPhalanges.Intermediate.LateralAngle);
-		RotatePhalanxBone(PoseableHandMesh, {TEXT("index_03_r"), TEXT("index_03_l"), TEXT("index_distal_r"), TEXT("index_distal_l")}, IndexPhalanges.Distal.FlexionAngle, IndexPhalanges.Distal.LateralAngle);
+		TArray<FTransform> CompTransforms;
+		CompTransforms.SetNum(NumBones);
 
-		// Middle
-		RotatePhalanxBone(PoseableHandMesh, {TEXT("middle_01_r"), TEXT("middle_01_l"), TEXT("middle_metacarpal_r"), TEXT("middle_metacarpal_l"), TEXT("middle_proximal_r"), TEXT("middle_proximal_l")}, MiddlePhalanges.Proximal.FlexionAngle, MiddlePhalanges.Proximal.LateralAngle);
-		RotatePhalanxBone(PoseableHandMesh, {TEXT("middle_02_r"), TEXT("middle_02_l"), TEXT("middle_intermediate_r"), TEXT("middle_intermediate_l")}, MiddlePhalanges.Intermediate.FlexionAngle, MiddlePhalanges.Intermediate.LateralAngle);
-		RotatePhalanxBone(PoseableHandMesh, {TEXT("middle_03_r"), TEXT("middle_03_l"), TEXT("middle_distal_r"), TEXT("middle_distal_l")}, MiddlePhalanges.Distal.FlexionAngle, MiddlePhalanges.Distal.LateralAngle);
+		for (int32 i = 0; i < NumBones; ++i)
+		{
+			FTransform LocalTransform = RefBonePoses[i];
+			FName BoneName = RefSkeleton.GetBoneName(i);
 
-		// Ring
-		RotatePhalanxBone(PoseableHandMesh, {TEXT("ring_01_r"), TEXT("ring_01_l"), TEXT("ring_metacarpal_r"), TEXT("ring_metacarpal_l"), TEXT("ring_proximal_r"), TEXT("ring_proximal_l")}, RingPhalanges.Proximal.FlexionAngle, RingPhalanges.Proximal.LateralAngle);
-		RotatePhalanxBone(PoseableHandMesh, {TEXT("ring_02_r"), TEXT("ring_02_l"), TEXT("ring_intermediate_r"), TEXT("ring_intermediate_l")}, RingPhalanges.Intermediate.FlexionAngle, RingPhalanges.Intermediate.LateralAngle);
-		RotatePhalanxBone(PoseableHandMesh, {TEXT("ring_03_r"), TEXT("ring_03_l"), TEXT("ring_distal_r"), TEXT("ring_distal_l")}, RingPhalanges.Distal.FlexionAngle, RingPhalanges.Distal.LateralAngle);
+			FRotator DeltaRot = GetPhalanxDeltaRotationForBone(BoneName);
+			if (!DeltaRot.IsNearlyZero())
+			{
+				FQuat DeltaQuat = DeltaRot.Quaternion();
+				LocalTransform.SetRotation(LocalTransform.GetRotation() * DeltaQuat);
+			}
 
-		// Pinky
-		RotatePhalanxBone(PoseableHandMesh, {TEXT("pinky_01_r"), TEXT("pinky_01_l"), TEXT("pinky_metacarpal_r"), TEXT("pinky_metacarpal_l"), TEXT("pinky_proximal_r"), TEXT("pinky_proximal_l")}, PinkyPhalanges.Proximal.FlexionAngle, PinkyPhalanges.Proximal.LateralAngle);
-		RotatePhalanxBone(PoseableHandMesh, {TEXT("pinky_02_r"), TEXT("pinky_02_l"), TEXT("pinky_intermediate_r"), TEXT("pinky_intermediate_l")}, PinkyPhalanges.Intermediate.FlexionAngle, PinkyPhalanges.Intermediate.LateralAngle);
-		RotatePhalanxBone(PoseableHandMesh, {TEXT("pinky_03_r"), TEXT("pinky_03_l"), TEXT("pinky_distal_r"), TEXT("pinky_distal_l")}, PinkyPhalanges.Distal.FlexionAngle, PinkyPhalanges.Distal.LateralAngle);
+			int32 ParentIndex = RefSkeleton.GetParentIndex(i);
+			if (ParentIndex != INDEX_NONE && CompTransforms.IsValidIndex(ParentIndex))
+			{
+				CompTransforms[i] = LocalTransform * CompTransforms[ParentIndex];
+			}
+			else
+			{
+				CompTransforms[i] = LocalTransform;
+			}
+
+			PoseableHandMesh->SetBoneTransformByName(BoneName, CompTransforms[i], EBoneSpaces::ComponentSpace);
+		}
 	}
 
 	// Update procedural mesh rotations based on phalanx flexion and lateral spread
