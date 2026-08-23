@@ -228,6 +228,12 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Transforms")
 	bool bIsNamingCustomTransform = false;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Phalanx")
+	FTransform FixedPhalanxEditTransform;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Phalanx")
+	bool bHasFixedPhalanxTransform = false;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Transforms")
 	FString CurrentTypedTransformName;
 

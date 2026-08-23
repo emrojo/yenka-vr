@@ -230,6 +230,34 @@ void AYenkaDesktopPawn::TogglePhalanxEditMode()
 {
 	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	bIsPhalanxEditMode = !bIsPhalanxEditMode;
+
+	if (bIsPhalanxEditMode)
+	{
+		// Capture fixed position in front of current camera at the exact moment of entering edit mode
+		FVector CamLoc = FollowCamera ? FollowCamera->GetComponentLocation() : GetActorLocation();
+		FRotator CamRot = FollowCamera ? FollowCamera->GetComponentRotation() : GetActorRotation();
+		FVector CamFwd = CamRot.Vector();
+		FVector CamRight = FRotationMatrix(CamRot).GetUnitAxis(EAxis::Y);
+		FVector CamUp = FRotationMatrix(CamRot).GetUnitAxis(EAxis::Z);
+
+		FVector FixedPos = CamLoc + (CamFwd * 50.0f) + (CamRight * 8.0f) - (CamUp * 4.0f);
+		FRotator FixedRot = (-CamFwd).Rotation();
+		FixedRot.Pitch = 0.0f;
+		FixedRot.Roll = 0.0f;
+
+		FixedPhalanxEditTransform = FTransform(FixedRot.Quaternion(), FixedPos);
+		bHasFixedPhalanxTransform = true;
+
+		if (VirtualHand)
+		{
+			VirtualHand->SetActorHiddenInGame(false);
+			VirtualHand->SetTargetHandTransform(FixedPhalanxEditTransform, 0.0f);
+		}
+	}
+	else
+	{
+		bHasFixedPhalanxTransform = false;
+	}
 }
 
 void AYenkaDesktopPawn::SelectFinger(int32 FingerIdx)
@@ -2003,26 +2031,32 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 		{
 			VirtualHand->SetActorHiddenInGame(false);
 
-			// Position the hand in front of the player's camera for clear editing & observation
-			FVector CamLoc = FollowCamera ? FollowCamera->GetComponentLocation() : GetActorLocation();
-			FRotator CamRot = FollowCamera ? FollowCamera->GetComponentRotation() : GetActorRotation();
-			FVector CamFwd = CamRot.Vector();
-			FVector CamRight = FRotationMatrix(CamRot).GetUnitAxis(EAxis::Y);
-			FVector CamUp = FRotationMatrix(CamRot).GetUnitAxis(EAxis::Z);
+			if (!bHasFixedPhalanxTransform)
+			{
+				FVector CamLoc = FollowCamera ? FollowCamera->GetComponentLocation() : GetActorLocation();
+				FRotator CamRot = FollowCamera ? FollowCamera->GetComponentRotation() : GetActorRotation();
+				FVector CamFwd = CamRot.Vector();
+				FVector CamRight = FRotationMatrix(CamRot).GetUnitAxis(EAxis::Y);
+				FVector CamUp = FRotationMatrix(CamRot).GetUnitAxis(EAxis::Z);
 
-			FVector EditAnchorPos = CamLoc + (CamFwd * 50.0f) + (CamRight * 10.0f) - (CamUp * 6.0f);
+				FVector FixedPos = CamLoc + (CamFwd * 50.0f) + (CamRight * 8.0f) - (CamUp * 4.0f);
+				FRotator FixedRot = (-CamFwd).Rotation();
+				FixedRot.Pitch = 0.0f;
+				FixedRot.Roll = 0.0f;
 
-			// Base rotation faces the camera with wrist pointing back
-			FRotator BaseRot = (-CamFwd).Rotation();
-			BaseRot.Pitch = 0.0f;
-			BaseRot.Roll = 0.0f;
+				FixedPhalanxEditTransform = FTransform(FixedRot.Quaternion(), FixedPos);
+				bHasFixedPhalanxTransform = true;
+			}
 
+			// Keep the hand completely stationary in 3D world space while user zooms, pans, or orbits camera
 			const bool bInPoke = (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke));
 			const FRotator ActiveRotOffset = bInPoke ? PokeHandRotationOffset : GrabHandRotationOffset;
 			const FVector ActiveLocOffset = bInPoke ? PokeHandLocationOffset : GrabHandLocationOffset;
 
-			FQuat HandQuat = BaseRot.Quaternion() * ActiveRotOffset.Quaternion();
-			FVector FinalHandPos = EditAnchorPos - HandQuat.RotateVector(ActiveLocOffset);
+			FQuat BaseQuat = FixedPhalanxEditTransform.GetRotation();
+			FQuat HandQuat = BaseQuat * ActiveRotOffset.Quaternion();
+			FVector FixedPos = FixedPhalanxEditTransform.GetLocation();
+			FVector FinalHandPos = FixedPos - HandQuat.RotateVector(ActiveLocOffset);
 
 			VirtualHand->SetTargetHandTransform(FTransform(HandQuat, FinalHandPos), 0.0f);
 		}
