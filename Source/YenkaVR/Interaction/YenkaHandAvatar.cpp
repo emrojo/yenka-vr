@@ -23,12 +23,28 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 
 	static ConstructorHelpers::FObjectFinder<USkeletalMesh> RightSkeletalMeshAsset(TEXT("/Game/Characters/MannequinsXR/Meshes/SKM_MannyXR_right.SKM_MannyXR_right"));
 	static ConstructorHelpers::FObjectFinder<USkeletalMesh> LeftSkeletalMeshAsset(TEXT("/Game/Characters/MannequinsXR/Meshes/SKM_MannyXR_left.SKM_MannyXR_left"));
+	static ConstructorHelpers::FObjectFinder<USkeletalMesh> QuinnRightSkeletalMeshAsset(TEXT("/Game/Characters/MannequinsXR/Meshes/SKM_QuinnXR_right.SKM_QuinnXR_right"));
+	static ConstructorHelpers::FObjectFinder<USkeletalMesh> QuinnLeftSkeletalMeshAsset(TEXT("/Game/Characters/MannequinsXR/Meshes/SKM_QuinnXR_left.SKM_QuinnXR_left"));
+
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> MatManny01Asset(TEXT("/Game/Characters/MannequinsXR/Materials/Instances/Manny/MI_Manny_01.MI_Manny_01"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> MatManny02Asset(TEXT("/Game/Characters/MannequinsXR/Materials/Instances/Manny/MI_Manny_02.MI_Manny_02"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> MatQuinn01Asset(TEXT("/Game/Characters/MannequinsXR/Materials/Instances/Quinn/MI_Quinn_01.MI_Quinn_01"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> MatQuinn02Asset(TEXT("/Game/Characters/MannequinsXR/Materials/Instances/Quinn/MI_Quinn_02.MI_Quinn_02"));
+
 	static ConstructorHelpers::FObjectFinder<UAnimSequence> IdleSeqAsset(TEXT("/Game/Characters/MannequinsXR/Animations/A_MannequinsXR_Idle_Right.A_MannequinsXR_Idle_Right"));
 	static ConstructorHelpers::FObjectFinder<UAnimSequence> PointSeqAsset(TEXT("/Game/Characters/MannequinsXR/Animations/A_MannequinsXR_Point_Right.A_MannequinsXR_Point_Right"));
 	static ConstructorHelpers::FObjectFinder<UAnimSequence> GraspSeqAsset(TEXT("/Game/Characters/MannequinsXR/Animations/A_MannequinsXR_Grasp_Right.A_MannequinsXR_Grasp_Right"));
 
 	if (RightSkeletalMeshAsset.Succeeded()) RightSkeletalMesh = RightSkeletalMeshAsset.Object;
 	if (LeftSkeletalMeshAsset.Succeeded()) LeftSkeletalMesh = LeftSkeletalMeshAsset.Object;
+	if (QuinnRightSkeletalMeshAsset.Succeeded()) QuinnRightSkeletalMesh = QuinnRightSkeletalMeshAsset.Object;
+	if (QuinnLeftSkeletalMeshAsset.Succeeded()) QuinnLeftSkeletalMesh = QuinnLeftSkeletalMeshAsset.Object;
+
+	if (MatManny01Asset.Succeeded()) MatManny01 = MatManny01Asset.Object;
+	if (MatManny02Asset.Succeeded()) MatManny02 = MatManny02Asset.Object;
+	if (MatQuinn01Asset.Succeeded()) MatQuinn01 = MatQuinn01Asset.Object;
+	if (MatQuinn02Asset.Succeeded()) MatQuinn02 = MatQuinn02Asset.Object;
+
 	if (IdleSeqAsset.Succeeded()) AnimIdle = IdleSeqAsset.Object;
 	if (PointSeqAsset.Succeeded()) AnimPoint = PointSeqAsset.Object;
 	if (GraspSeqAsset.Succeeded()) AnimGrasp = GraspSeqAsset.Object;
@@ -40,7 +56,7 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 	PoseableHandMesh->SetCastShadow(true);
 	if (RightSkeletalMesh)
 	{
-		PoseableHandMesh->SetSkeletalMesh(RightSkeletalMesh);
+		PoseableHandMesh->SetSkinnedAssetAndUpdate(RightSkeletalMesh);
 		PoseableHandMesh->SetRelativeLocation(FVector(-5.0f, 0.0f, 0.0f));
 		PoseableHandMesh->SetRelativeRotation(FRotator::ZeroRotator);
 		PoseableHandMesh->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.5f));
@@ -196,7 +212,7 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 void AYenkaHandAvatar::BeginPlay()
 {
 	Super::BeginPlay();
-	UpdateHandMeshSide();
+	ApplyHandModelAndMaterials();
 	ApplyHumanSkinMaterials();
 }
 
@@ -213,35 +229,155 @@ void AYenkaHandAvatar::OnRep_IsLeftHand()
 
 void AYenkaHandAvatar::UpdateHandMeshSide()
 {
-	if (HandSkeletalMesh)
+	ApplyHandModelAndMaterials();
+}
+
+void AYenkaHandAvatar::SetHandModelType(EHandModelType NewType)
+{
+	CurrentHandModelType = NewType;
+	ApplyHandModelAndMaterials();
+}
+
+void AYenkaHandAvatar::CycleHandModel()
+{
+	uint8 NextIndex = static_cast<uint8>(CurrentHandModelType) + 1;
+	if (NextIndex > static_cast<uint8>(EHandModelType::GoldenChrome))
 	{
-		if (bIsLeftHand)
+		NextIndex = 0;
+	}
+	SetHandModelType(static_cast<EHandModelType>(NextIndex));
+}
+
+FString AYenkaHandAvatar::GetHandModelDisplayName() const
+{
+	switch (CurrentHandModelType)
+	{
+	case EHandModelType::MannyXR:
+		return TEXT("🤖 Manny XR (Robótico / Futurista)");
+	case EHandModelType::QuinnXR:
+		return TEXT("✨ Quinn XR (Estilizado / Esbelto)");
+	case EHandModelType::MannyAlt:
+		return TEXT("🖤 Manny XR (Variante Carbono)");
+	case EHandModelType::QuinnAlt:
+		return TEXT("🤍 Quinn XR (Variante Clara)");
+	case EHandModelType::HumanSkin:
+		return TEXT("🖐️ Piel Humana Natural");
+	case EHandModelType::HologramNeon:
+		return TEXT("💠 Holograma Neón Translúcido");
+	case EHandModelType::StealthBlack:
+		return TEXT("🕶️ Negro Mate / Stealth");
+	case EHandModelType::GoldenChrome:
+		return TEXT("👑 Oro Metálico / Chrome");
+	default:
+		return TEXT("Desconocido");
+	}
+}
+
+void AYenkaHandAvatar::ApplyHandModelAndMaterials()
+{
+	if (!PoseableHandMesh)
+	{
+		return;
+	}
+
+	// 1. Choose Skeletal Mesh (Quinn for Quinn models, Manny for others)
+	const bool bUseQuinn = (CurrentHandModelType == EHandModelType::QuinnXR || CurrentHandModelType == EHandModelType::QuinnAlt);
+	USkeletalMesh* TargetMesh = nullptr;
+	if (bUseQuinn)
+	{
+		TargetMesh = bIsLeftHand ? (QuinnLeftSkeletalMesh ? QuinnLeftSkeletalMesh : QuinnRightSkeletalMesh) : QuinnRightSkeletalMesh;
+	}
+	else
+	{
+		TargetMesh = bIsLeftHand ? (LeftSkeletalMesh ? LeftSkeletalMesh : RightSkeletalMesh) : RightSkeletalMesh;
+	}
+
+	if (TargetMesh && PoseableHandMesh->GetSkinnedAsset() != TargetMesh)
+	{
+		PoseableHandMesh->SetSkinnedAssetAndUpdate(TargetMesh);
+	}
+
+	// 2. Choose Material
+	UMaterialInterface* TargetBaseMat = MatManny01;
+	switch (CurrentHandModelType)
+	{
+	case EHandModelType::MannyXR:
+		TargetBaseMat = MatManny01;
+		break;
+	case EHandModelType::QuinnXR:
+		TargetBaseMat = MatQuinn01 ? MatQuinn01 : MatManny01;
+		break;
+	case EHandModelType::MannyAlt:
+		TargetBaseMat = MatManny02 ? MatManny02 : MatManny01;
+		break;
+	case EHandModelType::QuinnAlt:
+		TargetBaseMat = MatQuinn02 ? MatQuinn02 : MatManny01;
+		break;
+	default:
+		TargetBaseMat = bUseQuinn ? (MatQuinn01 ? MatQuinn01 : MatManny01) : MatManny01;
+		break;
+	}
+
+	if (TargetBaseMat)
+	{
+		if (CurrentHandModelType == EHandModelType::HumanSkin)
 		{
-			if (LeftSkeletalMesh)
+			UMaterialInstanceDynamic* DynMat = UMaterialInstanceDynamic::Create(TargetBaseMat, this);
+			if (DynMat)
 			{
-				HandSkeletalMesh->SetSkeletalMesh(LeftSkeletalMesh);
+				DynMat->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.86f, 0.67f, 0.57f));
+				DynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.86f, 0.67f, 0.57f));
+				DynMat->SetScalarParameterValue(TEXT("Roughness"), 0.45f);
+				DynMat->SetScalarParameterValue(TEXT("Metallic"), 0.0f);
+				DynMat->SetScalarParameterValue(TEXT("Specular"), 0.45f);
+				PoseableHandMesh->SetMaterial(0, DynMat);
 			}
-			HandSkeletalMesh->SetRelativeLocation(FVector(-5.0f, 0.0f, 0.0f));
-			HandSkeletalMesh->SetRelativeRotation(FRotator::ZeroRotator);
-			HandSkeletalMesh->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.5f));
+		}
+		else if (CurrentHandModelType == EHandModelType::HologramNeon)
+		{
+			UMaterialInstanceDynamic* DynMat = UMaterialInstanceDynamic::Create(TargetBaseMat, this);
+			if (DynMat)
+			{
+				DynMat->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.05f, 0.90f, 1.0f));
+				DynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.05f, 0.90f, 1.0f));
+				DynMat->SetScalarParameterValue(TEXT("Roughness"), 0.1f);
+				DynMat->SetScalarParameterValue(TEXT("Metallic"), 0.2f);
+				DynMat->SetScalarParameterValue(TEXT("Specular"), 0.9f);
+				PoseableHandMesh->SetMaterial(0, DynMat);
+			}
+		}
+		else if (CurrentHandModelType == EHandModelType::StealthBlack)
+		{
+			UMaterialInstanceDynamic* DynMat = UMaterialInstanceDynamic::Create(TargetBaseMat, this);
+			if (DynMat)
+			{
+				DynMat->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.02f, 0.02f, 0.02f));
+				DynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.02f, 0.02f, 0.02f));
+				DynMat->SetScalarParameterValue(TEXT("Roughness"), 0.35f);
+				DynMat->SetScalarParameterValue(TEXT("Metallic"), 0.85f);
+				PoseableHandMesh->SetMaterial(0, DynMat);
+			}
+		}
+		else if (CurrentHandModelType == EHandModelType::GoldenChrome)
+		{
+			UMaterialInstanceDynamic* DynMat = UMaterialInstanceDynamic::Create(TargetBaseMat, this);
+			if (DynMat)
+			{
+				DynMat->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(1.0f, 0.80f, 0.25f));
+				DynMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(1.0f, 0.80f, 0.25f));
+				DynMat->SetScalarParameterValue(TEXT("Roughness"), 0.12f);
+				DynMat->SetScalarParameterValue(TEXT("Metallic"), 1.0f);
+				DynMat->SetScalarParameterValue(TEXT("Specular"), 0.95f);
+				PoseableHandMesh->SetMaterial(0, DynMat);
+			}
 		}
 		else
 		{
-			if (RightSkeletalMesh)
-			{
-				HandSkeletalMesh->SetSkeletalMesh(RightSkeletalMesh);
-			}
-			HandSkeletalMesh->SetRelativeLocation(FVector(-5.0f, 0.0f, 0.0f));
-			HandSkeletalMesh->SetRelativeRotation(FRotator::ZeroRotator);
-			HandSkeletalMesh->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.5f));
-		}
-
-		if (AnimIdle)
-		{
-			HandSkeletalMesh->PlayAnimation(AnimIdle, true);
-			HandSkeletalMesh->SetPlayRate(1.0f);
+			PoseableHandMesh->SetMaterial(0, TargetBaseMat);
 		}
 	}
+
+	ApplyPhalanxTransforms();
 }
 
 void AYenkaHandAvatar::ApplyHumanSkinMaterials()

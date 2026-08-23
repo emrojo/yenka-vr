@@ -218,6 +218,17 @@ protected:
 	UFUNCTION(Exec)
 	void DeleteHandGesture(const FString& Name);
 
+	void OnKeyHPressed();
+
+	UFUNCTION(Exec)
+	void CycleHandModel();
+
+	UFUNCTION(Exec)
+	void SetHandModel(const FString& ModelName);
+
+	UFUNCTION(Exec)
+	void ListHandModels();
+
 	void OnSelectScenario1() { SelectScenarioTheme(0); }
 	void OnSelectScenario2() { SelectScenarioTheme(1); }
 	void OnSelectScenario3() { SelectScenarioTheme(2); }

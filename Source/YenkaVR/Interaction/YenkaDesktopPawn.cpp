@@ -186,7 +186,7 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 		// Alternative Letter Key Bindings
 		PlayerInputComponent->BindKey(EKeys::Y, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYawPlus);
-		PlayerInputComponent->BindKey(EKeys::H, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYawMinus);
+		PlayerInputComponent->BindKey(EKeys::H, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyHPressed);
 		PlayerInputComponent->BindKey(EKeys::T, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibPitchPlus);
 		PlayerInputComponent->BindKey(EKeys::B, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyBPressed);
 		PlayerInputComponent->BindKey(EKeys::X, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyXPressed);
@@ -639,6 +639,90 @@ void AYenkaDesktopPawn::ListHandGestures()
 	}
 }
 
+void AYenkaDesktopPawn::OnKeyHPressed()
+{
+	CycleHandModel();
+}
+
+void AYenkaDesktopPawn::CycleHandModel()
+{
+	if (VirtualHand)
+	{
+		VirtualHand->CycleHandModel();
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(9992, 3.5f, FColor(100, 255, 255),
+				FString::Printf(TEXT("🎨 MODELO DE MANO: %s"), *VirtualHand->GetHandModelDisplayName()));
+		}
+	}
+}
+
+void AYenkaDesktopPawn::SetHandModel(const FString& ModelName)
+{
+	if (!VirtualHand) return;
+
+	FString Lower = ModelName.ToLower();
+	if (Lower.Contains(TEXT("quinn")) && Lower.Contains(TEXT("alt")))
+	{
+		VirtualHand->SetHandModelType(EHandModelType::QuinnAlt);
+	}
+	else if (Lower.Contains(TEXT("quinn")))
+	{
+		VirtualHand->SetHandModelType(EHandModelType::QuinnXR);
+	}
+	else if (Lower.Contains(TEXT("manny")) && Lower.Contains(TEXT("alt")))
+	{
+		VirtualHand->SetHandModelType(EHandModelType::MannyAlt);
+	}
+	else if (Lower.Contains(TEXT("manny")))
+	{
+		VirtualHand->SetHandModelType(EHandModelType::MannyXR);
+	}
+	else if (Lower.Contains(TEXT("skin")) || Lower.Contains(TEXT("piel")) || Lower.Contains(TEXT("humana")))
+	{
+		VirtualHand->SetHandModelType(EHandModelType::HumanSkin);
+	}
+	else if (Lower.Contains(TEXT("holo")) || Lower.Contains(TEXT("neon")))
+	{
+		VirtualHand->SetHandModelType(EHandModelType::HologramNeon);
+	}
+	else if (Lower.Contains(TEXT("black")) || Lower.Contains(TEXT("negro")) || Lower.Contains(TEXT("stealth")))
+	{
+		VirtualHand->SetHandModelType(EHandModelType::StealthBlack);
+	}
+	else if (Lower.Contains(TEXT("gold")) || Lower.Contains(TEXT("oro")) || Lower.Contains(TEXT("chrome")))
+	{
+		VirtualHand->SetHandModelType(EHandModelType::GoldenChrome);
+	}
+	else
+	{
+		VirtualHand->CycleHandModel();
+	}
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(9992, 3.5f, FColor(100, 255, 255),
+			FString::Printf(TEXT("🎨 MODELO DE MANO: %s"), *VirtualHand->GetHandModelDisplayName()));
+	}
+}
+
+void AYenkaDesktopPawn::ListHandModels()
+{
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 8.0f, FColor::White, TEXT("=== MODELOS Y SKINS DE MANO DISPONIBLES ==="));
+		GEngine->AddOnScreenDebugMessage(-1, 8.0f, FColor::Cyan, TEXT(" [1] MannyXR (Robótico / Futurista por defecto)"));
+		GEngine->AddOnScreenDebugMessage(-1, 8.0f, FColor::Cyan, TEXT(" [2] QuinnXR (Estilizado / Esbelto)"));
+		GEngine->AddOnScreenDebugMessage(-1, 8.0f, FColor::Cyan, TEXT(" [3] MannyAlt (Variante Carbono Oscura)"));
+		GEngine->AddOnScreenDebugMessage(-1, 8.0f, FColor::Cyan, TEXT(" [4] QuinnAlt (Variante Clara)"));
+		GEngine->AddOnScreenDebugMessage(-1, 8.0f, FColor::Cyan, TEXT(" [5] HumanSkin (Piel Humana Natural)"));
+		GEngine->AddOnScreenDebugMessage(-1, 8.0f, FColor::Cyan, TEXT(" [6] HologramNeon (Holograma Neón Translúcido)"));
+		GEngine->AddOnScreenDebugMessage(-1, 8.0f, FColor::Cyan, TEXT(" [7] StealthBlack (Negro Mate)"));
+		GEngine->AddOnScreenDebugMessage(-1, 8.0f, FColor::Cyan, TEXT(" [8] GoldenChrome (Oro Metálico)"));
+		GEngine->AddOnScreenDebugMessage(-1, 8.0f, FColor::Yellow, TEXT("👉 Pulsa la tecla [H] en cualquier momento para ciclar entre ellos."));
+	}
+}
+
 bool AYenkaDesktopPawn::SaveCustomGesturesToDisk()
 {
 	FCustomGestureLibrary Library;
@@ -1082,8 +1166,9 @@ void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
 				Middle.Proximal.Pitch, Middle.Proximal.Yaw, Middle.Proximal.Roll, Middle.Intermediate.Pitch, Middle.Intermediate.Yaw, Middle.Intermediate.Roll, Middle.Distal.Pitch, Middle.Distal.Yaw, Middle.Distal.Roll,
 				Ring.Proximal.Pitch, Ring.Proximal.Yaw, Ring.Proximal.Roll, Ring.Intermediate.Pitch, Ring.Intermediate.Yaw, Ring.Intermediate.Roll, Ring.Distal.Pitch, Ring.Distal.Yaw, Ring.Distal.Roll,
 				Pinky.Proximal.Pitch, Pinky.Proximal.Yaw, Pinky.Proximal.Roll, Pinky.Intermediate.Pitch, Pinky.Intermediate.Yaw, Pinky.Intermediate.Roll, Pinky.Distal.Pitch, Pinky.Distal.Yaw, Pinky.Distal.Roll);
-			FString Line6 = FString::Printf(TEXT("🏷️ GESTO: [ %s ] | 📂 GUARDADOS (%d): [ y ] o F6/F7 para Ciclar | Supr: Borrar"),
-				*VirtualHand->GetDetectedGestureDescription(), CustomGesturesList.Num());
+			FString ModelName = VirtualHand ? VirtualHand->GetHandModelDisplayName() : TEXT("Manny XR");
+			FString Line6 = FString::Printf(TEXT("🎨 MODELO: [ %s ] (Pulsa H para Cambiar) | 📂 GUARDADOS (%d): [ y ] | Supr: Borrar"),
+				*ModelName, CustomGesturesList.Num());
 
 			GEngine->AddOnScreenDebugMessage(1001, 0.20f, FColor(255, 100, 255), Line1);
 			GEngine->AddOnScreenDebugMessage(1002, 0.20f, FColor(255, 220, 50), Line2);
@@ -1118,6 +1203,7 @@ void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
 			GestureName = TEXT("🤏 AGARRANDO PIEZA (GrabPinch)");
 		}
 
+		FString ModelName = VirtualHand ? VirtualHand->GetHandModelDisplayName() : TEXT("Manny XR");
 		FString Line1 = FString::Printf(TEXT("=== 🎛️ CALIBRACIÓN DE MANO YENKA (TIEMPO REAL) ==="));
 		FString Line2 = FString::Printf(TEXT("📍 POSICIÓN [%s]:  [ X: %+.2f cm | Y: %+.2f cm | Z: %+.2f cm ]"),
 			bInPoke ? TEXT("EMPUJAR") : TEXT("AGARRAR/LIBRE"), ActivePos.X, ActivePos.Y, ActivePos.Z);
@@ -1125,14 +1211,15 @@ void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
 			bInPoke ? TEXT("EMPUJAR") : TEXT("AGARRAR/LIBRE"), ActiveRot.Yaw, ActiveRot.Pitch, ActiveRot.Roll);
 		FString Line4 = FString::Printf(TEXT("✋ GESTO:     [ %s ]  (Teclas: F1 Empujar, F2 Agarrar, F3 Libre, Tab Ciclar)"),
 			*GestureName);
-		FString Line5 = FString::Printf(TEXT("⌨️ POSICIÓN:  I/K o Flechas(X) | J/L o Flechas(Y) | U/O o RePág/AvPág(Z) | NumPad / * + - ."));
+		FString Line5 = FString::Printf(TEXT("🎨 MODELO:    [ %s ]  (Pulsa [H] para Cambiar Modelo o Skin)"),
+			*ModelName);
 		FString Line6 = FString::Printf(TEXT("⌨️ FALANGES:  ⭐ Pulsa [F4] o [K] para entrar al MODO EDICIÓN DE FALANGES (Control Dedo a Dedo)"));
 
 		GEngine->AddOnScreenDebugMessage(1001, 0.20f, FColor(255, 215, 0), Line1);
 		GEngine->AddOnScreenDebugMessage(1002, 0.20f, FColor(0, 240, 255), Line2);
 		GEngine->AddOnScreenDebugMessage(1003, 0.20f, FColor(50, 255, 120), Line3);
 		GEngine->AddOnScreenDebugMessage(1004, 0.20f, FColor(255, 140, 0), Line4);
-		GEngine->AddOnScreenDebugMessage(1005, 0.20f, FColor(220, 220, 220), Line5);
+		GEngine->AddOnScreenDebugMessage(1005, 0.20f, FColor(100, 255, 255), Line5);
 		GEngine->AddOnScreenDebugMessage(1006, 0.20f, FColor(255, 130, 255), Line6);
 	}
 }

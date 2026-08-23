@@ -15,6 +15,19 @@ enum class EHandPoseMode : uint8
 	FingerPoke
 };
 
+UENUM(BlueprintType)
+enum class EHandModelType : uint8
+{
+	MannyXR UMETA(DisplayName = "Manny XR (Robótico / Futurista)"),
+	QuinnXR UMETA(DisplayName = "Quinn XR (Estilizado / Esbelto)"),
+	MannyAlt UMETA(DisplayName = "Manny XR (Variante Carbono 02)"),
+	QuinnAlt UMETA(DisplayName = "Quinn XR (Variante Clara 02)"),
+	HumanSkin UMETA(DisplayName = "Piel Humana Natural"),
+	HologramNeon UMETA(DisplayName = "Holograma Neón Translúcido"),
+	StealthBlack UMETA(DisplayName = "Negro Mate / Stealth"),
+	GoldenChrome UMETA(DisplayName = "Oro Metálico / Chrome")
+};
+
 USTRUCT(BlueprintType)
 struct FPhalanxData
 {
@@ -255,6 +268,41 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Meshes")
 	USkeletalMesh* LeftSkeletalMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Meshes")
+	USkeletalMesh* QuinnRightSkeletalMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Meshes")
+	USkeletalMesh* QuinnLeftSkeletalMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Materials")
+	UMaterialInterface* MatManny01;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Materials")
+	UMaterialInterface* MatManny02;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Materials")
+	UMaterialInterface* MatQuinn01;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Materials")
+	UMaterialInterface* MatQuinn02;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|HandModel")
+	EHandModelType CurrentHandModelType = EHandModelType::MannyXR;
+
+	UFUNCTION(BlueprintCallable, Category = "Yenka|HandModel")
+	void SetHandModelType(EHandModelType NewType);
+
+	UFUNCTION(BlueprintCallable, Category = "Yenka|HandModel")
+	void CycleHandModel();
+
+	UFUNCTION(BlueprintPure, Category = "Yenka|HandModel")
+	EHandModelType GetCurrentHandModelType() const { return CurrentHandModelType; }
+
+	UFUNCTION(BlueprintPure, Category = "Yenka|HandModel")
+	FString GetHandModelDisplayName() const;
+
+	void ApplyHandModelAndMaterials();
 
 	UFUNCTION(BlueprintCallable, Category = "Yenka|Hand")
 	void SetIsLeftHand(bool bInIsLeft);
