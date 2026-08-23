@@ -101,6 +101,7 @@ void AYenkaDesktopPawn::BeginPlay()
 	}
 
 	LoadCustomGesturesFromDisk();
+	LoadCustomTransformsFromDisk();
 }
 
 void AYenkaDesktopPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -136,7 +137,7 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		PlayerInputComponent->BindKey(EKeys::M, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyMPressed);
 		PlayerInputComponent->BindKey(EKeys::F, IE_Pressed, this, &AYenkaDesktopPawn::OnTogglePokeMode);
 
-		// Phalanx Edit Mode Toggle & Custom Gestures
+		// Phalanx Edit Mode Toggle & Custom Gestures / Position Transforms
 		PlayerInputComponent->BindKey(EKeys::AnyKey, IE_Pressed, this, &AYenkaDesktopPawn::OnAnyKeyPressed);
 		PlayerInputComponent->BindKey(EKeys::F4, IE_Pressed, this, &AYenkaDesktopPawn::TogglePhalanxEditMode);
 		PlayerInputComponent->BindKey(EKeys::SpaceBar, IE_Pressed, this, &AYenkaDesktopPawn::OnResetSelectedPhalanx);
@@ -148,6 +149,11 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		PlayerInputComponent->BindKey(EKeys::RightBracket, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyRightBracketPressed);
 		PlayerInputComponent->BindKey(EKeys::F6, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyLeftBracketPressed);
 		PlayerInputComponent->BindKey(EKeys::F7, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyRightBracketPressed);
+		PlayerInputComponent->BindKey(EKeys::F8, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyF8Pressed);
+		PlayerInputComponent->BindKey(EKeys::F9, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyF9Pressed);
+		PlayerInputComponent->BindKey(EKeys::F10, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyF10Pressed);
+		PlayerInputComponent->BindKey(EKeys::Semicolon, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyF9Pressed);
+		PlayerInputComponent->BindKey(EKeys::Quote, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyF10Pressed);
 		PlayerInputComponent->BindKey(EKeys::Delete, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyDeletePressed);
 
 		// Gesture Switching Keys
@@ -222,25 +228,25 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 void AYenkaDesktopPawn::TogglePhalanxEditMode()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	bIsPhalanxEditMode = !bIsPhalanxEditMode;
 }
 
 void AYenkaDesktopPawn::SelectFinger(int32 FingerIdx)
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	SelectedFinger = FingerIdx;
 }
 
 void AYenkaDesktopPawn::SelectPhalanx(int32 PhalanxIdx)
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	SelectedPhalanx = PhalanxIdx;
 }
 
 void AYenkaDesktopPawn::OnKeyZPressed()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	if (bIsPhalanxEditMode)
 	{
 		SelectedPhalanx = 1; // Proximal (Base)
@@ -253,7 +259,7 @@ void AYenkaDesktopPawn::OnKeyZPressed()
 
 void AYenkaDesktopPawn::OnKeyXPressed()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	if (bIsPhalanxEditMode)
 	{
 		SelectedPhalanx = 2; // Intermediate (Middle)
@@ -266,7 +272,7 @@ void AYenkaDesktopPawn::OnKeyXPressed()
 
 void AYenkaDesktopPawn::OnKeyCPressed()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	if (bIsPhalanxEditMode)
 	{
 		SelectedPhalanx = 3; // Distal (Tip)
@@ -275,7 +281,7 @@ void AYenkaDesktopPawn::OnKeyCPressed()
 
 void AYenkaDesktopPawn::OnKeyVPressed()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	if (bIsPhalanxEditMode)
 	{
 		SelectedPhalanx = 0; // All Phalanges
@@ -288,7 +294,7 @@ void AYenkaDesktopPawn::OnKeyVPressed()
 
 void AYenkaDesktopPawn::OnKeyQPressed()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	if (bIsPhalanxEditMode)
 	{
 		OnPhalanxRollMinus();
@@ -297,7 +303,7 @@ void AYenkaDesktopPawn::OnKeyQPressed()
 
 void AYenkaDesktopPawn::OnPhalanxPitchPlus()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	if (bIsPhalanxEditMode)
 	{
 		if (SelectedFinger == 7 && VirtualHand)
@@ -321,7 +327,7 @@ void AYenkaDesktopPawn::OnPhalanxPitchPlus()
 
 void AYenkaDesktopPawn::OnPhalanxPitchMinus()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	if (bIsPhalanxEditMode)
 	{
 		if (SelectedFinger == 7 && VirtualHand)
@@ -345,7 +351,7 @@ void AYenkaDesktopPawn::OnPhalanxPitchMinus()
 
 void AYenkaDesktopPawn::OnPhalanxYawPlus()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	if (bIsPhalanxEditMode)
 	{
 		if (SelectedFinger == 7 && VirtualHand)
@@ -369,7 +375,7 @@ void AYenkaDesktopPawn::OnPhalanxYawPlus()
 
 void AYenkaDesktopPawn::OnPhalanxYawMinus()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	if (bIsPhalanxEditMode)
 	{
 		if (SelectedFinger == 7 && VirtualHand)
@@ -393,7 +399,7 @@ void AYenkaDesktopPawn::OnPhalanxYawMinus()
 
 void AYenkaDesktopPawn::OnPhalanxRollPlus()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	if (bIsPhalanxEditMode)
 	{
 		if (SelectedFinger == 7 && VirtualHand)
@@ -417,7 +423,7 @@ void AYenkaDesktopPawn::OnPhalanxRollPlus()
 
 void AYenkaDesktopPawn::OnPhalanxRollMinus()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	if (bIsPhalanxEditMode)
 	{
 		if (SelectedFinger == 7 && VirtualHand)
@@ -441,7 +447,7 @@ void AYenkaDesktopPawn::OnPhalanxRollMinus()
 
 void AYenkaDesktopPawn::OnResetSelectedPhalanx()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	if (bIsPhalanxEditMode)
 	{
 		if (SelectedFinger == 7 && VirtualHand)
@@ -463,6 +469,7 @@ void AYenkaDesktopPawn::OnResetSelectedPhalanx()
 void AYenkaDesktopPawn::StartNamingGesture()
 {
 	bIsNamingCustomGesture = true;
+	bIsNamingCustomTransform = false;
 	CurrentTypedGestureName.Empty();
 }
 
@@ -487,15 +494,69 @@ void AYenkaDesktopPawn::CancelNamingGesture()
 	CurrentTypedGestureName.Empty();
 }
 
+void AYenkaDesktopPawn::StartNamingTransform()
+{
+	bIsNamingCustomTransform = true;
+	bIsNamingCustomGesture = false;
+	CurrentTypedTransformName.Empty();
+}
+
+void AYenkaDesktopPawn::ConfirmSaveTransform()
+{
+	if (!bIsNamingCustomTransform && CurrentTypedTransformName.IsEmpty()) return;
+
+	FString FinalName = CurrentTypedTransformName.TrimStartAndEnd();
+	if (FinalName.IsEmpty())
+	{
+		FinalName = FString::Printf(TEXT("Posicion_%d"), CustomTransformsList.Num() + 1);
+	}
+
+	SaveHandTransform(FinalName);
+	bIsNamingCustomTransform = false;
+	CurrentTypedTransformName.Empty();
+}
+
+void AYenkaDesktopPawn::CancelNamingTransform()
+{
+	bIsNamingCustomTransform = false;
+	CurrentTypedTransformName.Empty();
+}
+
+void AYenkaDesktopPawn::OnKeyF8Pressed()
+{
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
+	StartNamingTransform();
+}
+
+void AYenkaDesktopPawn::OnKeyF9Pressed()
+{
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
+	CyclePrevCustomTransform();
+}
+
+void AYenkaDesktopPawn::OnKeyF10Pressed()
+{
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
+	CycleNextCustomTransform();
+}
+
 void AYenkaDesktopPawn::OnKeyEnterPressed()
 {
 	if (bIsNamingCustomGesture)
 	{
 		ConfirmSaveGesture();
 	}
+	else if (bIsNamingCustomTransform)
+	{
+		ConfirmSaveTransform();
+	}
 	else if (bIsPhalanxEditMode)
 	{
 		StartNamingGesture();
+	}
+	else
+	{
+		StartNamingTransform();
 	}
 }
 
@@ -504,6 +565,10 @@ void AYenkaDesktopPawn::OnKeyEscapePressed()
 	if (bIsNamingCustomGesture)
 	{
 		CancelNamingGesture();
+	}
+	else if (bIsNamingCustomTransform)
+	{
+		CancelNamingTransform();
 	}
 	else if (bIsPhalanxEditMode)
 	{
@@ -517,24 +582,28 @@ void AYenkaDesktopPawn::OnKeyBackspacePressed()
 	{
 		CurrentTypedGestureName.RemoveAt(CurrentTypedGestureName.Len() - 1);
 	}
+	else if (bIsNamingCustomTransform && CurrentTypedTransformName.Len() > 0)
+	{
+		CurrentTypedTransformName.RemoveAt(CurrentTypedTransformName.Len() - 1);
+	}
 }
 
 void AYenkaDesktopPawn::OnKeyLeftBracketPressed()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	CyclePrevCustomGesture();
 }
 
 void AYenkaDesktopPawn::OnKeyRightBracketPressed()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	CycleNextCustomGesture();
 }
 
 void AYenkaDesktopPawn::OnKeyDeletePressed()
 {
-	if (bIsNamingCustomGesture) return;
-	if (CustomGesturesList.IsValidIndex(ActiveCustomGestureIndex))
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
+	if (bIsPhalanxEditMode && CustomGesturesList.IsValidIndex(ActiveCustomGestureIndex))
 	{
 		FString DeletedName = CustomGesturesList[ActiveCustomGestureIndex].GestureName;
 		DeleteHandGesture(DeletedName);
@@ -685,15 +754,175 @@ void AYenkaDesktopPawn::ListHandGestures()
 	}
 }
 
+bool AYenkaDesktopPawn::SaveCustomTransformsToDisk()
+{
+	FCustomTransformLibrary Library;
+	Library.Transforms = CustomTransformsList;
+
+	FString JsonString;
+	if (FJsonObjectConverter::UStructToJsonObjectString(Library, JsonString, 0, 0))
+	{
+		FString FilePath = FPaths::ProjectSavedDir() / TEXT("HandTransforms/CustomTransforms.json");
+		IFileManager::Get().MakeDirectory(*FPaths::GetPath(FilePath), true);
+		return FFileHelper::SaveStringToFile(JsonString, *FilePath);
+	}
+	return false;
+}
+
+bool AYenkaDesktopPawn::LoadCustomTransformsFromDisk()
+{
+	FString FilePath = FPaths::ProjectSavedDir() / TEXT("HandTransforms/CustomTransforms.json");
+	if (FPaths::FileExists(FilePath))
+	{
+		FString JsonString;
+		if (FFileHelper::LoadFileToString(JsonString, *FilePath))
+		{
+			FCustomTransformLibrary Library;
+			if (FJsonObjectConverter::JsonObjectStringToUStruct(JsonString, &Library, 0, 0))
+			{
+				CustomTransformsList = Library.Transforms;
+			}
+		}
+	}
+
+	// Ensure default StandardCalibration preset is present if list was empty
+	if (CustomTransformsList.Num() == 0)
+	{
+		FCustomHandTransform DefaultTransform;
+		DefaultTransform.TransformName = TEXT("DefaultCalibration");
+		DefaultTransform.PokeLocationOffset = FVector(-5.50f, 8.50f, -0.50f);
+		DefaultTransform.PokeRotationOffset = FRotator(0.0f, -90.0f, 0.0f);
+		DefaultTransform.GrabLocationOffset = FVector(-5.50f, 8.50f, -0.50f);
+		DefaultTransform.GrabRotationOffset = FRotator(90.0f, -90.0f, 0.0f);
+
+		CustomTransformsList.Add(DefaultTransform);
+		SaveCustomTransformsToDisk();
+	}
+
+	return CustomTransformsList.Num() > 0;
+}
+
+void AYenkaDesktopPawn::SaveHandTransform(const FString& Name)
+{
+	FCustomHandTransform NewTransform;
+	NewTransform.TransformName = Name.IsEmpty() ? TEXT("CustomTransform") : Name;
+	NewTransform.PokeLocationOffset = PokeHandLocationOffset;
+	NewTransform.PokeRotationOffset = PokeHandRotationOffset;
+	NewTransform.GrabLocationOffset = GrabHandLocationOffset;
+	NewTransform.GrabRotationOffset = GrabHandRotationOffset;
+
+	int32 ExistingIndex = CustomTransformsList.IndexOfByPredicate([&Name](const FCustomHandTransform& T) {
+		return T.TransformName.Equals(Name, ESearchCase::IgnoreCase);
+	});
+
+	if (ExistingIndex != INDEX_NONE)
+	{
+		CustomTransformsList[ExistingIndex] = NewTransform;
+		ActiveCustomTransformIndex = ExistingIndex;
+	}
+	else
+	{
+		ActiveCustomTransformIndex = CustomTransformsList.Add(NewTransform);
+	}
+
+	SaveCustomTransformsToDisk();
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(9991, 4.0f, FColor::Green,
+			FString::Printf(TEXT("✅ TRANSFORMACIÓN GUARDADA: \"%s\" (Total: %d)"), *Name, CustomTransformsList.Num()));
+	}
+}
+
+void AYenkaDesktopPawn::LoadHandTransform(const FString& Name)
+{
+	int32 FoundIndex = CustomTransformsList.IndexOfByPredicate([&Name](const FCustomHandTransform& T) {
+		return T.TransformName.Equals(Name, ESearchCase::IgnoreCase);
+	});
+
+	if (FoundIndex != INDEX_NONE)
+	{
+		LoadCustomTransformByIndex(FoundIndex);
+	}
+	else if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(9990, 4.0f, FColor::Red,
+			FString::Printf(TEXT("❌ No se encontró la transformación: \"%s\""), *Name));
+	}
+}
+
+void AYenkaDesktopPawn::LoadCustomTransformByIndex(int32 Index)
+{
+	if (!CustomTransformsList.IsValidIndex(Index)) return;
+
+	ActiveCustomTransformIndex = Index;
+	const FCustomHandTransform& Transform = CustomTransformsList[Index];
+
+	PokeHandLocationOffset = Transform.PokeLocationOffset;
+	PokeHandRotationOffset = Transform.PokeRotationOffset;
+	GrabHandLocationOffset = Transform.GrabLocationOffset;
+	GrabHandRotationOffset = Transform.GrabRotationOffset;
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(9989, 3.0f, FColor::Cyan,
+			FString::Printf(TEXT("📍 TRANSFORMACIÓN CARGADA [%d/%d]: \"%s\""), Index + 1, CustomTransformsList.Num(), *Transform.TransformName));
+	}
+}
+
+void AYenkaDesktopPawn::LoadCustomTransformByName(const FString& Name)
+{
+	LoadHandTransform(Name);
+}
+
+void AYenkaDesktopPawn::CycleNextCustomTransform()
+{
+	if (CustomTransformsList.Num() == 0)
+	{
+		LoadCustomTransformsFromDisk();
+		if (CustomTransformsList.Num() == 0) return;
+	}
+	int32 NextIdx = (ActiveCustomTransformIndex + 1) % CustomTransformsList.Num();
+	LoadCustomTransformByIndex(NextIdx);
+}
+
+void AYenkaDesktopPawn::CyclePrevCustomTransform()
+{
+	if (CustomTransformsList.Num() == 0)
+	{
+		LoadCustomTransformsFromDisk();
+		if (CustomTransformsList.Num() == 0) return;
+	}
+	int32 PrevIdx = (ActiveCustomTransformIndex - 1 + CustomTransformsList.Num()) % CustomTransformsList.Num();
+	LoadCustomTransformByIndex(PrevIdx);
+}
+
+void AYenkaDesktopPawn::ListHandTransforms()
+{
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 6.0f, FColor::White, FString::Printf(TEXT("=== BIBLIOTECA DE TRANSFORMACIONES (%d guardadas) ==="), CustomTransformsList.Num()));
+		for (int32 i = 0; i < CustomTransformsList.Num(); ++i)
+		{
+			const FCustomHandTransform& T = CustomTransformsList[i];
+			GEngine->AddOnScreenDebugMessage(-1, 6.0f, FColor::Cyan,
+				FString::Printf(TEXT(" [%d] %s (Empujar: [%.1f, %.1f, %.1f] | Agarrar: [%.1f, %.1f, %.1f])"),
+					i + 1, *T.TransformName,
+					T.PokeLocationOffset.X, T.PokeLocationOffset.Y, T.PokeLocationOffset.Z,
+					T.GrabLocationOffset.X, T.GrabLocationOffset.Y, T.GrabLocationOffset.Z));
+		}
+	}
+}
+
 void AYenkaDesktopPawn::OnKeyHPressed()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	CycleHandModel();
 }
 
 void AYenkaDesktopPawn::CycleHandModel()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	if (VirtualHand)
 	{
 		VirtualHand->CycleHandModel();
@@ -881,62 +1110,112 @@ bool AYenkaDesktopPawn::LoadCustomGesturesFromDisk()
 
 void AYenkaDesktopPawn::OnAnyKeyPressed(FKey Key)
 {
-	if (!bIsNamingCustomGesture)
+	if (bIsNamingCustomGesture)
 	{
+		if (Key == EKeys::Enter)
+		{
+			ConfirmSaveGesture();
+			return;
+		}
+		if (Key == EKeys::Escape)
+		{
+			CancelNamingGesture();
+			return;
+		}
+		if (Key == EKeys::BackSpace)
+		{
+			if (CurrentTypedGestureName.Len() > 0)
+			{
+				CurrentTypedGestureName.RemoveAt(CurrentTypedGestureName.Len() - 1);
+			}
+			return;
+		}
+		if (Key == EKeys::SpaceBar)
+		{
+			if (CurrentTypedGestureName.Len() < 24)
+			{
+				CurrentTypedGestureName.AppendChar(TEXT('_'));
+			}
+			return;
+		}
+
+		FString KeyStr = Key.GetFName().ToString();
+		if (KeyStr.Len() == 1 && FChar::IsAlnum(KeyStr[0]))
+		{
+			if (CurrentTypedGestureName.Len() < 24)
+			{
+				CurrentTypedGestureName.Append(KeyStr);
+			}
+		}
+		else if (Key == EKeys::Zero || Key == EKeys::NumPadZero) CurrentTypedGestureName.AppendChar(TEXT('0'));
+		else if (Key == EKeys::One || Key == EKeys::NumPadOne) CurrentTypedGestureName.AppendChar(TEXT('1'));
+		else if (Key == EKeys::Two || Key == EKeys::NumPadTwo) CurrentTypedGestureName.AppendChar(TEXT('2'));
+		else if (Key == EKeys::Three || Key == EKeys::NumPadThree) CurrentTypedGestureName.AppendChar(TEXT('3'));
+		else if (Key == EKeys::Four || Key == EKeys::NumPadFour) CurrentTypedGestureName.AppendChar(TEXT('4'));
+		else if (Key == EKeys::Five || Key == EKeys::NumPadFive) CurrentTypedGestureName.AppendChar(TEXT('5'));
+		else if (Key == EKeys::Six || Key == EKeys::NumPadSix) CurrentTypedGestureName.AppendChar(TEXT('6'));
+		else if (Key == EKeys::Seven || Key == EKeys::NumPadSeven) CurrentTypedGestureName.AppendChar(TEXT('7'));
+		else if (Key == EKeys::Eight || Key == EKeys::NumPadEight) CurrentTypedGestureName.AppendChar(TEXT('8'));
+		else if (Key == EKeys::Nine || Key == EKeys::NumPadNine) CurrentTypedGestureName.AppendChar(TEXT('9'));
+		else if (Key == EKeys::Underscore || Key == EKeys::Hyphen) CurrentTypedGestureName.AppendChar(TEXT('_'));
 		return;
 	}
 
-	if (Key == EKeys::Enter)
+	if (bIsNamingCustomTransform)
 	{
-		ConfirmSaveGesture();
-		return;
-	}
-	if (Key == EKeys::Escape)
-	{
-		CancelNamingGesture();
-		return;
-	}
-	if (Key == EKeys::BackSpace)
-	{
-		if (CurrentTypedGestureName.Len() > 0)
+		if (Key == EKeys::Enter)
 		{
-			CurrentTypedGestureName.RemoveAt(CurrentTypedGestureName.Len() - 1);
+			ConfirmSaveTransform();
+			return;
 		}
-		return;
-	}
-	if (Key == EKeys::SpaceBar)
-	{
-		if (CurrentTypedGestureName.Len() < 24)
+		if (Key == EKeys::Escape)
 		{
-			CurrentTypedGestureName.AppendChar(TEXT('_'));
+			CancelNamingTransform();
+			return;
 		}
-		return;
-	}
+		if (Key == EKeys::BackSpace)
+		{
+			if (CurrentTypedTransformName.Len() > 0)
+			{
+				CurrentTypedTransformName.RemoveAt(CurrentTypedTransformName.Len() - 1);
+			}
+			return;
+		}
+		if (Key == EKeys::SpaceBar)
+		{
+			if (CurrentTypedTransformName.Len() < 24)
+			{
+				CurrentTypedTransformName.AppendChar(TEXT('_'));
+			}
+			return;
+		}
 
-	FString KeyStr = Key.GetFName().ToString();
-	if (KeyStr.Len() == 1 && FChar::IsAlnum(KeyStr[0]))
-	{
-		if (CurrentTypedGestureName.Len() < 24)
+		FString KeyStr = Key.GetFName().ToString();
+		if (KeyStr.Len() == 1 && FChar::IsAlnum(KeyStr[0]))
 		{
-			CurrentTypedGestureName.Append(KeyStr);
+			if (CurrentTypedTransformName.Len() < 24)
+			{
+				CurrentTypedTransformName.Append(KeyStr);
+			}
 		}
+		else if (Key == EKeys::Zero || Key == EKeys::NumPadZero) CurrentTypedTransformName.AppendChar(TEXT('0'));
+		else if (Key == EKeys::One || Key == EKeys::NumPadOne) CurrentTypedTransformName.AppendChar(TEXT('1'));
+		else if (Key == EKeys::Two || Key == EKeys::NumPadTwo) CurrentTypedTransformName.AppendChar(TEXT('2'));
+		else if (Key == EKeys::Three || Key == EKeys::NumPadThree) CurrentTypedTransformName.AppendChar(TEXT('3'));
+		else if (Key == EKeys::Four || Key == EKeys::NumPadFour) CurrentTypedTransformName.AppendChar(TEXT('4'));
+		else if (Key == EKeys::Five || Key == EKeys::NumPadFive) CurrentTypedTransformName.AppendChar(TEXT('5'));
+		else if (Key == EKeys::Six || Key == EKeys::NumPadSix) CurrentTypedTransformName.AppendChar(TEXT('6'));
+		else if (Key == EKeys::Seven || Key == EKeys::NumPadSeven) CurrentTypedTransformName.AppendChar(TEXT('7'));
+		else if (Key == EKeys::Eight || Key == EKeys::NumPadEight) CurrentTypedTransformName.AppendChar(TEXT('8'));
+		else if (Key == EKeys::Nine || Key == EKeys::NumPadNine) CurrentTypedTransformName.AppendChar(TEXT('9'));
+		else if (Key == EKeys::Underscore || Key == EKeys::Hyphen) CurrentTypedTransformName.AppendChar(TEXT('_'));
+		return;
 	}
-	else if (Key == EKeys::Zero || Key == EKeys::NumPadZero) CurrentTypedGestureName.AppendChar(TEXT('0'));
-	else if (Key == EKeys::One || Key == EKeys::NumPadOne) CurrentTypedGestureName.AppendChar(TEXT('1'));
-	else if (Key == EKeys::Two || Key == EKeys::NumPadTwo) CurrentTypedGestureName.AppendChar(TEXT('2'));
-	else if (Key == EKeys::Three || Key == EKeys::NumPadThree) CurrentTypedGestureName.AppendChar(TEXT('3'));
-	else if (Key == EKeys::Four || Key == EKeys::NumPadFour) CurrentTypedGestureName.AppendChar(TEXT('4'));
-	else if (Key == EKeys::Five || Key == EKeys::NumPadFive) CurrentTypedGestureName.AppendChar(TEXT('5'));
-	else if (Key == EKeys::Six || Key == EKeys::NumPadSix) CurrentTypedGestureName.AppendChar(TEXT('6'));
-	else if (Key == EKeys::Seven || Key == EKeys::NumPadSeven) CurrentTypedGestureName.AppendChar(TEXT('7'));
-	else if (Key == EKeys::Eight || Key == EKeys::NumPadEight) CurrentTypedGestureName.AppendChar(TEXT('8'));
-	else if (Key == EKeys::Nine || Key == EKeys::NumPadNine) CurrentTypedGestureName.AppendChar(TEXT('9'));
-	else if (Key == EKeys::Underscore || Key == EKeys::Hyphen) CurrentTypedGestureName.AppendChar(TEXT('_'));
 }
 
 void AYenkaDesktopPawn::SelectScenarioTheme(int32 ThemeIndex)
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 
 	if (bIsPhalanxEditMode)
 	{
@@ -980,7 +1259,7 @@ void AYenkaDesktopPawn::SelectScenarioTheme(int32 ThemeIndex)
 
 void AYenkaDesktopPawn::OnToggleScenarioMenu()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	AYenkaScenarioMenu* Menu = Cast<AYenkaScenarioMenu>(UGameplayStatics::GetActorOfClass(GetWorld(), AYenkaScenarioMenu::StaticClass()));
 	if (Menu)
 	{
@@ -990,7 +1269,7 @@ void AYenkaDesktopPawn::OnToggleScenarioMenu()
 
 void AYenkaDesktopPawn::OnKeyMPressed()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	if (bIsPhalanxEditMode)
 	{
 		SelectedFinger = 6; // Select Muñeca (Wrist / Whole Hand Rotation Mode)
@@ -1007,7 +1286,7 @@ void AYenkaDesktopPawn::OnKeyMPressed()
 
 void AYenkaDesktopPawn::OnKeyBPressed()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	if (bIsPhalanxEditMode)
 	{
 		SelectedFinger = 7; // Select Eje Muñeca-Índice
@@ -1024,49 +1303,49 @@ void AYenkaDesktopPawn::OnKeyBPressed()
 
 void AYenkaDesktopPawn::AdjustHandOffsetX(float Delta)
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	PokeHandLocationOffset.X += Delta;
 	GrabHandLocationOffset.X += Delta;
 }
 
 void AYenkaDesktopPawn::AdjustHandOffsetY(float Delta)
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	PokeHandLocationOffset.Y += Delta;
 	GrabHandLocationOffset.Y += Delta;
 }
 
 void AYenkaDesktopPawn::AdjustHandOffsetZ(float Delta)
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	PokeHandLocationOffset.Z += Delta;
 	GrabHandLocationOffset.Z += Delta;
 }
 
 void AYenkaDesktopPawn::AdjustHandPitch(float Delta)
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	PokeHandRotationOffset.Pitch = FRotator::NormalizeAxis(PokeHandRotationOffset.Pitch + Delta);
 	GrabHandRotationOffset.Pitch = FRotator::NormalizeAxis(GrabHandRotationOffset.Pitch + Delta);
 }
 
 void AYenkaDesktopPawn::AdjustHandYaw(float Delta)
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	PokeHandRotationOffset.Yaw = FRotator::NormalizeAxis(PokeHandRotationOffset.Yaw + Delta);
 	GrabHandRotationOffset.Yaw = FRotator::NormalizeAxis(GrabHandRotationOffset.Yaw + Delta);
 }
 
 void AYenkaDesktopPawn::AdjustHandRoll(float Delta)
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	PokeHandRotationOffset.Roll = FRotator::NormalizeAxis(PokeHandRotationOffset.Roll + Delta);
 	GrabHandRotationOffset.Roll = FRotator::NormalizeAxis(GrabHandRotationOffset.Roll + Delta);
 }
 
 void AYenkaDesktopPawn::QuickRotateYaw90()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	if (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke))
 	{
 		PokeHandRotationOffset.Yaw = FRotator::NormalizeAxis(PokeHandRotationOffset.Yaw + 90.0f);
@@ -1079,7 +1358,7 @@ void AYenkaDesktopPawn::QuickRotateYaw90()
 
 void AYenkaDesktopPawn::QuickRotateRoll90()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	if (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke))
 	{
 		PokeHandRotationOffset.Roll = FRotator::NormalizeAxis(PokeHandRotationOffset.Roll + 90.0f);
@@ -1092,7 +1371,7 @@ void AYenkaDesktopPawn::QuickRotateRoll90()
 
 void AYenkaDesktopPawn::QuickRotatePitch90()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	if (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke))
 	{
 		PokeHandRotationOffset.Pitch = FRotator::NormalizeAxis(PokeHandRotationOffset.Pitch + 90.0f);
@@ -1105,7 +1384,7 @@ void AYenkaDesktopPawn::QuickRotatePitch90()
 
 void AYenkaDesktopPawn::ResetHandCalibration()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	GrabHandLocationOffset = FVector(-5.50f, 8.50f, -0.50f);
 	GrabHandRotationOffset = FRotator(90.0f, -90.0f, 0.0f);
 	PokeHandLocationOffset = FVector(-5.50f, 8.50f, -0.50f);
@@ -1120,7 +1399,7 @@ void AYenkaDesktopPawn::ResetHandCalibration()
 
 void AYenkaDesktopPawn::SetGesturePush()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	ActiveGesturePreview = EHandPoseMode::FingerPoke;
 	bForceGesturePreview = true;
 	bIsPokeModeActive = true;
@@ -1133,7 +1412,7 @@ void AYenkaDesktopPawn::SetGesturePush()
 
 void AYenkaDesktopPawn::SetGestureGrab()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	ActiveGesturePreview = EHandPoseMode::GrabPinch;
 	bForceGesturePreview = true;
 	bIsPokeModeActive = false;
@@ -1146,7 +1425,7 @@ void AYenkaDesktopPawn::SetGestureGrab()
 
 void AYenkaDesktopPawn::SetGestureOpen()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	ActiveGesturePreview = EHandPoseMode::OpenHand;
 	bForceGesturePreview = true;
 	bIsPokeModeActive = false;
@@ -1159,7 +1438,7 @@ void AYenkaDesktopPawn::SetGestureOpen()
 
 void AYenkaDesktopPawn::CycleGesture()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	bForceGesturePreview = true;
 	if (ActiveGesturePreview == EHandPoseMode::OpenHand)
 	{
@@ -1192,6 +1471,32 @@ void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
 			GEngine->AddOnScreenDebugMessage(1003, 0.20f, FColor(50, 255, 255), Line3);
 			GEngine->AddOnScreenDebugMessage(1004, 0.20f, FColor(200, 200, 255), Line4);
 			GEngine->AddOnScreenDebugMessage(1005, 0.20f, FColor(50, 255, 50), Line5);
+			return;
+		}
+
+		if (bIsNamingCustomTransform)
+		{
+			const bool bInPoke = (bIsPokeModeActive || bIsPushingBlock || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke));
+			const FVector ActivePos = bInPoke ? PokeHandLocationOffset : GrabHandLocationOffset;
+			const FRotator ActiveRot = bInPoke ? PokeHandRotationOffset : GrabHandRotationOffset;
+
+			FString Line1 = TEXT("╔══════════════════════════════════════════════════════════════════════════════╗");
+			FString Line2 = TEXT("║ 💾 GUARDAR TRANSFORMACIÓN DE POSICIÓN: Teclea el nombre y ENTER (ESC Cancela) ║");
+			FString Line3 = FString::Printf(TEXT("║ 📝 NOMBRE: [ %s_ ]                                                           ║"), *CurrentTypedTransformName);
+			FString Line4 = FString::Printf(TEXT("║ 📍 POSICIÓN [%s]: X: %+.2f cm | Y: %+.2f cm | Z: %+.2f cm                     ║"),
+				bInPoke ? TEXT("EMPUJAR") : TEXT("AGARRAR"), ActivePos.X, ActivePos.Y, ActivePos.Z);
+			FString Line5 = FString::Printf(TEXT("║ 🔄 ROTACIÓN [%s]: Pitch: %+.0f° | Yaw: %+.0f° | Roll: %+.0f°                  ║"),
+				bInPoke ? TEXT("EMPUJAR") : TEXT("AGARRAR"), ActiveRot.Pitch, ActiveRot.Yaw, ActiveRot.Roll);
+			FString Line6 = FString::Printf(TEXT("║ 📊 Presets de Transformación Guardados en Disco: %d                          ║"), CustomTransformsList.Num());
+			FString Line7 = TEXT("╚══════════════════════════════════════════════════════════════════════════════╝");
+
+			GEngine->AddOnScreenDebugMessage(1001, 0.20f, FColor(50, 255, 50), Line1);
+			GEngine->AddOnScreenDebugMessage(1002, 0.20f, FColor(255, 255, 50), Line2);
+			GEngine->AddOnScreenDebugMessage(1003, 0.20f, FColor(50, 255, 255), Line3);
+			GEngine->AddOnScreenDebugMessage(1004, 0.20f, FColor(120, 255, 180), Line4);
+			GEngine->AddOnScreenDebugMessage(1005, 0.20f, FColor(120, 255, 120), Line5);
+			GEngine->AddOnScreenDebugMessage(1006, 0.20f, FColor(200, 200, 255), Line6);
+			GEngine->AddOnScreenDebugMessage(1007, 0.20f, FColor(50, 255, 50), Line7);
 			return;
 		}
 
@@ -1287,6 +1592,10 @@ void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
 		const FVector ActivePos = bInPoke ? PokeHandLocationOffset : GrabHandLocationOffset;
 		const FRotator ActiveRot = bInPoke ? PokeHandRotationOffset : GrabHandRotationOffset;
 
+		FString TransformPresetName = (ActiveCustomTransformIndex >= 0 && CustomTransformsList.IsValidIndex(ActiveCustomTransformIndex))
+			? FString::Printf(TEXT("[%d/%d] %s"), ActiveCustomTransformIndex + 1, CustomTransformsList.Num(), *CustomTransformsList[ActiveCustomTransformIndex].TransformName)
+			: TEXT("Personalizada");
+
 		FString GestureName = VirtualHand ? VirtualHand->GetDetectedGestureDescription() : TEXT("🖐️ LIBRE / INSPECCIÓN (OpenHand)");
 		if (ActiveCustomGestureIndex >= 0 && CustomGesturesList.IsValidIndex(ActiveCustomGestureIndex))
 		{
@@ -1309,9 +1618,9 @@ void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
 
 		FString ModelName = VirtualHand ? VirtualHand->GetHandModelDisplayName() : TEXT("Manny XR");
 		FString Line1 = FString::Printf(TEXT("=== 🎛️ CALIBRACIÓN DE MANO YENKA (TIEMPO REAL) ==="));
-		FString Line2 = FString::Printf(TEXT("📍 POSICIÓN [%s]:  [ X: %+.2f cm | Y: %+.2f cm | Z: %+.2f cm ]"),
-			bInPoke ? TEXT("EMPUJAR") : TEXT("AGARRAR/LIBRE"), ActivePos.X, ActivePos.Y, ActivePos.Z);
-		FString Line3 = FString::Printf(TEXT("🔄 ROTACIÓN [%s]:  [ Yaw: %+.0f° | Pitch: %+.0f° | Roll: %+.0f° ]"),
+		FString Line2 = FString::Printf(TEXT("📍 POSICIÓN [%s]:  [ X: %+.2f cm | Y: %+.2f cm | Z: %+.2f cm ] (Preset: %s)"),
+			bInPoke ? TEXT("EMPUJAR") : TEXT("AGARRAR/LIBRE"), ActivePos.X, ActivePos.Y, ActivePos.Z, *TransformPresetName);
+		FString Line3 = FString::Printf(TEXT("🔄 ROTACIÓN [%s]:  [ Yaw: %+.0f° | Pitch: %+.0f° | Roll: %+.0f° ] (F8/Enter: Guardar Posición | F9/F10: Ciclar)"),
 			bInPoke ? TEXT("EMPUJAR") : TEXT("AGARRAR/LIBRE"), ActiveRot.Yaw, ActiveRot.Pitch, ActiveRot.Roll);
 		FString Line4 = FString::Printf(TEXT("✋ GESTO:     [ %s ]  (Teclas: F1 Empujar, F2 Agarrar, F3 Libre, Tab Ciclar)"),
 			*GestureName);
@@ -1330,7 +1639,7 @@ void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
 
 void AYenkaDesktopPawn::OnSecondaryClickPressed()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	bIsOrbitingCamera = true;
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (PC)
@@ -1341,7 +1650,7 @@ void AYenkaDesktopPawn::OnSecondaryClickPressed()
 
 void AYenkaDesktopPawn::OnSecondaryClickReleased()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	bIsOrbitingCamera = false;
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (PC)
@@ -1352,7 +1661,7 @@ void AYenkaDesktopPawn::OnSecondaryClickReleased()
 
 void AYenkaDesktopPawn::OnPokeKeyPressed()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	if (bIsPhalanxEditMode)
 	{
 		OnPhalanxRollPlus();
@@ -1363,7 +1672,7 @@ void AYenkaDesktopPawn::OnPokeKeyPressed()
 
 void AYenkaDesktopPawn::OnPokeKeyReleased()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	if (bIsPhalanxEditMode) return;
 	if (!bIsPushingBlock)
 	{
@@ -1373,7 +1682,7 @@ void AYenkaDesktopPawn::OnPokeKeyReleased()
 
 void AYenkaDesktopPawn::OnTogglePokeMode()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	if (bIsPhalanxEditMode) return;
 	bIsPokeModeActive = !bIsPokeModeActive;
 }
@@ -1401,7 +1710,7 @@ FRotator AYenkaDesktopPawn::GetHorizontalFacingRotation(const FVector& TargetLoc
 
 void AYenkaDesktopPawn::OnMouseX(float Val)
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	if (bIsOrbitingCamera && FMath::Abs(Val) > 0.001f)
 	{
 		AddControllerYawInput(Val * 2.5f);
@@ -1410,7 +1719,7 @@ void AYenkaDesktopPawn::OnMouseX(float Val)
 
 void AYenkaDesktopPawn::OnMouseY(float Val)
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	if (bIsOrbitingCamera && FMath::Abs(Val) > 0.001f)
 	{
 		AddControllerPitchInput(-Val * 2.5f);
@@ -1438,7 +1747,7 @@ void AYenkaDesktopPawn::OnMouseY(float Val)
 
 void AYenkaDesktopPawn::OnMouseWheel(float Val)
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	if (CameraBoom && FMath::Abs(Val) > 0.001f)
 	{
 		CameraBoom->TargetArmLength = FMath::Clamp(CameraBoom->TargetArmLength - (Val * 8.0f), 30.0f, 250.0f);
@@ -1447,7 +1756,7 @@ void AYenkaDesktopPawn::OnMouseWheel(float Val)
 
 void AYenkaDesktopPawn::MoveForward(float Val)
 {
-	if (bIsPhalanxEditMode || bIsNamingCustomGesture) return;
+	if (bIsPhalanxEditMode || bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	if (FMath::Abs(Val) > 0.01f)
 	{
 		FVector Forward = FollowCamera ? FollowCamera->GetForwardVector() : GetActorForwardVector();
@@ -1458,7 +1767,7 @@ void AYenkaDesktopPawn::MoveForward(float Val)
 
 void AYenkaDesktopPawn::MoveRight(float Val)
 {
-	if (bIsPhalanxEditMode || bIsNamingCustomGesture) return;
+	if (bIsPhalanxEditMode || bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	if (FMath::Abs(Val) > 0.01f)
 	{
 		FVector Right = FollowCamera ? FollowCamera->GetRightVector() : GetActorRightVector();
@@ -1766,7 +2075,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 
 void AYenkaDesktopPawn::OnPrimaryClickPressed()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	float CurrentTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
 	float TimeSinceLastClick = CurrentTime - LastPrimaryClickTime;
 	const float DoubleClickMaxInterval = 0.35f;
@@ -1880,7 +2189,7 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 
 void AYenkaDesktopPawn::OnPrimaryClickReleased()
 {
-	if (bIsNamingCustomGesture) return;
+	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
 	if (bIsPushingBlock)
 	{
 		AYenkaBlock* ActivePushBlock = LockedPushBlock ? LockedPushBlock : HoveredBlock;

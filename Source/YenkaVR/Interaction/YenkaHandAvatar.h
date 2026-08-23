@@ -100,6 +100,36 @@ struct FCustomGestureLibrary
 	TArray<FCustomHandGesture> Gestures;
 };
 
+USTRUCT(BlueprintType)
+struct FCustomHandTransform
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Transform")
+	FString TransformName = TEXT("DefaultTransform");
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Transform")
+	FVector PokeLocationOffset = FVector(-5.50f, 8.50f, -0.50f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Transform")
+	FRotator PokeRotationOffset = FRotator(0.0f, -90.0f, 0.0f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Transform")
+	FVector GrabLocationOffset = FVector(-5.50f, 8.50f, -0.50f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Transform")
+	FRotator GrabRotationOffset = FRotator(90.0f, -90.0f, 0.0f);
+};
+
+USTRUCT(BlueprintType)
+struct FCustomTransformLibrary
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Transform")
+	TArray<FCustomHandTransform> Transforms;
+};
+
 /**
  * Replicated visual representation of a player's hand in 3D space, visible to all users.
  */

@@ -49,6 +49,7 @@ Thumbs.db
 # Crash reports and logs
 Saved/
 !Saved/HandGestures/
+!Saved/HandTransforms/
 
 # Keep tracked folders
 !Source/

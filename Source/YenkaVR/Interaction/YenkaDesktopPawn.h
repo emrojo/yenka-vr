@@ -218,6 +218,44 @@ protected:
 	UFUNCTION(Exec)
 	void DeleteHandGesture(const FString& Name);
 
+	// --- Custom Hand Position Transform System (Creation, Naming, JSON Persistence & Cycling) ---
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Transforms")
+	TArray<FCustomHandTransform> CustomTransformsList;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Transforms")
+	int32 ActiveCustomTransformIndex = -1;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Transforms")
+	bool bIsNamingCustomTransform = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Transforms")
+	FString CurrentTypedTransformName;
+
+	void StartNamingTransform();
+	void ConfirmSaveTransform();
+	void CancelNamingTransform();
+
+	void OnKeyF8Pressed();
+	void OnKeyF9Pressed();
+	void OnKeyF10Pressed();
+
+	void CycleNextCustomTransform();
+	void CyclePrevCustomTransform();
+	void LoadCustomTransformByIndex(int32 Index);
+	void LoadCustomTransformByName(const FString& Name);
+
+	bool SaveCustomTransformsToDisk();
+	bool LoadCustomTransformsFromDisk();
+
+	UFUNCTION(Exec)
+	void SaveHandTransform(const FString& Name);
+
+	UFUNCTION(Exec)
+	void LoadHandTransform(const FString& Name);
+
+	UFUNCTION(Exec)
+	void ListHandTransforms();
+
 	void OnKeyHPressed();
 
 	UFUNCTION(Exec)
