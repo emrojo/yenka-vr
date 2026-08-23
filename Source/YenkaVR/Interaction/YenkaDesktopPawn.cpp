@@ -811,6 +811,10 @@ void AYenkaDesktopPawn::ReloadHandGestures()
 	{
 		LoadCustomGestureByIndex(ActiveCustomGestureIndex);
 	}
+	else if (VirtualHand)
+	{
+		VirtualHand->LoadPresetPose(VirtualHand->CurrentPoseMode);
+	}
 	if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(9992, 3.5f, FColor::Green,

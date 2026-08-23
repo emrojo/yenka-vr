@@ -7,6 +7,10 @@
 #include "UObject/ConstructorHelpers.h"
 #include "Net/UnrealNetwork.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "JsonObjectConverter.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
+#include "HAL/FileManager.h"
 
 AYenkaHandAvatar::AYenkaHandAvatar()
 {
@@ -214,6 +218,7 @@ void AYenkaHandAvatar::BeginPlay()
 	Super::BeginPlay();
 	ApplyHandModelAndMaterials();
 	ApplyHumanSkinMaterials();
+	LoadPresetPose(CurrentPoseMode);
 }
 
 void AYenkaHandAvatar::SetIsLeftHand(bool bInIsLeft)
@@ -602,61 +607,160 @@ void AYenkaHandAvatar::ResetAllPhalanges()
 	ApplyPhalanxTransforms();
 }
 
+bool AYenkaHandAvatar::LoadCustomGestureLibraryFromDisk(TArray<FCustomHandGesture>& OutGestures)
+{
+	FString FilePath = FPaths::ProjectSavedDir() / TEXT("HandGestures/CustomGestures.json");
+	if (FPaths::FileExists(FilePath))
+	{
+		FString JsonString;
+		if (FFileHelper::LoadFileToString(JsonString, *FilePath))
+		{
+			FCustomGestureLibrary Library;
+			if (FJsonObjectConverter::JsonObjectStringToUStruct(JsonString, &Library, 0, 0))
+			{
+				OutGestures = Library.Gestures;
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+bool AYenkaHandAvatar::LoadCustomGestureFromDiskByName(const FString& GestureName, FCustomHandGesture& OutGesture)
+{
+	TArray<FCustomHandGesture> Gestures;
+	if (LoadCustomGestureLibraryFromDisk(Gestures))
+	{
+		int32 FoundIdx = Gestures.IndexOfByPredicate([&GestureName](const FCustomHandGesture& G) {
+			return G.GestureName.Equals(GestureName, ESearchCase::IgnoreCase);
+		});
+		if (FoundIdx != INDEX_NONE)
+		{
+			OutGesture = Gestures[FoundIdx];
+			return true;
+		}
+
+		// Fallback partial match
+		FoundIdx = Gestures.IndexOfByPredicate([&GestureName](const FCustomHandGesture& G) {
+			return G.GestureName.Contains(GestureName, ESearchCase::IgnoreCase);
+		});
+		if (FoundIdx != INDEX_NONE)
+		{
+			OutGesture = Gestures[FoundIdx];
+			return true;
+		}
+	}
+	return false;
+}
+
 void AYenkaHandAvatar::LoadPresetPose(EHandPoseMode Mode)
 {
 	CurrentPoseMode = Mode;
 	HandAxialRotation = 0.0f;
 	bIsCustomGestureActive = false;
 
+	FCustomHandGesture LoadedGesture;
+
 	if (Mode == EHandPoseMode::FingerPoke)
 	{
-		// Push / PointGesture configuration
-		ThumbPhalanges.Proximal = FPhalanxData{ -40.0f, -50.0f, 0.0f };
-		ThumbPhalanges.Intermediate = FPhalanxData{ -15.0f, -20.0f, -1.0f };
-		ThumbPhalanges.Distal = FPhalanxData{ 5.0f, 25.0f, 0.0f };
+		// 1. Load PointGesture directly from CustomGestures.json
+		if (LoadCustomGestureFromDiskByName(TEXT("PointGesture"), LoadedGesture) ||
+		    LoadCustomGestureFromDiskByName(TEXT("Point"), LoadedGesture) ||
+		    LoadCustomGestureFromDiskByName(TEXT("Poke"), LoadedGesture))
+		{
+			ThumbPhalanges = LoadedGesture.Thumb;
+			IndexPhalanges = LoadedGesture.Index;
+			MiddlePhalanges = LoadedGesture.Middle;
+			RingPhalanges = LoadedGesture.Ring;
+			PinkyPhalanges = LoadedGesture.Pinky;
+			HandAxialRotation = LoadedGesture.HandAxialRotation;
+		}
+		else
+		{
+			// Safe fallback
+			ThumbPhalanges.Proximal = FPhalanxData{ -40.0f, -50.0f, 0.0f };
+			ThumbPhalanges.Intermediate = FPhalanxData{ -15.0f, -20.0f, -1.0f };
+			ThumbPhalanges.Distal = FPhalanxData{ 5.0f, 25.0f, 0.0f };
 
-		IndexPhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, -5.0f };
-		IndexPhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, 15.0f };
-		IndexPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, 15.0f };
+			IndexPhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, -5.0f };
+			IndexPhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, 15.0f };
+			IndexPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, 15.0f };
 
-		MiddlePhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, -20.0f };
-		MiddlePhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, -95.0f };
-		MiddlePhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, -60.0f };
+			MiddlePhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, -20.0f };
+			MiddlePhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, -95.0f };
+			MiddlePhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, -60.0f };
 
-		RingPhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, 20.0f };
-		RingPhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, 75.0f };
-		RingPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, -80.0f };
+			RingPhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, 20.0f };
+			RingPhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, 75.0f };
+			RingPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, -80.0f };
 
-		PinkyPhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, -20.0f };
-		PinkyPhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, -80.0f };
-		PinkyPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, -95.0f };
+			PinkyPhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, -20.0f };
+			PinkyPhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, -80.0f };
+			PinkyPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, -95.0f };
+		}
 	}
 	else if (Mode == EHandPoseMode::GrabPinch)
 	{
-		// Grab / LightPullGesture configuration
-		ThumbPhalanges.Proximal = FPhalanxData{ -45.0f, -85.0f, 20.0f };
-		ThumbPhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, 15.0f };
-		ThumbPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, -10.0f };
+		// 2. Load LightPullGesture directly from CustomGestures.json
+		if (LoadCustomGestureFromDiskByName(TEXT("LightPullGesture"), LoadedGesture) ||
+		    LoadCustomGestureFromDiskByName(TEXT("LightPull"), LoadedGesture) ||
+		    LoadCustomGestureFromDiskByName(TEXT("Pull"), LoadedGesture) ||
+		    LoadCustomGestureFromDiskByName(TEXT("Grab"), LoadedGesture))
+		{
+			ThumbPhalanges = LoadedGesture.Thumb;
+			IndexPhalanges = LoadedGesture.Index;
+			MiddlePhalanges = LoadedGesture.Middle;
+			RingPhalanges = LoadedGesture.Ring;
+			PinkyPhalanges = LoadedGesture.Pinky;
+			HandAxialRotation = LoadedGesture.HandAxialRotation;
+		}
+		else
+		{
+			// Safe fallback
+			ThumbPhalanges.Proximal = FPhalanxData{ -45.0f, -85.0f, 20.0f };
+			ThumbPhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, 15.0f };
+			ThumbPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, -10.0f };
 
-		IndexPhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, 0.0f };
-		IndexPhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, -30.0f };
-		IndexPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, -15.0f };
+			IndexPhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, 0.0f };
+			IndexPhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, -30.0f };
+			IndexPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, -15.0f };
 
-		MiddlePhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, 10.0f };
-		MiddlePhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, 0.0f };
-		MiddlePhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, 10.0f };
+			MiddlePhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, 10.0f };
+			MiddlePhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, 0.0f };
+			MiddlePhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, 10.0f };
 
-		RingPhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, 15.0f };
-		RingPhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, 0.0f };
-		RingPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, 0.0f };
+			RingPhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, 15.0f };
+			RingPhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, 0.0f };
+			RingPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, 0.0f };
 
-		PinkyPhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, 25.0f };
-		PinkyPhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, 15.0f };
-		PinkyPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, 0.0f };
+			PinkyPhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, 25.0f };
+			PinkyPhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, 15.0f };
+			PinkyPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, 0.0f };
+		}
+	}
+	else if (Mode == EHandPoseMode::OpenHand)
+	{
+		if (LoadCustomGestureFromDiskByName(TEXT("OpenHand"), LoadedGesture) ||
+		    LoadCustomGestureFromDiskByName(TEXT("Neutral"), LoadedGesture))
+		{
+			ThumbPhalanges = LoadedGesture.Thumb;
+			IndexPhalanges = LoadedGesture.Index;
+			MiddlePhalanges = LoadedGesture.Middle;
+			RingPhalanges = LoadedGesture.Ring;
+			PinkyPhalanges = LoadedGesture.Pinky;
+			HandAxialRotation = LoadedGesture.HandAxialRotation;
+		}
+		else
+		{
+			ThumbPhalanges = FFingerPhalanges();
+			IndexPhalanges = FFingerPhalanges();
+			MiddlePhalanges = FFingerPhalanges();
+			RingPhalanges = FFingerPhalanges();
+			PinkyPhalanges = FFingerPhalanges();
+		}
 	}
 	else
 	{
-		// Flat base
 		ThumbPhalanges = FFingerPhalanges();
 		IndexPhalanges = FFingerPhalanges();
 		MiddlePhalanges = FFingerPhalanges();

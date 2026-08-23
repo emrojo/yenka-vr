@@ -196,6 +196,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Yenka|Phalanx")
 	void ApplyCustomGesture(const FCustomHandGesture& InGesture);
 
+	UFUNCTION(BlueprintCallable, Category = "Yenka|Gesture")
+	bool LoadCustomGestureLibraryFromDisk(TArray<FCustomHandGesture>& OutGestures);
+
+	UFUNCTION(BlueprintCallable, Category = "Yenka|Gesture")
+	bool LoadCustomGestureFromDiskByName(const FString& GestureName, FCustomHandGesture& OutGesture);
+
 	void ApplyPhalanxTransforms();
 	FRotator GetPhalanxDeltaRotationForBone(FName BoneName) const;
 
