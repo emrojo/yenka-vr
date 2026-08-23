@@ -490,6 +490,13 @@ FString AYenkaHandAvatar::GetDetectedGestureDescription() const
 	return TEXT("🎨 GESTO PERSONALIZADO (Custom Pose)");
 }
 
+static FORCEINLINE FRotator MakePhalanxRot(float FlexionAngle, float LateralAngle)
+{
+	// InPitch (Y-axis): Lateral displacement (Horizontal Spread)
+	// InYaw (Z-axis): Vertical displacement (Vertical Flexion / Extension)
+	return FRotator(LateralAngle, -FlexionAngle, 0.0f);
+}
+
 FRotator AYenkaHandAvatar::GetPhalanxDeltaRotationForBone(FName BoneName) const
 {
 	FString Name = BoneName.ToString().ToLower();
@@ -499,15 +506,15 @@ FRotator AYenkaHandAvatar::GetPhalanxDeltaRotationForBone(FName BoneName) const
 	{
 		if (Name.Contains(TEXT("01")) || Name.Contains(TEXT("metacarpal")) || (Name.Contains(TEXT("proximal")) && !Name.Contains(TEXT("intermediate")) && !Name.Contains(TEXT("distal"))))
 		{
-			return FRotator(ThumbPhalanges.Proximal.FlexionAngle, ThumbPhalanges.Proximal.LateralAngle, 0.0f);
+			return MakePhalanxRot(ThumbPhalanges.Proximal.FlexionAngle, ThumbPhalanges.Proximal.LateralAngle);
 		}
 		if (Name.Contains(TEXT("02")) || Name.Contains(TEXT("intermediate")) || Name.Contains(TEXT("proximal")))
 		{
-			return FRotator(ThumbPhalanges.Intermediate.FlexionAngle, ThumbPhalanges.Intermediate.LateralAngle, 0.0f);
+			return MakePhalanxRot(ThumbPhalanges.Intermediate.FlexionAngle, ThumbPhalanges.Intermediate.LateralAngle);
 		}
 		if (Name.Contains(TEXT("03")) || Name.Contains(TEXT("distal")))
 		{
-			return FRotator(ThumbPhalanges.Distal.FlexionAngle, ThumbPhalanges.Distal.LateralAngle, 0.0f);
+			return MakePhalanxRot(ThumbPhalanges.Distal.FlexionAngle, ThumbPhalanges.Distal.LateralAngle);
 		}
 	}
 
@@ -516,15 +523,15 @@ FRotator AYenkaHandAvatar::GetPhalanxDeltaRotationForBone(FName BoneName) const
 	{
 		if (Name.Contains(TEXT("01")) || Name.Contains(TEXT("metacarpal")) || (Name.Contains(TEXT("proximal")) && !Name.Contains(TEXT("intermediate")) && !Name.Contains(TEXT("distal"))))
 		{
-			return FRotator(IndexPhalanges.Proximal.FlexionAngle, IndexPhalanges.Proximal.LateralAngle, 0.0f);
+			return MakePhalanxRot(IndexPhalanges.Proximal.FlexionAngle, IndexPhalanges.Proximal.LateralAngle);
 		}
 		if (Name.Contains(TEXT("02")) || Name.Contains(TEXT("intermediate")))
 		{
-			return FRotator(IndexPhalanges.Intermediate.FlexionAngle, IndexPhalanges.Intermediate.LateralAngle, 0.0f);
+			return MakePhalanxRot(IndexPhalanges.Intermediate.FlexionAngle, IndexPhalanges.Intermediate.LateralAngle);
 		}
 		if (Name.Contains(TEXT("03")) || Name.Contains(TEXT("distal")))
 		{
-			return FRotator(IndexPhalanges.Distal.FlexionAngle, IndexPhalanges.Distal.LateralAngle, 0.0f);
+			return MakePhalanxRot(IndexPhalanges.Distal.FlexionAngle, IndexPhalanges.Distal.LateralAngle);
 		}
 	}
 
@@ -533,15 +540,15 @@ FRotator AYenkaHandAvatar::GetPhalanxDeltaRotationForBone(FName BoneName) const
 	{
 		if (Name.Contains(TEXT("01")) || Name.Contains(TEXT("metacarpal")) || (Name.Contains(TEXT("proximal")) && !Name.Contains(TEXT("intermediate")) && !Name.Contains(TEXT("distal"))))
 		{
-			return FRotator(MiddlePhalanges.Proximal.FlexionAngle, MiddlePhalanges.Proximal.LateralAngle, 0.0f);
+			return MakePhalanxRot(MiddlePhalanges.Proximal.FlexionAngle, MiddlePhalanges.Proximal.LateralAngle);
 		}
 		if (Name.Contains(TEXT("02")) || Name.Contains(TEXT("intermediate")))
 		{
-			return FRotator(MiddlePhalanges.Intermediate.FlexionAngle, MiddlePhalanges.Intermediate.LateralAngle, 0.0f);
+			return MakePhalanxRot(MiddlePhalanges.Intermediate.FlexionAngle, MiddlePhalanges.Intermediate.LateralAngle);
 		}
 		if (Name.Contains(TEXT("03")) || Name.Contains(TEXT("distal")))
 		{
-			return FRotator(MiddlePhalanges.Distal.FlexionAngle, MiddlePhalanges.Distal.LateralAngle, 0.0f);
+			return MakePhalanxRot(MiddlePhalanges.Distal.FlexionAngle, MiddlePhalanges.Distal.LateralAngle);
 		}
 	}
 
@@ -550,15 +557,15 @@ FRotator AYenkaHandAvatar::GetPhalanxDeltaRotationForBone(FName BoneName) const
 	{
 		if (Name.Contains(TEXT("01")) || Name.Contains(TEXT("metacarpal")) || (Name.Contains(TEXT("proximal")) && !Name.Contains(TEXT("intermediate")) && !Name.Contains(TEXT("distal"))))
 		{
-			return FRotator(RingPhalanges.Proximal.FlexionAngle, RingPhalanges.Proximal.LateralAngle, 0.0f);
+			return MakePhalanxRot(RingPhalanges.Proximal.FlexionAngle, RingPhalanges.Proximal.LateralAngle);
 		}
 		if (Name.Contains(TEXT("02")) || Name.Contains(TEXT("intermediate")))
 		{
-			return FRotator(RingPhalanges.Intermediate.FlexionAngle, RingPhalanges.Intermediate.LateralAngle, 0.0f);
+			return MakePhalanxRot(RingPhalanges.Intermediate.FlexionAngle, RingPhalanges.Intermediate.LateralAngle);
 		}
 		if (Name.Contains(TEXT("03")) || Name.Contains(TEXT("distal")))
 		{
-			return FRotator(RingPhalanges.Distal.FlexionAngle, RingPhalanges.Distal.LateralAngle, 0.0f);
+			return MakePhalanxRot(RingPhalanges.Distal.FlexionAngle, RingPhalanges.Distal.LateralAngle);
 		}
 	}
 
@@ -567,15 +574,15 @@ FRotator AYenkaHandAvatar::GetPhalanxDeltaRotationForBone(FName BoneName) const
 	{
 		if (Name.Contains(TEXT("01")) || Name.Contains(TEXT("metacarpal")) || (Name.Contains(TEXT("proximal")) && !Name.Contains(TEXT("intermediate")) && !Name.Contains(TEXT("distal"))))
 		{
-			return FRotator(PinkyPhalanges.Proximal.FlexionAngle, PinkyPhalanges.Proximal.LateralAngle, 0.0f);
+			return MakePhalanxRot(PinkyPhalanges.Proximal.FlexionAngle, PinkyPhalanges.Proximal.LateralAngle);
 		}
 		if (Name.Contains(TEXT("02")) || Name.Contains(TEXT("intermediate")))
 		{
-			return FRotator(PinkyPhalanges.Intermediate.FlexionAngle, PinkyPhalanges.Intermediate.LateralAngle, 0.0f);
+			return MakePhalanxRot(PinkyPhalanges.Intermediate.FlexionAngle, PinkyPhalanges.Intermediate.LateralAngle);
 		}
 		if (Name.Contains(TEXT("03")) || Name.Contains(TEXT("distal")))
 		{
-			return FRotator(PinkyPhalanges.Distal.FlexionAngle, PinkyPhalanges.Distal.LateralAngle, 0.0f);
+			return MakePhalanxRot(PinkyPhalanges.Distal.FlexionAngle, PinkyPhalanges.Distal.LateralAngle);
 		}
 	}
 
