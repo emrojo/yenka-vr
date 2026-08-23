@@ -607,22 +607,56 @@ bool AYenkaDesktopPawn::SaveCustomGesturesToDisk()
 bool AYenkaDesktopPawn::LoadCustomGesturesFromDisk()
 {
 	FString FilePath = FPaths::ProjectSavedDir() / TEXT("HandGestures/CustomGestures.json");
-	if (!FPaths::FileExists(FilePath))
+	if (FPaths::FileExists(FilePath))
 	{
-		return false;
-	}
-
-	FString JsonString;
-	if (FFileHelper::LoadFileToString(JsonString, *FilePath))
-	{
-		FCustomGestureLibrary Library;
-		if (FJsonObjectConverter::JsonObjectStringToUStruct(JsonString, &Library, 0, 0))
+		FString JsonString;
+		if (FFileHelper::LoadFileToString(JsonString, *FilePath))
 		{
-			CustomGesturesList = Library.Gestures;
-			return true;
+			FCustomGestureLibrary Library;
+			if (FJsonObjectConverter::JsonObjectStringToUStruct(JsonString, &Library, 0, 0))
+			{
+				CustomGesturesList = Library.Gestures;
+			}
 		}
 	}
-	return false;
+
+	// Ensure default PointGesture is present in the library
+	int32 PointIdx = CustomGesturesList.IndexOfByPredicate([](const FCustomHandGesture& G) {
+		return G.GestureName.Equals(TEXT("PointGesture"), ESearchCase::IgnoreCase);
+	});
+
+	if (PointIdx == INDEX_NONE)
+	{
+		FCustomHandGesture PointGesture;
+		PointGesture.GestureName = TEXT("PointGesture");
+		PointGesture.Thumb.Proximal = FPhalanxData{ -40.0f, -50.0f, 0.0f };
+		PointGesture.Thumb.Intermediate = FPhalanxData{ -15.0f, -20.0f, -1.0f };
+		PointGesture.Thumb.Distal = FPhalanxData{ 5.0f, 25.0f, 0.0f };
+
+		PointGesture.Index.Proximal = FPhalanxData{ 0.0f, 0.0f, -5.0f };
+		PointGesture.Index.Intermediate = FPhalanxData{ 0.0f, 0.0f, 15.0f };
+		PointGesture.Index.Distal = FPhalanxData{ 0.0f, 0.0f, 15.0f };
+
+		PointGesture.Middle.Proximal = FPhalanxData{ 0.0f, 0.0f, -20.0f };
+		PointGesture.Middle.Intermediate = FPhalanxData{ 0.0f, 0.0f, -95.0f };
+		PointGesture.Middle.Distal = FPhalanxData{ 0.0f, 0.0f, -60.0f };
+
+		PointGesture.Ring.Proximal = FPhalanxData{ 0.0f, 0.0f, 20.0f };
+		PointGesture.Ring.Intermediate = FPhalanxData{ 0.0f, 0.0f, 75.0f };
+		PointGesture.Ring.Distal = FPhalanxData{ 0.0f, 0.0f, -80.0f };
+
+		PointGesture.Pinky.Proximal = FPhalanxData{ 0.0f, 0.0f, -20.0f };
+		PointGesture.Pinky.Intermediate = FPhalanxData{ 0.0f, 0.0f, -80.0f };
+		PointGesture.Pinky.Distal = FPhalanxData{ 0.0f, 0.0f, -95.0f };
+
+		PointGesture.HandLocationOffset = PokeHandLocationOffset;
+		PointGesture.HandRotationOffset = PokeHandRotationOffset;
+
+		CustomGesturesList.Add(PointGesture);
+		SaveCustomGesturesToDisk();
+	}
+
+	return CustomGesturesList.Num() > 0;
 }
 
 void AYenkaDesktopPawn::OnAnyKeyPressed(FKey Key)

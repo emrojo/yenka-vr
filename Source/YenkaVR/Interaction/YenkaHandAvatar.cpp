@@ -452,12 +452,40 @@ void AYenkaHandAvatar::ResetAllPhalanges()
 void AYenkaHandAvatar::LoadPresetPose(EHandPoseMode Mode)
 {
 	CurrentPoseMode = Mode;
-	// All gesture poses reset to a completely flat, straight, extended hand (0 deg base)
-	ThumbPhalanges = FFingerPhalanges();
-	IndexPhalanges = FFingerPhalanges();
-	MiddlePhalanges = FFingerPhalanges();
-	RingPhalanges = FFingerPhalanges();
-	PinkyPhalanges = FFingerPhalanges();
+
+	if (Mode == EHandPoseMode::FingerPoke)
+	{
+		// Push / PointGesture configuration
+		ThumbPhalanges.Proximal = FPhalanxData{ -40.0f, -50.0f, 0.0f };
+		ThumbPhalanges.Intermediate = FPhalanxData{ -15.0f, -20.0f, -1.0f };
+		ThumbPhalanges.Distal = FPhalanxData{ 5.0f, 25.0f, 0.0f };
+
+		IndexPhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, -5.0f };
+		IndexPhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, 15.0f };
+		IndexPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, 15.0f };
+
+		MiddlePhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, -20.0f };
+		MiddlePhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, -95.0f };
+		MiddlePhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, -60.0f };
+
+		RingPhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, 20.0f };
+		RingPhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, 75.0f };
+		RingPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, -80.0f };
+
+		PinkyPhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, -20.0f };
+		PinkyPhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, -80.0f };
+		PinkyPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, -95.0f };
+	}
+	else
+	{
+		// Flat base
+		ThumbPhalanges = FFingerPhalanges();
+		IndexPhalanges = FFingerPhalanges();
+		MiddlePhalanges = FFingerPhalanges();
+		RingPhalanges = FFingerPhalanges();
+		PinkyPhalanges = FFingerPhalanges();
+	}
+
 	ApplyPhalanxTransforms();
 }
 
