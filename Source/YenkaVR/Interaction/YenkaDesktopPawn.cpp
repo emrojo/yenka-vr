@@ -42,8 +42,11 @@ AYenkaDesktopPawn::AYenkaDesktopPawn()
 	// Hand Calibration defaults
 	GrabHandLocationOffset = FVector::ZeroVector;
 	GrabHandRotationOffset = FRotator::ZeroRotator;
-	PokeHandLocationOffset = FVector::ZeroVector;
-	PokeHandRotationOffset = FRotator::ZeroRotator;
+
+	// User-calibrated Push (Poke) gesture correction: Yaw = -90 deg, X = -5.50cm, Y = +8.50cm, Z = -0.50cm
+	PokeHandLocationOffset = FVector(-5.50f, 8.50f, -0.50f);
+	PokeHandRotationOffset = FRotator(0.0f, -90.0f, 0.0f);
+
 	GrabStandbySeparation = 1.0f;
 	PokeStandbySeparation = 1.0f;
 	ActiveGesturePreview = EHandPoseMode::OpenHand;
@@ -215,64 +218,118 @@ void AYenkaDesktopPawn::OnToggleScenarioMenu()
 
 void AYenkaDesktopPawn::AdjustHandOffsetX(float Delta)
 {
-	GrabHandLocationOffset.X += Delta;
-	PokeHandLocationOffset.X += Delta;
+	if (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke))
+	{
+		PokeHandLocationOffset.X += Delta;
+	}
+	else
+	{
+		GrabHandLocationOffset.X += Delta;
+	}
 }
 
 void AYenkaDesktopPawn::AdjustHandOffsetY(float Delta)
 {
-	GrabHandLocationOffset.Y += Delta;
-	PokeHandLocationOffset.Y += Delta;
+	if (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke))
+	{
+		PokeHandLocationOffset.Y += Delta;
+	}
+	else
+	{
+		GrabHandLocationOffset.Y += Delta;
+	}
 }
 
 void AYenkaDesktopPawn::AdjustHandOffsetZ(float Delta)
 {
-	GrabHandLocationOffset.Z += Delta;
-	PokeHandLocationOffset.Z += Delta;
+	if (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke))
+	{
+		PokeHandLocationOffset.Z += Delta;
+	}
+	else
+	{
+		GrabHandLocationOffset.Z += Delta;
+	}
 }
 
 void AYenkaDesktopPawn::AdjustHandPitch(float Delta)
 {
-	GrabHandRotationOffset.Pitch = FRotator::NormalizeAxis(GrabHandRotationOffset.Pitch + Delta);
-	PokeHandRotationOffset.Pitch = GrabHandRotationOffset.Pitch;
+	if (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke))
+	{
+		PokeHandRotationOffset.Pitch = FRotator::NormalizeAxis(PokeHandRotationOffset.Pitch + Delta);
+	}
+	else
+	{
+		GrabHandRotationOffset.Pitch = FRotator::NormalizeAxis(GrabHandRotationOffset.Pitch + Delta);
+	}
 }
 
 void AYenkaDesktopPawn::AdjustHandYaw(float Delta)
 {
-	GrabHandRotationOffset.Yaw = FRotator::NormalizeAxis(GrabHandRotationOffset.Yaw + Delta);
-	PokeHandRotationOffset.Yaw = GrabHandRotationOffset.Yaw;
+	if (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke))
+	{
+		PokeHandRotationOffset.Yaw = FRotator::NormalizeAxis(PokeHandRotationOffset.Yaw + Delta);
+	}
+	else
+	{
+		GrabHandRotationOffset.Yaw = FRotator::NormalizeAxis(GrabHandRotationOffset.Yaw + Delta);
+	}
 }
 
 void AYenkaDesktopPawn::AdjustHandRoll(float Delta)
 {
-	GrabHandRotationOffset.Roll = FRotator::NormalizeAxis(GrabHandRotationOffset.Roll + Delta);
-	PokeHandRotationOffset.Roll = GrabHandRotationOffset.Roll;
+	if (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke))
+	{
+		PokeHandRotationOffset.Roll = FRotator::NormalizeAxis(PokeHandRotationOffset.Roll + Delta);
+	}
+	else
+	{
+		GrabHandRotationOffset.Roll = FRotator::NormalizeAxis(GrabHandRotationOffset.Roll + Delta);
+	}
 }
 
 void AYenkaDesktopPawn::QuickRotateYaw90()
 {
-	GrabHandRotationOffset.Yaw = FRotator::NormalizeAxis(GrabHandRotationOffset.Yaw + 90.0f);
-	PokeHandRotationOffset.Yaw = GrabHandRotationOffset.Yaw;
+	if (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke))
+	{
+		PokeHandRotationOffset.Yaw = FRotator::NormalizeAxis(PokeHandRotationOffset.Yaw + 90.0f);
+	}
+	else
+	{
+		GrabHandRotationOffset.Yaw = FRotator::NormalizeAxis(GrabHandRotationOffset.Yaw + 90.0f);
+	}
 }
 
 void AYenkaDesktopPawn::QuickRotateRoll90()
 {
-	GrabHandRotationOffset.Roll = FRotator::NormalizeAxis(GrabHandRotationOffset.Roll + 90.0f);
-	PokeHandRotationOffset.Roll = GrabHandRotationOffset.Roll;
+	if (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke))
+	{
+		PokeHandRotationOffset.Roll = FRotator::NormalizeAxis(PokeHandRotationOffset.Roll + 90.0f);
+	}
+	else
+	{
+		GrabHandRotationOffset.Roll = FRotator::NormalizeAxis(GrabHandRotationOffset.Roll + 90.0f);
+	}
 }
 
 void AYenkaDesktopPawn::QuickRotatePitch90()
 {
-	GrabHandRotationOffset.Pitch = FRotator::NormalizeAxis(GrabHandRotationOffset.Pitch + 90.0f);
-	PokeHandRotationOffset.Pitch = GrabHandRotationOffset.Pitch;
+	if (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke))
+	{
+		PokeHandRotationOffset.Pitch = FRotator::NormalizeAxis(PokeHandRotationOffset.Pitch + 90.0f);
+	}
+	else
+	{
+		GrabHandRotationOffset.Pitch = FRotator::NormalizeAxis(GrabHandRotationOffset.Pitch + 90.0f);
+	}
 }
 
 void AYenkaDesktopPawn::ResetHandCalibration()
 {
 	GrabHandLocationOffset = FVector::ZeroVector;
 	GrabHandRotationOffset = FRotator::ZeroRotator;
-	PokeHandLocationOffset = FVector::ZeroVector;
-	PokeHandRotationOffset = FRotator::ZeroRotator;
+	PokeHandLocationOffset = FVector(-5.50f, 8.50f, -0.50f);
+	PokeHandRotationOffset = FRotator(0.0f, -90.0f, 0.0f);
 	bForceGesturePreview = false;
 	ActiveGesturePreview = EHandPoseMode::OpenHand;
 }
@@ -330,6 +387,10 @@ void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
 {
 	if (GEngine && IsLocallyControlled())
 	{
+		const bool bInPoke = (bIsPokeModeActive || bIsPushingBlock || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke));
+		const FVector ActivePos = bInPoke ? PokeHandLocationOffset : GrabHandLocationOffset;
+		const FRotator ActiveRot = bInPoke ? PokeHandRotationOffset : GrabHandRotationOffset;
+
 		FString GestureName = TEXT("🖐️ LIBRE / INSPECCIÓN (OpenHand)");
 		if (bForceGesturePreview)
 		{
@@ -347,10 +408,10 @@ void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
 		}
 
 		FString Line1 = FString::Printf(TEXT("=== 🎛️ CALIBRACIÓN DE MANO YENKA (TIEMPO REAL) ==="));
-		FString Line2 = FString::Printf(TEXT("📍 POSICIÓN:  [ X (Adelantar/Atrasar): %+.2f cm | Y (Izq/Der): %+.2f cm | Z (Altura): %+.2f cm ]"),
-			GrabHandLocationOffset.X, GrabHandLocationOffset.Y, GrabHandLocationOffset.Z);
-		FString Line3 = FString::Printf(TEXT("🔄 ROTACIÓN:  [ Yaw (Orientación): %+.0f° | Pitch (Inclinación): %+.0f° | Roll (Giro Muñeca): %+.0f° ]"),
-			GrabHandRotationOffset.Yaw, GrabHandRotationOffset.Pitch, GrabHandRotationOffset.Roll);
+		FString Line2 = FString::Printf(TEXT("📍 POSICIÓN [%s]:  [ X: %+.2f cm | Y: %+.2f cm | Z: %+.2f cm ]"),
+			bInPoke ? TEXT("EMPUJAR") : TEXT("AGARRAR/LIBRE"), ActivePos.X, ActivePos.Y, ActivePos.Z);
+		FString Line3 = FString::Printf(TEXT("🔄 ROTACIÓN [%s]:  [ Yaw: %+.0f° | Pitch: %+.0f° | Roll: %+.0f° ]"),
+			bInPoke ? TEXT("EMPUJAR") : TEXT("AGARRAR/LIBRE"), ActiveRot.Yaw, ActiveRot.Pitch, ActiveRot.Roll);
 		FString Line4 = FString::Printf(TEXT("✋ GESTO:     [ %s ]  (Teclas: F1/P Empujar, F2/G Agarrar, F3/V Libre, Tab Ciclar)"),
 			*GestureName);
 		FString Line5 = FString::Printf(TEXT("⌨️ POSICIÓN:  I/K o Flechas Arriba/Abajo(X) | J/L o Flechas Izq/Der(Y) | U/O o RePág/AvPág(Z) | NumPad / * + - ."));
@@ -388,68 +449,40 @@ void AYenkaDesktopPawn::OnSecondaryClickReleased()
 void AYenkaDesktopPawn::OnPokeKeyPressed()
 {
 	bIsPokeModeActive = true;
-	CurrentPushAdvance = 0.0f;
 }
 
 void AYenkaDesktopPawn::OnPokeKeyReleased()
 {
-	bIsPokeModeActive = false;
-	bIsPushingBlock = false;
-	bIsLockedPerpendicular = false;
-	LockedPushBlock = nullptr;
-	CurrentPushAdvance = 0.0f;
+	if (!bIsPushingBlock)
+	{
+		bIsPokeModeActive = false;
+	}
 }
 
 void AYenkaDesktopPawn::OnTogglePokeMode()
 {
 	bIsPokeModeActive = !bIsPokeModeActive;
-	CurrentPushAdvance = 0.0f;
-	if (!bIsPokeModeActive)
-	{
-		bIsPushingBlock = false;
-		bIsLockedPerpendicular = false;
-		LockedPushBlock = nullptr;
-	}
 }
 
 void AYenkaDesktopPawn::PerformLongitudinalPush(AYenkaBlock* Block, const FVector& DirectionNormal)
 {
 	if (!Block || !Block->BlockMesh) return;
 
-	// Calculate longitudinal axis of the block
-	FVector ForwardVec = Block->GetActorForwardVector();
-	FVector RightVec = Block->GetActorRightVector();
-
-	float DotForward = FVector::DotProduct(-DirectionNormal, ForwardVec);
-	float DotRight = FVector::DotProduct(-DirectionNormal, RightVec);
-
-	FVector PushAxis = (FMath::Abs(DotForward) >= FMath::Abs(DotRight)) ? (ForwardVec * FMath::Sign(DotForward)) : (RightVec * FMath::Sign(DotRight));
-
-	Block->SetPhysicsActive(true);
 	Block->BlockMesh->WakeRigidBody();
-	FVector PushVel = PushAxis * 18.0f;
+	FVector ForwardVec = Block->GetActorForwardVector();
+	float Dot = FVector::DotProduct(DirectionNormal, ForwardVec);
+	FVector PushDir = (Dot >= 0.0f) ? ForwardVec : -ForwardVec;
+
+	FVector PushVel = PushDir * 18.0f;
 	PushVel.Z = 0.0f;
 	Block->BlockMesh->SetPhysicsLinearVelocity(PushVel);
-	Block->BlockMesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
 }
 
 FRotator AYenkaDesktopPawn::GetHorizontalFacingRotation(const FVector& TargetLocation) const
 {
-	AActor* TowerActor = UGameplayStatics::GetActorOfClass(GetWorld(), AYenkaTowerManager::StaticClass());
-	FVector TowerCenter = TowerActor ? TowerActor->GetActorLocation() : FVector(0.0f, 0.0f, 90.0f);
-	FVector FacingDir = (TowerCenter - TargetLocation);
-	FacingDir.Z = 0.0f; // strictly on XY horizontal plane
-
-	if (FacingDir.IsNearlyZero(0.1f))
-	{
-		FacingDir = FollowCamera ? FollowCamera->GetForwardVector() : FVector::ForwardVector;
-		FacingDir.Z = 0.0f;
-	}
-
-	FRotator FacingRot = FacingDir.GetSafeNormal().Rotation();
-	FacingRot.Pitch = 0.0f; // strictly horizontal
-	FacingRot.Roll = 0.0f;  // strictly level
-	return FacingRot;
+	FVector CamLoc = FollowCamera ? FollowCamera->GetComponentLocation() : GetActorLocation();
+	FVector Dir = (TargetLocation - CamLoc).GetSafeNormal2D();
+	return Dir.Rotation();
 }
 
 void AYenkaDesktopPawn::OnMouseX(float Val)
@@ -469,9 +502,9 @@ void AYenkaDesktopPawn::OnMouseY(float Val)
 	else if (bIsPokeModeActive && FMath::Abs(Val) > 0.001f)
 	{
 		// Moving mouse forward (+Val) advances finger towards block and pushes; moving backward (-Val) retracts
-		CurrentPushAdvance = FMath::Clamp(CurrentPushAdvance + (Val * 0.15f), 0.0f, PUSH_STANDBY_SEPARATION + 0.5f);
+		CurrentPushAdvance = FMath::Clamp(CurrentPushAdvance + (Val * 0.15f), 0.0f, PokeStandbySeparation + 0.5f);
 
-		if (Val > 0.01f && CurrentPushAdvance >= PUSH_STANDBY_SEPARATION)
+		if (Val > 0.01f && CurrentPushAdvance >= PokeStandbySeparation)
 		{
 			AYenkaBlock* ActivePushBlock = LockedPushBlock ? LockedPushBlock : HoveredBlock;
 			if (ActivePushBlock && ActivePushBlock->BlockMesh)
@@ -517,62 +550,30 @@ void AYenkaDesktopPawn::MoveRight(float Val)
 
 FVector AYenkaDesktopPawn::GetBlockStandOffLocation(const AYenkaBlock* Block, const FVector& ViewOrigin, FVector& OutApproachNormal, float Clearance, const FVector& LocalFingertipOffset) const
 {
-	if (!Block)
-	{
-		OutApproachNormal = FVector::ForwardVector;
-		return FVector::ZeroVector;
-	}
+	if (!Block) return ViewOrigin;
 
 	FVector BlockCenter = Block->GetActorLocation();
 	FVector ForwardVec = Block->GetActorForwardVector(); // 7.5cm length (+- 3.75cm)
-	FVector RightVec = Block->GetActorRightVector();     // 2.5cm width (+- 1.25cm)
 
-	// Block face candidate positions (exact outer surface of the Jenga piece)
 	FVector EndPosPos = BlockCenter + (ForwardVec * 3.75f);
 	FVector EndNegPos = BlockCenter - (ForwardVec * 3.75f);
-	FVector SidePosPos = BlockCenter + (RightVec * 1.25f);
-	FVector SideNegPos = BlockCenter - (RightVec * 1.25f);
 
-	// Find the face closest to the camera/cursor ray origin
-	float DistEndPos = FVector::DistSquared(EndPosPos, ViewOrigin);
-	float DistEndNeg = FVector::DistSquared(EndNegPos, ViewOrigin);
-	float DistSidePos = FVector::DistSquared(SidePosPos, ViewOrigin);
-	float DistSideNeg = FVector::DistSquared(SideNegPos, ViewOrigin);
+	float DistToPos = FVector::DistSquared(ViewOrigin, EndPosPos);
+	float DistToNeg = FVector::DistSquared(ViewOrigin, EndNegPos);
 
-	FVector ChosenFacePos = EndPosPos;
-	OutApproachNormal = ForwardVec;
-	float MinDist = DistEndPos;
-
-	if (DistEndNeg < MinDist)
+	FVector ChosenFacePos;
+	if (DistToPos < DistToNeg)
 	{
-		MinDist = DistEndNeg;
-		ChosenFacePos = EndNegPos;
+		OutApproachNormal = ForwardVec;
+		ChosenFacePos = EndPosPos;
+	}
+	else
+	{
 		OutApproachNormal = -ForwardVec;
-	}
-	if (DistSidePos < MinDist)
-	{
-		MinDist = DistSidePos;
-		ChosenFacePos = SidePosPos;
-		OutApproachNormal = RightVec;
-	}
-	if (DistSideNeg < MinDist)
-	{
-		MinDist = DistSideNeg;
-		ChosenFacePos = SideNegPos;
-		OutApproachNormal = -RightVec;
+		ChosenFacePos = EndNegPos;
 	}
 
-	// Target location for the fingertip in world space (at distance Clearance from block face)
-	FVector TargetFingertipWorld = ChosenFacePos + (OutApproachNormal * Clearance);
-
-	// The hand faces the block along -OutApproachNormal
-	FRotator HandRot = (-OutApproachNormal).Rotation();
-	HandRot.Pitch = 0.0f;
-	HandRot.Roll = 0.0f;
-
-	// Position HandRoot such that HandRoot + HandRot.RotateVector(LocalFingertipOffset) == TargetFingertipWorld
-	// This centers the finger perfectly on the block face (both in width and height)
-	return TargetFingertipWorld - HandRot.RotateVector(LocalFingertipOffset);
+	return ChosenFacePos + (OutApproachNormal * Clearance);
 }
 
 FVector AYenkaDesktopPawn::GetBlockChosenFacePos(const AYenkaBlock* Block, const FVector& ApproachNormal) const
@@ -580,23 +581,12 @@ FVector AYenkaDesktopPawn::GetBlockChosenFacePos(const AYenkaBlock* Block, const
 	if (!Block) return FVector::ZeroVector;
 
 	FVector BlockCenter = Block->GetActorLocation();
-	FVector ForwardVec = Block->GetActorForwardVector(); // 7.5cm length (+- 3.75cm)
-	FVector RightVec = Block->GetActorRightVector();     // 2.5cm width (+- 1.25cm)
+	FVector ForwardVec = Block->GetActorForwardVector();
 
-	FVector EndPosPos = BlockCenter + (ForwardVec * 3.75f);
-	FVector EndNegPos = BlockCenter - (ForwardVec * 3.75f);
-	FVector SidePosPos = BlockCenter + (RightVec * 1.25f);
-	FVector SideNegPos = BlockCenter - (RightVec * 1.25f);
+	float Dot = FVector::DotProduct(ApproachNormal, ForwardVec);
+	FVector FaceNormal = (Dot >= 0.0f) ? ForwardVec : -ForwardVec;
 
-	float DotEndPos = FVector::DotProduct(ApproachNormal, ForwardVec);
-	float DotEndNeg = FVector::DotProduct(ApproachNormal, -ForwardVec);
-	float DotSidePos = FVector::DotProduct(ApproachNormal, RightVec);
-	float DotSideNeg = FVector::DotProduct(ApproachNormal, -RightVec);
-
-	if (DotEndPos >= DotEndNeg && DotEndPos >= DotSidePos && DotEndPos >= DotSideNeg) return EndPosPos;
-	if (DotEndNeg >= DotSidePos && DotEndNeg >= DotSideNeg) return EndNegPos;
-	if (DotSidePos >= DotSideNeg) return SidePosPos;
-	return SideNegPos;
+	return BlockCenter + (FaceNormal * 3.75f);
 }
 
 bool AYenkaDesktopPawn::IsBlockProtruding(const AYenkaBlock* Block, FVector& OutProtrudingEdgePos, FVector& OutProtrudingNormal) const
@@ -692,7 +682,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 		{
 			VirtualHand->SetActorHiddenInGame(false);
 
-			if (bIsPokeModeActive || bIsPushingBlock)
+			if (bIsPokeModeActive || bIsPushingBlock || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke))
 			{
 				if (HoveredBlock && !LockedPushBlock)
 				{
@@ -710,7 +700,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 					FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + PokeHandLocationOffset;
 
 					FVector ApproachNormal;
-					GetBlockStandOffLocation(ActivePushBlock, WorldLocation, ApproachNormal, PUSH_STANDBY_SEPARATION, LocalOffset);
+					GetBlockStandOffLocation(ActivePushBlock, WorldLocation, ApproachNormal, PokeStandbySeparation, LocalOffset);
 
 					// Calculate longitudinal push axis (facing inward towards tower)
 					FVector ForwardVec = ActivePushBlock->GetActorForwardVector();
@@ -720,9 +710,10 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 					PushLongitudinalAxis = (FMath::Abs(DotFwd) >= FMath::Abs(DotRt)) ? (ForwardVec * FMath::Sign(DotFwd)) : (RightVec * FMath::Sign(DotRt));
 					PushApproachNormal = ApproachNormal;
 
-					FRotator HandRot = (-ApproachNormal).Rotation() + PokeHandRotationOffset;
-					HandRot.Pitch = 0.0f;
-					HandRot.Roll = 0.0f;
+					FRotator BaseRot = (-ApproachNormal).Rotation();
+					BaseRot.Pitch = 0.0f;
+					BaseRot.Roll = 0.0f;
+					FRotator HandRot = BaseRot + PokeHandRotationOffset;
 
 					LockedRadialDirection = ApproachNormal;
 					bIsLockedPerpendicular = true;
@@ -732,7 +723,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 
 					if (bIsPushingBlock && ActivePushBlock->BlockMesh)
 					{
-						CurrentPushAdvance = PUSH_STANDBY_SEPARATION;
+						CurrentPushAdvance = PokeStandbySeparation;
 						ActivePushBlock->BlockMesh->WakeRigidBody();
 						// High-power active push velocity while mouse button is held down (18.0 cm/s)
 						FVector PushVel = PushLongitudinalAxis * 18.0f;
@@ -743,17 +734,17 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 
 					float EffectiveAdvance = CurrentPushAdvance;
 
-					if (EffectiveAdvance < PUSH_STANDBY_SEPARATION)
+					if (EffectiveAdvance < PokeStandbySeparation)
 					{
 						// In the air (Standby to Contact): Hand moves freely towards the block surface
-						float Clearance = PUSH_STANDBY_SEPARATION - EffectiveAdvance; // 3cm -> 0cm
+						float Clearance = PokeStandbySeparation - EffectiveAdvance;
 						FVector TargetFingertipWorld = CurrentFacePos + (ApproachNormal * Clearance);
 						FVector HandPos = TargetFingertipWorld - HandRot.RotateVector(LocalOffset);
 						VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), HandPos), 0.0f);
 					}
 					else
 					{
-						// In Contact & Pushing: Fingertip stays EXACTLY ON THE SURFACE (Clearance = 0.0cm)!
+						// In Contact & Pushing: Fingertip stays EXACTLY ON THE SURFACE
 						FVector UpdatedFacePos = GetBlockChosenFacePos(ActivePushBlock, ApproachNormal);
 						FVector HandPos = UpdatedFacePos - HandRot.RotateVector(LocalOffset);
 						VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), HandPos), 0.0f);
