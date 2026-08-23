@@ -46,6 +46,8 @@ AYenkaDesktopPawn::AYenkaDesktopPawn()
 	PokeHandRotationOffset = FRotator::ZeroRotator;
 	GrabStandbySeparation = 1.0f;
 	PokeStandbySeparation = 1.0f;
+	ActiveGesturePreview = EHandPoseMode::OpenHand;
+	bForceGesturePreview = false;
 }
 
 #include "YenkaVR/Physics/YenkaTowerManager.h"
@@ -95,6 +97,7 @@ void AYenkaDesktopPawn::Tick(float DeltaTime)
 	if (IsLocallyControlled())
 	{
 		HandleMouseTrace();
+		UpdatePersistentCalibrationHUD();
 	}
 }
 
@@ -114,7 +117,16 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		PlayerInputComponent->BindKey(EKeys::F, IE_Pressed, this, &AYenkaDesktopPawn::OnTogglePokeMode);
 		PlayerInputComponent->BindKey(EKeys::M, IE_Pressed, this, &AYenkaDesktopPawn::OnToggleScenarioMenu);
 
-		// Hand Calibration Hotkeys (Live in-game tuning via NumPad and Letters)
+		// Gesture Switching Keys
+		PlayerInputComponent->BindKey(EKeys::F1, IE_Pressed, this, &AYenkaDesktopPawn::SetGesturePush);
+		PlayerInputComponent->BindKey(EKeys::P, IE_Pressed, this, &AYenkaDesktopPawn::SetGesturePush);
+		PlayerInputComponent->BindKey(EKeys::F2, IE_Pressed, this, &AYenkaDesktopPawn::SetGestureGrab);
+		PlayerInputComponent->BindKey(EKeys::G, IE_Pressed, this, &AYenkaDesktopPawn::SetGestureGrab);
+		PlayerInputComponent->BindKey(EKeys::F3, IE_Pressed, this, &AYenkaDesktopPawn::SetGestureOpen);
+		PlayerInputComponent->BindKey(EKeys::V, IE_Pressed, this, &AYenkaDesktopPawn::SetGestureOpen);
+		PlayerInputComponent->BindKey(EKeys::Tab, IE_Pressed, this, &AYenkaDesktopPawn::CycleGesture);
+
+		// Hand Calibration Hotkeys (Live in-game tuning via NumPad, Arrows and Letters)
 		PlayerInputComponent->BindKey(EKeys::NumPadFour, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYawMinus);
 		PlayerInputComponent->BindKey(EKeys::NumPadSix, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYawPlus);
 		PlayerInputComponent->BindKey(EKeys::NumPadEight, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibPitchPlus);
@@ -127,6 +139,17 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		PlayerInputComponent->BindKey(EKeys::NumPadZero, IE_Pressed, this, &AYenkaDesktopPawn::ResetHandCalibration);
 		PlayerInputComponent->BindKey(EKeys::Add, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibZPlus);
 		PlayerInputComponent->BindKey(EKeys::Subtract, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibZMinus);
+		PlayerInputComponent->BindKey(EKeys::Multiply, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibXPlus);
+		PlayerInputComponent->BindKey(EKeys::Divide, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibXMinus);
+		PlayerInputComponent->BindKey(EKeys::Decimal, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYMinus);
+
+		// Arrow and Navigation Key Bindings for Position
+		PlayerInputComponent->BindKey(EKeys::Up, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibXPlus);
+		PlayerInputComponent->BindKey(EKeys::Down, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibXMinus);
+		PlayerInputComponent->BindKey(EKeys::Left, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYMinus);
+		PlayerInputComponent->BindKey(EKeys::Right, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYPlus);
+		PlayerInputComponent->BindKey(EKeys::PageUp, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibZPlus);
+		PlayerInputComponent->BindKey(EKeys::PageDown, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibZMinus);
 
 		// Alternative Letter Key Bindings
 		PlayerInputComponent->BindKey(EKeys::Y, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYawPlus);
@@ -194,63 +217,54 @@ void AYenkaDesktopPawn::AdjustHandOffsetX(float Delta)
 {
 	GrabHandLocationOffset.X += Delta;
 	PokeHandLocationOffset.X += Delta;
-	DisplayHandCalibrationOnScreen();
 }
 
 void AYenkaDesktopPawn::AdjustHandOffsetY(float Delta)
 {
 	GrabHandLocationOffset.Y += Delta;
 	PokeHandLocationOffset.Y += Delta;
-	DisplayHandCalibrationOnScreen();
 }
 
 void AYenkaDesktopPawn::AdjustHandOffsetZ(float Delta)
 {
 	GrabHandLocationOffset.Z += Delta;
 	PokeHandLocationOffset.Z += Delta;
-	DisplayHandCalibrationOnScreen();
 }
 
 void AYenkaDesktopPawn::AdjustHandPitch(float Delta)
 {
 	GrabHandRotationOffset.Pitch = FRotator::NormalizeAxis(GrabHandRotationOffset.Pitch + Delta);
 	PokeHandRotationOffset.Pitch = GrabHandRotationOffset.Pitch;
-	DisplayHandCalibrationOnScreen();
 }
 
 void AYenkaDesktopPawn::AdjustHandYaw(float Delta)
 {
 	GrabHandRotationOffset.Yaw = FRotator::NormalizeAxis(GrabHandRotationOffset.Yaw + Delta);
 	PokeHandRotationOffset.Yaw = GrabHandRotationOffset.Yaw;
-	DisplayHandCalibrationOnScreen();
 }
 
 void AYenkaDesktopPawn::AdjustHandRoll(float Delta)
 {
 	GrabHandRotationOffset.Roll = FRotator::NormalizeAxis(GrabHandRotationOffset.Roll + Delta);
 	PokeHandRotationOffset.Roll = GrabHandRotationOffset.Roll;
-	DisplayHandCalibrationOnScreen();
 }
 
 void AYenkaDesktopPawn::QuickRotateYaw90()
 {
 	GrabHandRotationOffset.Yaw = FRotator::NormalizeAxis(GrabHandRotationOffset.Yaw + 90.0f);
 	PokeHandRotationOffset.Yaw = GrabHandRotationOffset.Yaw;
-	DisplayHandCalibrationOnScreen();
 }
 
 void AYenkaDesktopPawn::QuickRotateRoll90()
 {
 	GrabHandRotationOffset.Roll = FRotator::NormalizeAxis(GrabHandRotationOffset.Roll + 90.0f);
 	PokeHandRotationOffset.Roll = GrabHandRotationOffset.Roll;
-	DisplayHandCalibrationOnScreen();
 }
 
 void AYenkaDesktopPawn::QuickRotatePitch90()
 {
 	GrabHandRotationOffset.Pitch = FRotator::NormalizeAxis(GrabHandRotationOffset.Pitch + 90.0f);
 	PokeHandRotationOffset.Pitch = GrabHandRotationOffset.Pitch;
-	DisplayHandCalibrationOnScreen();
 }
 
 void AYenkaDesktopPawn::ResetHandCalibration()
@@ -259,17 +273,95 @@ void AYenkaDesktopPawn::ResetHandCalibration()
 	GrabHandRotationOffset = FRotator::ZeroRotator;
 	PokeHandLocationOffset = FVector::ZeroVector;
 	PokeHandRotationOffset = FRotator::ZeroRotator;
-	DisplayHandCalibrationOnScreen();
+	bForceGesturePreview = false;
+	ActiveGesturePreview = EHandPoseMode::OpenHand;
 }
 
-void AYenkaDesktopPawn::DisplayHandCalibrationOnScreen()
+void AYenkaDesktopPawn::SetGesturePush()
 {
-	if (GEngine)
+	ActiveGesturePreview = EHandPoseMode::FingerPoke;
+	bForceGesturePreview = true;
+	bIsPokeModeActive = true;
+	if (VirtualHand) VirtualHand->SetHandPoseMode(EHandPoseMode::FingerPoke);
+}
+
+void AYenkaDesktopPawn::SetGestureGrab()
+{
+	ActiveGesturePreview = EHandPoseMode::GrabPinch;
+	bForceGesturePreview = true;
+	bIsPokeModeActive = false;
+	if (VirtualHand) VirtualHand->SetHandPoseMode(EHandPoseMode::GrabPinch);
+}
+
+void AYenkaDesktopPawn::SetGestureOpen()
+{
+	ActiveGesturePreview = EHandPoseMode::OpenHand;
+	bForceGesturePreview = true;
+	bIsPokeModeActive = false;
+	if (VirtualHand) VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
+}
+
+void AYenkaDesktopPawn::CycleGesture()
+{
+	bForceGesturePreview = true;
+	if (ActiveGesturePreview == EHandPoseMode::OpenHand)
 	{
-		FString Msg = FString::Printf(TEXT("✋ Hand: ROT [Yaw: %+.0f deg, Pitch: %+.0f deg, Roll(Muneca): %+.0f deg] | POS [X: %+.1f, Y: %+.1f, Z: %+.1f cm]\nNumPad: 4/6(Yaw) 8/2(Pitch) 7/9(Roll) 5(+90 Yaw) 1/3(+90 Roll/Pitch) 0(Reset) | Teclas: Y/H(Yaw) T/G(Pitch) B/N(Roll) X(+90 Yaw) Z(+90 Roll)"),
-			GrabHandRotationOffset.Yaw, GrabHandRotationOffset.Pitch, GrabHandRotationOffset.Roll,
+		ActiveGesturePreview = EHandPoseMode::GrabPinch;
+		bIsPokeModeActive = false;
+	}
+	else if (ActiveGesturePreview == EHandPoseMode::GrabPinch)
+	{
+		ActiveGesturePreview = EHandPoseMode::FingerPoke;
+		bIsPokeModeActive = true;
+	}
+	else
+	{
+		ActiveGesturePreview = EHandPoseMode::OpenHand;
+		bIsPokeModeActive = false;
+	}
+
+	if (VirtualHand)
+	{
+		VirtualHand->SetHandPoseMode(ActiveGesturePreview);
+	}
+}
+
+void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
+{
+	if (GEngine && IsLocallyControlled())
+	{
+		FString GestureName = TEXT("🖐️ LIBRE / INSPECCIÓN (OpenHand)");
+		if (bForceGesturePreview)
+		{
+			if (ActiveGesturePreview == EHandPoseMode::FingerPoke) GestureName = TEXT("👉 EMPUJAR FORZADO (FingerPoke)");
+			else if (ActiveGesturePreview == EHandPoseMode::GrabPinch) GestureName = TEXT("🤏 AGARRAR FORZADO (GrabPinch)");
+			else GestureName = TEXT("🖐️ MANO LIBRE FORZADA (OpenHand)");
+		}
+		else if (bIsPokeModeActive || bIsPushingBlock)
+		{
+			GestureName = TEXT("👉 EMPUJAR ACTIVO (FingerPoke)");
+		}
+		else if (GrabbedBlock)
+		{
+			GestureName = TEXT("🤏 AGARRANDO PIEZA (GrabPinch)");
+		}
+
+		FString Line1 = FString::Printf(TEXT("=== 🎛️ CALIBRACIÓN DE MANO YENKA (TIEMPO REAL) ==="));
+		FString Line2 = FString::Printf(TEXT("📍 POSICIÓN:  [ X (Adelantar/Atrasar): %+.2f cm | Y (Izq/Der): %+.2f cm | Z (Altura): %+.2f cm ]"),
 			GrabHandLocationOffset.X, GrabHandLocationOffset.Y, GrabHandLocationOffset.Z);
-		GEngine->AddOnScreenDebugMessage(1001, 3.5f, FColor::Cyan, Msg);
+		FString Line3 = FString::Printf(TEXT("🔄 ROTACIÓN:  [ Yaw (Orientación): %+.0f° | Pitch (Inclinación): %+.0f° | Roll (Giro Muñeca): %+.0f° ]"),
+			GrabHandRotationOffset.Yaw, GrabHandRotationOffset.Pitch, GrabHandRotationOffset.Roll);
+		FString Line4 = FString::Printf(TEXT("✋ GESTO:     [ %s ]  (Teclas: F1/P Empujar, F2/G Agarrar, F3/V Libre, Tab Ciclar)"),
+			*GestureName);
+		FString Line5 = FString::Printf(TEXT("⌨️ POSICIÓN:  I/K o Flechas Arriba/Abajo(X) | J/L o Flechas Izq/Der(Y) | U/O o RePág/AvPág(Z) | NumPad / * + - ."));
+		FString Line6 = FString::Printf(TEXT("⌨️ ROTACIÓN:  NumPad 4/6 o Y/H(Yaw) | 8/2 o T/G(Pitch) | 7/9 o B/N(Roll) | Num 5 o X(+90° Yaw) | Num 1 o Z(+90° Roll) | Num 0 o R(Reset)"));
+
+		GEngine->AddOnScreenDebugMessage(1001, 0.20f, FColor(255, 215, 0), Line1);
+		GEngine->AddOnScreenDebugMessage(1002, 0.20f, FColor(0, 240, 255), Line2);
+		GEngine->AddOnScreenDebugMessage(1003, 0.20f, FColor(50, 255, 120), Line3);
+		GEngine->AddOnScreenDebugMessage(1004, 0.20f, FColor(255, 140, 0), Line4);
+		GEngine->AddOnScreenDebugMessage(1005, 0.20f, FColor(220, 220, 220), Line5);
+		GEngine->AddOnScreenDebugMessage(1006, 0.20f, FColor(180, 200, 255), Line6);
 	}
 }
 
@@ -682,13 +774,11 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 					{
 						// Block is protruding: position pinch fingers 1.0cm from protruding edge
 						bIsLockedPerpendicular = false;
-						VirtualHand->SetHandPoseMode(EHandPoseMode::GrabPinch);
+						VirtualHand->SetHandPoseMode(bForceGesturePreview ? ActiveGesturePreview : EHandPoseMode::GrabPinch);
 						FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset; // (3.5, 0.0, 0.0)
 						FVector StandbyFingertipPos = ProtrudingPos + (ProtrudingNorm * GRAB_STANDBY_SEPARATION);
 
 						FRotator HandRot = (-ProtrudingNorm).Rotation() + GrabHandRotationOffset;
-						HandRot.Pitch = 0.0f;
-						HandRot.Roll = 0.0f;
 
 						FVector SafeHandPos = StandbyFingertipPos - HandRot.RotateVector(LocalOffset);
 						VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), SafeHandPos), 0.0f);
@@ -697,7 +787,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 					{
 						// Block is flush/not protruding: hand hovers outside in inspection mode (fingertips strictly 1cm from tower)
 						bIsLockedPerpendicular = false;
-						VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
+						VirtualHand->SetHandPoseMode(bForceGesturePreview ? ActiveGesturePreview : EHandPoseMode::OpenHand);
 						FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset; // (6.4, -0.4, 0.0)
 
 						FVector Diff = HitResult.ImpactPoint - TowerCenter;
@@ -715,15 +805,15 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 				{
 					// --- PROXIMITY TO TABLE (No Block Hovered) ---
 					bIsLockedPerpendicular = false;
-					VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
-					FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset(); // (6.4, -0.4, 0.0)
+					VirtualHand->SetHandPoseMode(bForceGesturePreview ? ActiveGesturePreview : EHandPoseMode::OpenHand);
+					FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset; // (6.4, -0.4, 0.0)
 
 					FVector Diff = HitResult.ImpactPoint - TowerCenter;
 					float Angle = FMath::Atan2(Diff.Y, Diff.X);
 					float DistXY = FVector2D(Diff.X, Diff.Y).Size();
 					float SafeFingertipRadius = FMath::Max(DistXY, TOWER_BASE_RADIUS + 1.0f);
 					FVector TargetFingertipPos = TowerCenter + FVector(FMath::Cos(Angle) * SafeFingertipRadius, FMath::Sin(Angle) * SafeFingertipRadius, Diff.Z);
-					FRotator InspectRot = GetHorizontalFacingRotation(TargetFingertipPos);
+					FRotator InspectRot = GetHorizontalFacingRotation(TargetFingertipPos) + GrabHandRotationOffset;
 
 					FVector SafeHandPos = TargetFingertipPos - InspectRot.RotateVector(LocalOffset);
 					VirtualHand->SetTargetHandTransform(FTransform(InspectRot.Quaternion(), SafeHandPos), 0.0f);
@@ -732,7 +822,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 				{
 					// --- OUTSIDE PROXIMITY: Free 3D movement ---
 					bIsLockedPerpendicular = false;
-					VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
+					VirtualHand->SetHandPoseMode(bForceGesturePreview ? ActiveGesturePreview : EHandPoseMode::OpenHand);
 					FTransform HandTarget(FRotationMatrix::MakeFromX(WorldDirection).ToQuat(), HitResult.ImpactPoint);
 					VirtualHand->SetTargetHandTransform(HandTarget, 0.0f);
 				}

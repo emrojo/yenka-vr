@@ -2,11 +2,11 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
+#include "YenkaHandAvatar.h"
 #include "YenkaDesktopPawn.generated.h"
 
 class USpringArmComponent;
 class UCameraComponent;
-class AYenkaHandAvatar;
 class AYenkaBlock;
 
 /**
@@ -106,6 +106,12 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Hand Calibration")
 	float PokeStandbySeparation;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Hand Calibration")
+	EHandPoseMode ActiveGesturePreview;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Hand Calibration")
+	bool bForceGesturePreview;
+
 	void AdjustHandOffsetX(float Delta);
 	void AdjustHandOffsetY(float Delta);
 	void AdjustHandOffsetZ(float Delta);
@@ -116,7 +122,11 @@ protected:
 	void QuickRotateRoll90();
 	void QuickRotatePitch90();
 	void ResetHandCalibration();
-	void DisplayHandCalibrationOnScreen();
+	void SetGesturePush();
+	void SetGestureGrab();
+	void SetGestureOpen();
+	void CycleGesture();
+	void UpdatePersistentCalibrationHUD();
 
 	void OnCalibXPlus() { AdjustHandOffsetX(+0.5f); }
 	void OnCalibXMinus() { AdjustHandOffsetX(-0.5f); }
