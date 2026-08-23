@@ -102,12 +102,16 @@ void AYenkaDesktopPawn::BeginPlay()
 
 	LoadCustomGesturesFromDisk();
 	LoadCustomTransformsFromDisk();
+	LoadInteractionConfigFromDisk();
 
 	FString TransformPath = FPaths::ProjectSavedDir() / TEXT("HandTransforms/CustomTransforms.json");
 	LastTransformFileTimestamp = IFileManager::Get().GetTimeStamp(*TransformPath);
 
 	FString GesturePath = FPaths::ProjectSavedDir() / TEXT("HandGestures/CustomGestures.json");
 	LastGestureFileTimestamp = IFileManager::Get().GetTimeStamp(*GesturePath);
+
+	FString ConfigPath = FPaths::ProjectSavedDir() / TEXT("Config/YenkaInteractionConfig.json");
+	LastInteractionConfigFileTimestamp = IFileManager::Get().GetTimeStamp(*ConfigPath);
 
 	// Apply default transforms from disk right into active offsets
 	int32 LightPullPosIdx = CustomTransformsList.IndexOfByPredicate([](const FCustomHandTransform& T) {
@@ -128,6 +132,98 @@ void AYenkaDesktopPawn::BeginPlay()
 		PokeHandLocationOffset = CustomTransformsList[PointPosIdx].LocationOffset;
 		PokeHandRotationOffset = CustomTransformsList[PointPosIdx].RotationOffset;
 	}
+}
+
+bool AYenkaDesktopPawn::SaveInteractionConfigToDisk()
+{
+	FString JsonString;
+	if (FJsonObjectConverter::UStructToJsonObjectString(InteractionConfig, JsonString, 0, 0))
+	{
+		FString FilePath = FPaths::ProjectSavedDir() / TEXT("Config/YenkaInteractionConfig.json");
+		IFileManager::Get().MakeDirectory(*FPaths::GetPath(FilePath), true);
+		return FFileHelper::SaveStringToFile(JsonString, *FilePath);
+	}
+	return false;
+}
+
+bool AYenkaDesktopPawn::LoadInteractionConfigFromDisk()
+{
+	FString FilePath = FPaths::ProjectSavedDir() / TEXT("Config/YenkaInteractionConfig.json");
+	if (FPaths::FileExists(FilePath))
+	{
+		FString JsonString;
+		if (FFileHelper::LoadFileToString(JsonString, *FilePath))
+		{
+			FYenkaInteractionConfig LoadedConfig;
+			if (FJsonObjectConverter::JsonObjectStringToUStruct(JsonString, &LoadedConfig, 0, 0))
+			{
+				InteractionConfig = LoadedConfig;
+				return true;
+			}
+		}
+	}
+	else
+	{
+		SaveInteractionConfigToDisk();
+	}
+	return false;
+}
+
+bool AYenkaDesktopPawn::IsBlockTopFaceAccessible(const AYenkaBlock* Block, float MinClearance) const
+{
+	if (!Block) return false;
+
+	FVector BlockCenter = Block->GetActorLocation();
+	FVector BlockFwd = Block->GetActorForwardVector(); // Longitudinal (7.5cm length)
+
+	// Layer height is ~1.5cm. Query blocks directly in the layer above:
+	TArray<AActor*> AllBlocks;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AYenkaBlock::StaticClass(), AllBlocks);
+
+	TArray<AYenkaBlock*> UpperBlocks;
+	for (AActor* Actor : AllBlocks)
+	{
+		AYenkaBlock* Other = Cast<AYenkaBlock>(Actor);
+		if (Other && Other != Block)
+		{
+			FVector OtherCenter = Other->GetActorLocation();
+			float DeltaZ = OtherCenter.Z - BlockCenter.Z;
+			// Layer directly above is between 0.8cm and 2.2cm
+			if (DeltaZ >= 0.8f && DeltaZ <= 2.2f)
+			{
+				if (FVector::Dist2D(OtherCenter, BlockCenter) < 8.0f)
+				{
+					UpperBlocks.Add(Other);
+				}
+			}
+		}
+	}
+
+	// If there are no blocks directly above, the top face is completely open!
+	if (UpperBlocks.Num() == 0)
+	{
+		return true;
+	}
+
+	// Check clearance at both ends along the block's longitudinal axis (+3.75cm and -3.75cm)
+	FVector EndPos = BlockCenter + (BlockFwd * 3.75f);
+	FVector EndNeg = BlockCenter - (BlockFwd * 3.75f);
+
+	float MinDistToPos = 999.0f;
+	float MinDistToNeg = 999.0f;
+
+	for (AYenkaBlock* Upper : UpperBlocks)
+	{
+		FVector UpperCenter = Upper->GetActorLocation();
+		float DistPos = FMath::Abs(FVector::DotProduct(UpperCenter - EndPos, BlockFwd));
+		float DistNeg = FMath::Abs(FVector::DotProduct(UpperCenter - EndNeg, BlockFwd));
+
+		MinDistToPos = FMath::Min(MinDistToPos, DistPos);
+		MinDistToNeg = FMath::Min(MinDistToNeg, DistNeg);
+	}
+
+	// Accessible if upper layer is incomplete (< 3 blocks) or both ends have >= MinClearance
+	return (UpperBlocks.Num() < 3) || (MinDistToPos >= MinClearance && MinDistToNeg >= MinClearance);
 }
 
 void AYenkaDesktopPawn::CheckForLiveJsonModifications()
@@ -177,6 +273,23 @@ void AYenkaDesktopPawn::CheckForLiveJsonModifications()
 		{
 			LastGestureFileTimestamp = CurrentTimestamp;
 			ReloadHandGestures();
+		}
+	}
+
+	FString ConfigPath = FPaths::ProjectSavedDir() / TEXT("Config/YenkaInteractionConfig.json");
+	if (FPaths::FileExists(ConfigPath))
+	{
+		FDateTime CurrentTimestamp = IFileManager::Get().GetTimeStamp(*ConfigPath);
+		if (CurrentTimestamp != FDateTime::MinValue() && CurrentTimestamp != LastInteractionConfigFileTimestamp)
+		{
+			LastInteractionConfigFileTimestamp = CurrentTimestamp;
+			LoadInteractionConfigFromDisk();
+			if (GEngine)
+			{
+				GEngine->AddOnScreenDebugMessage(9995, 4.0f, FColor::Cyan,
+					FString::Printf(TEXT("⚡ AUTO-RECARGADO YenkaInteractionConfig.json [Clearance=%.2f cm | Protrusion=%.2f cm | CraneElev=%.1f cm]"),
+						InteractionConfig.VerticalGrabMinClearance, InteractionConfig.ProtrusionThreshold, InteractionConfig.CraneLiftElevation));
+			}
 		}
 	}
 }
@@ -2036,7 +2149,11 @@ void AYenkaDesktopPawn::OnMouseY(float Val)
 void AYenkaDesktopPawn::OnMouseWheel(float Val)
 {
 	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
-	if (CameraBoom && FMath::Abs(Val) > 0.001f)
+	if (bIsCraneGrabbing && FMath::Abs(Val) > 0.001f)
+	{
+		CraneCurrentZ = FMath::Clamp(CraneCurrentZ + (Val * 2.0f * InteractionConfig.CraneVerticalSensitivity), 92.0f, 200.0f);
+	}
+	else if (CameraBoom && FMath::Abs(Val) > 0.001f)
 	{
 		CameraBoom->TargetArmLength = FMath::Clamp(CameraBoom->TargetArmLength - (Val * 8.0f), 30.0f, 250.0f);
 	}
@@ -2193,7 +2310,60 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 	FVector WorldLocation, WorldDirection;
 	if (PC->DeprojectMousePositionToWorld(WorldLocation, WorldDirection))
 	{
-		// 1. If currently dragging a block with Physics Handle (Pull Mode)
+		// 1. If currently in Crane Mode (Vertical Grab Drag)
+		if (bIsCraneGrabbing && GrabbedBlock && VirtualHand && VirtualHand->PhysicsHandle)
+		{
+			FVector PlaneIntersection = CraneInitialGrabPos;
+			if (FMath::Abs(WorldDirection.Z) > 0.001f)
+			{
+				float T = (CraneCurrentZ - WorldLocation.Z) / WorldDirection.Z;
+				if (T > 0.0f)
+				{
+					PlaneIntersection = WorldLocation + (WorldDirection * T);
+				}
+			}
+
+			FVector TargetLocation = PlaneIntersection;
+			TargetLocation.Z = CraneCurrentZ;
+
+			// Check if piece is hovering above the highest layer of the tower for smart top placement snap
+			float DistToTowerXY = FVector::Dist2D(TargetLocation, TowerCenter);
+			TArray<AActor*> AllBlocks;
+			UGameplayStatics::GetAllActorsOfClass(GetWorld(), AYenkaBlock::StaticClass(), AllBlocks);
+			float HighestBlockZ = 90.0f;
+			for (AActor* Actor : AllBlocks)
+			{
+				if (Actor != GrabbedBlock)
+				{
+					HighestBlockZ = FMath::Max(HighestBlockZ, Actor->GetActorLocation().Z);
+				}
+			}
+
+			if (DistToTowerXY < InteractionConfig.CraneTopSnapRadius && TargetLocation.Z >= HighestBlockZ)
+			{
+				int32 CurrentTopLayer = FMath::RoundToInt((HighestBlockZ - 90.0f) / 1.5f);
+				int32 NextLayer = CurrentTopLayer + 1;
+				bool bIsLayerEven = (NextLayer % 2 == 0);
+				FRotator SnapRot = bIsLayerEven ? FRotator::ZeroRotator : FRotator(0.0f, 90.0f, 0.0f);
+				CraneTargetRotation = SnapRot;
+			}
+			else
+			{
+				CraneTargetRotation = GrabbedBlock->GetActorRotation();
+			}
+
+			VirtualHand->PhysicsHandle->SetTargetLocationAndRotation(TargetLocation, CraneTargetRotation);
+
+			// Maintain vertical claw gesture centered over the block
+			VirtualHand->SetHandPoseMode(EHandPoseMode::VerticalGrab);
+			FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
+			FRotator VerticalHandRot = FRotator(90.0f, CraneTargetRotation.Yaw, 0.0f);
+			FVector HandPos = TargetLocation + FVector(0.0f, 0.0f, 3.5f) - VerticalHandRot.RotateVector(LocalOffset);
+			VirtualHand->SetTargetHandTransform(FTransform(VerticalHandRot.Quaternion(), HandPos), 1.0f);
+			return;
+		}
+
+		// 2. If currently dragging a block with Physics Handle (Pull Mode)
 		if (GrabbedBlock && VirtualHand && VirtualHand->PhysicsHandle)
 		{
 			// Raycast mouse against the horizontal plane at Z = LockedPullPlaneZ
@@ -2229,7 +2399,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 			return;
 		}
 
-		// 2. Normal cursor hovering trace
+		// 3. Normal cursor hovering trace
 		FHitResult HitResult;
 		FVector TraceEnd = WorldLocation + (WorldDirection * 500.0f);
 		FCollisionQueryParams QueryParams;
@@ -2258,17 +2428,70 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 		{
 			VirtualHand->SetActorHiddenInGame(false);
 
-			if (bIsPokeModeActive || bIsPushingBlock || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke))
+			if (bForceGesturePreview)
 			{
-				AYenkaBlock* ActivePushBlock = (bIsPushingBlock && LockedPushBlock) ? LockedPushBlock : HoveredBlock;
-				if (!bIsPushingBlock)
-				{
-					LockedPushBlock = nullptr;
-				}
+				VirtualHand->SetHandPoseMode(ActiveGesturePreview);
+				const FRotator ActiveRotOffset = (ActiveGesturePreview == EHandPoseMode::FingerPoke) ? PokeHandRotationOffset : GrabHandRotationOffset;
+				const FVector ActiveLocOffset = (ActiveGesturePreview == EHandPoseMode::FingerPoke) ? PokeHandLocationOffset : GrabHandLocationOffset;
 
-				if (ActivePushBlock)
+				FVector TargetPos = bHit ? HitResult.ImpactPoint : (WorldLocation + (WorldDirection * 60.0f));
+				FRotator BaseRot = GetHorizontalFacingRotation(TargetPos);
+				BaseRot.Pitch = 0.0f;
+				BaseRot.Roll = 0.0f;
+				FQuat HandQuat = BaseRot.Quaternion() * ActiveRotOffset.Quaternion();
+				FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + ActiveLocOffset;
+				FVector SafeHandPos = TargetPos - HandQuat.RotateVector(LocalOffset);
+				VirtualHand->SetTargetHandTransform(FTransform(HandQuat, SafeHandPos), 0.0f);
+			}
+			else if (HoveredBlock && bHit)
+			{
+				const float BlockZ = HoveredBlock->GetActorLocation().Z;
+				bool bIsTopFace = (HitResult.ImpactNormal.Z > 0.65f);
+				bool bIsTopAccessible = bIsTopFace && IsBlockTopFaceAccessible(HoveredBlock, InteractionConfig.VerticalGrabMinClearance);
+
+				FVector ProtrudingPos, ProtrudingNorm;
+				bool bIsProtruding = IsBlockProtruding(HoveredBlock, ProtrudingPos, ProtrudingNorm);
+
+				if (bIsTopAccessible)
 				{
-					// --- PUSH / POKE MODE ---
+					// ==========================================
+					// CONTEXT 1: VERTICAL GRAB (Cara superior accesible)
+					// ==========================================
+					bIsLockedPerpendicular = false;
+					VirtualHand->SetHandPoseMode(EHandPoseMode::VerticalGrab);
+
+					FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
+					FVector StandbyPos = HitResult.ImpactPoint + FVector(0.0f, 0.0f, 2.5f);
+					FRotator VerticalHandRot = FRotator(90.0f, HoveredBlock->GetActorRotation().Yaw, 0.0f);
+					FVector HandPos = StandbyPos - VerticalHandRot.RotateVector(LocalOffset);
+					VirtualHand->SetTargetHandTransform(FTransform(VerticalHandRot.Quaternion(), HandPos), 0.0f);
+				}
+				else if (bIsProtruding && !bIsTopFace)
+				{
+					// ==========================================
+					// CONTEXT 2: PULL GESTURE (Extremo que sobresale de la torre)
+					// ==========================================
+					bIsLockedPerpendicular = false;
+					VirtualHand->SetHandPoseMode(EHandPoseMode::GrabPinch);
+
+					FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
+					FVector StandbyFingertipPos = ProtrudingPos + (ProtrudingNorm * GrabStandbySeparation);
+					StandbyFingertipPos.Z = BlockZ;
+
+					FRotator BaseRot = (-ProtrudingNorm).Rotation();
+					BaseRot.Pitch = 0.0f;
+					BaseRot.Roll = 0.0f;
+					FQuat HandQuat = BaseRot.Quaternion() * GrabHandRotationOffset.Quaternion();
+
+					FVector SafeHandPos = StandbyFingertipPos - HandQuat.RotateVector(LocalOffset);
+					VirtualHand->SetTargetHandTransform(FTransform(HandQuat, SafeHandPos), 0.0f);
+				}
+				else if (!bIsTopFace)
+				{
+					// ==========================================
+					// CONTEXT 3: PUSH GESTURE (Lado/extremo enrasado o metido)
+					// ==========================================
+					AYenkaBlock* ActivePushBlock = (bIsPushingBlock && LockedPushBlock) ? LockedPushBlock : HoveredBlock;
 					VirtualHand->SetHandPoseMode(EHandPoseMode::FingerPoke);
 					FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + PokeHandLocationOffset;
 
@@ -2291,173 +2514,75 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 					LockedRadialDirection = ApproachNormal;
 					bIsLockedPerpendicular = true;
 
-					// Find block face location in world space
 					FVector CurrentFacePos = GetBlockChosenFacePos(ActivePushBlock, ApproachNormal);
 
 					if (bIsPushingBlock && ActivePushBlock->BlockMesh)
 					{
 						CurrentPushAdvance = PokeStandbySeparation;
 						ActivePushBlock->BlockMesh->WakeRigidBody();
-						// High-power active push velocity while mouse button is held down (18.0 cm/s)
 						FVector PushVel = PushLongitudinalAxis * 18.0f;
 						PushVel.Z = 0.0f;
 						ActivePushBlock->BlockMesh->SetPhysicsLinearVelocity(PushVel);
 						ActivePushBlock->BlockMesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
-					}
 
-					float EffectiveAdvance = CurrentPushAdvance;
-
-					if (EffectiveAdvance < PokeStandbySeparation)
-					{
-						// In the air (Standby to Contact): Hand moves freely towards the block surface
-						float Clearance = PokeStandbySeparation - EffectiveAdvance;
-						FVector TargetFingertipWorld = CurrentFacePos + (ApproachNormal * Clearance);
-						FVector HandPos = TargetFingertipWorld - HandQuat.RotateVector(LocalOffset);
-						VirtualHand->SetTargetHandTransform(FTransform(HandQuat, HandPos), 0.0f);
-					}
-					else
-					{
-						// In Contact & Pushing: Fingertip stays EXACTLY ON THE SURFACE
 						FVector UpdatedFacePos = GetBlockChosenFacePos(ActivePushBlock, ApproachNormal);
 						FVector HandPos = UpdatedFacePos - HandQuat.RotateVector(LocalOffset);
 						VirtualHand->SetTargetHandTransform(FTransform(HandQuat, HandPos), 0.0f);
 					}
-				}
-				else
-				{
-					// Poke mode active without a hovered block: hover freely in front of cursor with Poke offsets
-					bIsLockedPerpendicular = false;
-					VirtualHand->SetHandPoseMode(EHandPoseMode::FingerPoke);
-					FVector TargetPos = bHit ? HitResult.ImpactPoint : (WorldLocation + (WorldDirection * 60.0f));
-					FRotator BaseRot = GetHorizontalFacingRotation(TargetPos);
-					BaseRot.Pitch = 0.0f;
-					BaseRot.Roll = 0.0f;
-					FQuat HandQuat = BaseRot.Quaternion() * PokeHandRotationOffset.Quaternion();
-					FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + PokeHandLocationOffset;
-					FVector SafeHandPos = TargetPos - HandQuat.RotateVector(LocalOffset);
-					VirtualHand->SetTargetHandTransform(FTransform(HandQuat, SafeHandPos), 0.0f);
-				}
-			}
-			else if (bHit)
-			{
-				const float DistToTowerXY = FVector::Dist2D(HitResult.ImpactPoint, TowerCenter);
-				const bool bInProximity = (DistToTowerXY <= ProximityRadius);
-
-				if (bInProximity && HoveredBlock)
-				{
-					const float BlockZ = HoveredBlock->GetActorLocation().Z;
-					FVector ProtrudingPos, ProtrudingNorm;
-					bool bIsProtruding = IsBlockProtruding(HoveredBlock, ProtrudingPos, ProtrudingNorm);
-
-					if (bIsProtruding)
-					{
-						// Block is protruding: position pinch fingers at standby separation from protruding edge
-						bIsLockedPerpendicular = false;
-						VirtualHand->SetHandPoseMode(bForceGesturePreview ? ActiveGesturePreview : EHandPoseMode::GrabPinch);
-						FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
-						FVector StandbyFingertipPos = ProtrudingPos + (ProtrudingNorm * GrabStandbySeparation);
-						StandbyFingertipPos.Z = BlockZ;
-
-						FRotator BaseRot = (-ProtrudingNorm).Rotation();
-						BaseRot.Pitch = 0.0f;
-						BaseRot.Roll = 0.0f;
-						FQuat HandQuat = BaseRot.Quaternion() * GrabHandRotationOffset.Quaternion();
-
-						FVector SafeHandPos = StandbyFingertipPos - HandQuat.RotateVector(LocalOffset);
-						VirtualHand->SetTargetHandTransform(FTransform(HandQuat, SafeHandPos), 0.0f);
-					}
 					else
 					{
-						// Block is flush/not protruding: hand hovers outside in inspection mode (fingertips strictly outside tower at block height)
-						bIsLockedPerpendicular = false;
-						const bool bInPoke = (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke));
-						const FRotator ActiveRotOffset = bInPoke ? PokeHandRotationOffset : GrabHandRotationOffset;
-						const FVector ActiveLocOffset = bInPoke ? PokeHandLocationOffset : GrabHandLocationOffset;
-
-						VirtualHand->SetHandPoseMode(bForceGesturePreview ? ActiveGesturePreview : (bInPoke ? EHandPoseMode::FingerPoke : EHandPoseMode::OpenHand));
-						FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + ActiveLocOffset;
-
-						FVector Diff = HitResult.ImpactPoint - TowerCenter;
-						float Angle = FMath::Atan2(Diff.Y, Diff.X);
-						float SafeFingertipRadius = FMath::Max(FVector2D(Diff.X, Diff.Y).Size(), TOWER_BASE_RADIUS + 1.0f);
-						FVector TargetFingertipPos = FVector(TowerCenter.X + FMath::Cos(Angle) * SafeFingertipRadius, TowerCenter.Y + FMath::Sin(Angle) * SafeFingertipRadius, BlockZ);
-						FRotator BaseRot = GetHorizontalFacingRotation(TargetFingertipPos);
-						BaseRot.Pitch = 0.0f;
-						BaseRot.Roll = 0.0f;
-						FQuat HandQuat = BaseRot.Quaternion() * ActiveRotOffset.Quaternion();
-
-						FVector SafeHandPos = TargetFingertipPos - HandQuat.RotateVector(LocalOffset);
-						VirtualHand->SetTargetHandTransform(FTransform(HandQuat, SafeHandPos), 0.0f);
+						FVector TargetFingertipWorld = CurrentFacePos + (ApproachNormal * PokeStandbySeparation);
+						FVector HandPos = TargetFingertipWorld - HandQuat.RotateVector(LocalOffset);
+						VirtualHand->SetTargetHandTransform(FTransform(HandQuat, HandPos), 0.0f);
 					}
-				}
-				else if (bInProximity)
-				{
-					// --- PROXIMITY TO TABLE (No Block Hovered) ---
-					bIsLockedPerpendicular = false;
-					const bool bInPoke = (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke));
-					const FRotator ActiveRotOffset = bInPoke ? PokeHandRotationOffset : GrabHandRotationOffset;
-					const FVector ActiveLocOffset = bInPoke ? PokeHandLocationOffset : GrabHandLocationOffset;
-
-					VirtualHand->SetHandPoseMode(bForceGesturePreview ? ActiveGesturePreview : (bInPoke ? EHandPoseMode::FingerPoke : EHandPoseMode::OpenHand));
-					FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + ActiveLocOffset;
-
-					FVector Diff = HitResult.ImpactPoint - TowerCenter;
-					float Angle = FMath::Atan2(Diff.Y, Diff.X);
-					float SafeFingertipRadius = FMath::Max(FVector2D(Diff.X, Diff.Y).Size(), TOWER_BASE_RADIUS + 1.0f);
-					FVector TargetFingertipPos = FVector(TowerCenter.X + FMath::Cos(Angle) * SafeFingertipRadius, TowerCenter.Y + FMath::Sin(Angle) * SafeFingertipRadius, HitResult.ImpactPoint.Z);
-					FRotator BaseRot = GetHorizontalFacingRotation(TargetFingertipPos);
-					BaseRot.Pitch = 0.0f;
-					BaseRot.Roll = 0.0f;
-					FQuat HandQuat = BaseRot.Quaternion() * ActiveRotOffset.Quaternion();
-
-					FVector SafeHandPos = TargetFingertipPos - HandQuat.RotateVector(LocalOffset);
-					VirtualHand->SetTargetHandTransform(FTransform(HandQuat, SafeHandPos), 0.0f);
 				}
 				else
 				{
-					// --- OUTSIDE PROXIMITY: Free 3D movement ---
+					// ==========================================
+					// CONTEXT 4: OPEN HAND (Cara superior bloqueada sin espacio)
+					// ==========================================
 					bIsLockedPerpendicular = false;
-					const bool bInPoke = (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke));
-					const FRotator ActiveRotOffset = bInPoke ? PokeHandRotationOffset : GrabHandRotationOffset;
-					const FVector ActiveLocOffset = bInPoke ? PokeHandLocationOffset : GrabHandLocationOffset;
+					VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
 
-					VirtualHand->SetHandPoseMode(bForceGesturePreview ? ActiveGesturePreview : (bInPoke ? EHandPoseMode::FingerPoke : EHandPoseMode::OpenHand));
-					FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + ActiveLocOffset;
-
+					FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
 					FRotator BaseRot = GetHorizontalFacingRotation(HitResult.ImpactPoint);
 					BaseRot.Pitch = 0.0f;
 					BaseRot.Roll = 0.0f;
-					FQuat HandQuat = BaseRot.Quaternion() * ActiveRotOffset.Quaternion();
+					FQuat HandQuat = BaseRot.Quaternion() * GrabHandRotationOffset.Quaternion();
 
 					FVector SafeHandPos = HitResult.ImpactPoint - HandQuat.RotateVector(LocalOffset);
 					VirtualHand->SetTargetHandTransform(FTransform(HandQuat, SafeHandPos), 0.0f);
 				}
 			}
+			else if (bHit)
+			{
+				// Hovering over Table / Scene
+				bIsLockedPerpendicular = false;
+				VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
+
+				FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
+				FRotator BaseRot = GetHorizontalFacingRotation(HitResult.ImpactPoint);
+				BaseRot.Pitch = 0.0f;
+				BaseRot.Roll = 0.0f;
+				FQuat HandQuat = BaseRot.Quaternion() * GrabHandRotationOffset.Quaternion();
+
+				FVector SafeHandPos = HitResult.ImpactPoint - HandQuat.RotateVector(LocalOffset);
+				VirtualHand->SetTargetHandTransform(FTransform(HandQuat, SafeHandPos), 0.0f);
+			}
 			else
 			{
-				if (bForceGesturePreview || bIsPokeModeActive)
-				{
-					bIsLockedPerpendicular = false;
-					const bool bInPoke = (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke));
-					const FRotator ActiveRotOffset = bInPoke ? PokeHandRotationOffset : GrabHandRotationOffset;
-					const FVector ActiveLocOffset = bInPoke ? PokeHandLocationOffset : GrabHandLocationOffset;
+				// Floating in air
+				bIsLockedPerpendicular = false;
+				VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
 
-					FVector FreeTargetPos = WorldLocation + (WorldDirection * 60.0f);
-					FRotator BaseRot = (-WorldDirection).Rotation();
-					BaseRot.Pitch = 0.0f;
-					BaseRot.Roll = 0.0f;
-					FQuat HandQuat = BaseRot.Quaternion() * ActiveRotOffset.Quaternion();
-					FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + ActiveLocOffset;
-					FVector SafeHandPos = FreeTargetPos - HandQuat.RotateVector(LocalOffset);
-
-					VirtualHand->SetHandPoseMode(bForceGesturePreview ? ActiveGesturePreview : (bInPoke ? EHandPoseMode::FingerPoke : EHandPoseMode::OpenHand));
-					VirtualHand->SetTargetHandTransform(FTransform(HandQuat, SafeHandPos), 0.0f);
-				}
-				else
-				{
-					bIsLockedPerpendicular = false;
-					VirtualHand->SetActorHiddenInGame(true);
-				}
+				FVector FreeTargetPos = WorldLocation + (WorldDirection * 60.0f);
+				FRotator BaseRot = (-WorldDirection).Rotation();
+				BaseRot.Pitch = 0.0f;
+				BaseRot.Roll = 0.0f;
+				FQuat HandQuat = BaseRot.Quaternion() * GrabHandRotationOffset.Quaternion();
+				FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
+				FVector SafeHandPos = FreeTargetPos - HandQuat.RotateVector(LocalOffset);
+				VirtualHand->SetTargetHandTransform(FTransform(HandQuat, SafeHandPos), 0.0f);
 			}
 		}
 	}
@@ -2494,90 +2619,135 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 		}
 	}
 
-	AYenkaBlock* TargetPush = HoveredBlock;
-	if (bIsPokeModeActive && TargetPush)
-	{
-		// In poke mode, clicking advances to contact and actively pushes along the locked axis
-		bIsPushingBlock = true;
-		LockedPushBlock = TargetPush;
-		PushBlockInitialLocation = LockedPushBlock->GetActorLocation();
-		CurrentPushDisplacement = 0.0f;
-		CurrentPushAdvance = PUSH_STANDBY_SEPARATION;
-
-		if (TargetPush->BlockMesh)
-		{
-			TargetPush->BlockMesh->WakeRigidBody();
-
-			if (bIsDoubleClick)
-			{
-				// Double-click strike ("golpe"): 50% stronger than standard push (1.5 * 18.0 = 27.0 cm/s + instantaneous impulse)
-				const float StrikeVelocity = 27.0f;
-				FVector StrikeVel = PushLongitudinalAxis * StrikeVelocity;
-				StrikeVel.Z = 0.0f;
-				TargetPush->BlockMesh->SetPhysicsLinearVelocity(StrikeVel);
-				TargetPush->BlockMesh->AddImpulse(PushLongitudinalAxis * (StrikeVelocity * TargetPush->BlockMesh->GetMass() * 1.5f), NAME_None, false);
-				TargetPush->BlockMesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
-			}
-			else
-			{
-				// Standard push: 18.0 cm/s
-				FVector PushVel = PushLongitudinalAxis * 18.0f;
-				PushVel.Z = 0.0f;
-				TargetPush->BlockMesh->SetPhysicsLinearVelocity(PushVel);
-				TargetPush->BlockMesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
-			}
-		}
-		return;
-	}
-
-	// In Grab Mode: Only grab if the hovered block is PROTRUDING from the tower!
 	if (HoveredBlock && VirtualHand && VirtualHand->PhysicsHandle)
 	{
+		bool bIsTopFace = (LastHitNormal.Z > 0.65f);
+		bool bIsTopAccessible = bIsTopFace && IsBlockTopFaceAccessible(HoveredBlock, InteractionConfig.VerticalGrabMinClearance);
+
 		FVector ProtrudingPos, ProtrudingNorm;
-		if (!IsBlockProtruding(HoveredBlock, ProtrudingPos, ProtrudingNorm))
+		bool bIsProtruding = IsBlockProtruding(HoveredBlock, ProtrudingPos, ProtrudingNorm);
+
+		if (bIsTopAccessible)
 		{
-			// Piece is flush/not protruding: DO NOTHING!
+			// ==========================================
+			// 1. INITIATE CRANE / VERTICAL GRAB
+			// ==========================================
+			bIsCraneGrabbing = true;
+			GrabbedBlock = HoveredBlock;
+			if (GrabbedBlock->BlockMesh)
+			{
+				GrabbedBlock->BlockMesh->WakeRigidBody();
+			}
+			CraneInitialGrabPos = LastHitLocation;
+			CraneCurrentZ = GrabbedBlock->GetActorLocation().Z + InteractionConfig.CraneLiftElevation;
+			CraneTargetRotation = GrabbedBlock->GetActorRotation();
+
+			VirtualHand->SetHandPoseMode(EHandPoseMode::VerticalGrab);
+			VirtualHand->PhysicsHandle->GrabComponentAtLocationWithRotation(
+				GrabbedBlock->BlockMesh,
+				NAME_None,
+				LastHitLocation,
+				GrabbedBlock->GetActorRotation()
+			);
 			return;
 		}
-
-		GrabbedBlock = HoveredBlock;
-		if (GrabbedBlock && GrabbedBlock->BlockMesh)
+		else if (bIsProtruding && !bIsTopFace)
 		{
-			GrabbedBlock->BlockMesh->WakeRigidBody();
+			// ==========================================
+			// 2. INITIATE PULL (Pieza sobresaliente)
+			// ==========================================
+			GrabbedBlock = HoveredBlock;
+			if (GrabbedBlock && GrabbedBlock->BlockMesh)
+			{
+				GrabbedBlock->BlockMesh->WakeRigidBody();
+			}
+
+			// Ensure strictly horizontal direction perpendicular to the tower face
+			ProtrudingNorm.Z = 0.0f;
+			LockedPullDirection = ProtrudingNorm.GetSafeNormal();
+			LockedPullPlaneZ = GrabbedBlock->GetActorLocation().Z;
+			LockedPullInitialPos = ProtrudingPos;
+			LockedPullInitialPos.Z = LockedPullPlaneZ;
+			CurrentPullOutwardAdvance = 0.0f;
+
+			// Lock hand rotation along the block's outward normal with GrabHandRotationOffset
+			FRotator BaseRot = (-LockedPullDirection).Rotation();
+			BaseRot.Pitch = 0.0f;
+			BaseRot.Roll = 0.0f;
+			LockedPullHandQuat = BaseRot.Quaternion() * GrabHandRotationOffset.Quaternion();
+
+			VirtualHand->SetHandPoseMode(EHandPoseMode::GrabPinch);
+			VirtualHand->PhysicsHandle->GrabComponentAtLocationWithRotation(
+				GrabbedBlock->BlockMesh,
+				NAME_None,
+				LockedPullInitialPos,
+				GrabbedBlock->GetActorRotation()
+			);
+
+			FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
+			FVector HandPos = LockedPullInitialPos - LockedPullHandQuat.RotateVector(LocalOffset);
+			FTransform HandTarget(LockedPullHandQuat, HandPos);
+			VirtualHand->SetTargetHandTransform(HandTarget, 1.0f);
+			return;
 		}
+		else if (!bIsTopFace)
+		{
+			// ==========================================
+			// 3. INITIATE PUSH (Pieza enrasada o metida)
+			// ==========================================
+			bIsPushingBlock = true;
+			LockedPushBlock = HoveredBlock;
+			PushBlockInitialLocation = LockedPushBlock->GetActorLocation();
+			CurrentPushDisplacement = 0.0f;
+			CurrentPushAdvance = PokeStandbySeparation;
 
-		// Ensure strictly horizontal direction perpendicular to the tower face
-		ProtrudingNorm.Z = 0.0f;
-		LockedPullDirection = ProtrudingNorm.GetSafeNormal();
-		LockedPullPlaneZ = GrabbedBlock->GetActorLocation().Z;
-		LockedPullInitialPos = ProtrudingPos;
-		LockedPullInitialPos.Z = LockedPullPlaneZ;
-		CurrentPullOutwardAdvance = 0.0f;
+			if (LockedPushBlock->BlockMesh)
+			{
+				LockedPushBlock->BlockMesh->WakeRigidBody();
 
-		// Lock hand rotation along the block's outward normal with GrabHandRotationOffset
-		FRotator BaseRot = (-LockedPullDirection).Rotation();
-		BaseRot.Pitch = 0.0f;
-		BaseRot.Roll = 0.0f;
-		LockedPullHandQuat = BaseRot.Quaternion() * GrabHandRotationOffset.Quaternion();
-
-		VirtualHand->SetHandPoseMode(EHandPoseMode::GrabPinch);
-		VirtualHand->PhysicsHandle->GrabComponentAtLocationWithRotation(
-			GrabbedBlock->BlockMesh,
-			NAME_None,
-			LockedPullInitialPos,
-			GrabbedBlock->GetActorRotation()
-		);
-
-		FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
-		FVector HandPos = LockedPullInitialPos - LockedPullHandQuat.RotateVector(LocalOffset);
-		FTransform HandTarget(LockedPullHandQuat, HandPos);
-		VirtualHand->SetTargetHandTransform(HandTarget, 1.0f);
+				if (bIsDoubleClick)
+				{
+					// Double-click strike ("golpe"): 27.0 cm/s + impulse
+					const float StrikeVelocity = 27.0f;
+					FVector StrikeVel = PushLongitudinalAxis * StrikeVelocity;
+					StrikeVel.Z = 0.0f;
+					LockedPushBlock->BlockMesh->SetPhysicsLinearVelocity(StrikeVel);
+					LockedPushBlock->BlockMesh->AddImpulse(PushLongitudinalAxis * (StrikeVelocity * LockedPushBlock->BlockMesh->GetMass() * 1.5f), NAME_None, false);
+					LockedPushBlock->BlockMesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+				}
+				else
+				{
+					// Standard push: 18.0 cm/s
+					FVector PushVel = PushLongitudinalAxis * 18.0f;
+					PushVel.Z = 0.0f;
+					LockedPushBlock->BlockMesh->SetPhysicsLinearVelocity(PushVel);
+					LockedPushBlock->BlockMesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+				}
+			}
+			return;
+		}
 	}
 }
 
 void AYenkaDesktopPawn::OnPrimaryClickReleased()
 {
 	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
+
+	if (bIsCraneGrabbing)
+	{
+		if (VirtualHand && VirtualHand->PhysicsHandle)
+		{
+			VirtualHand->PhysicsHandle->ReleaseComponent();
+		}
+		if (GrabbedBlock && GrabbedBlock->BlockMesh)
+		{
+			GrabbedBlock->BlockMesh->WakeRigidBody();
+		}
+		bIsCraneGrabbing = false;
+		GrabbedBlock = nullptr;
+		return;
+	}
+
 	if (bIsPushingBlock)
 	{
 		AYenkaBlock* ActivePushBlock = LockedPushBlock ? LockedPushBlock : HoveredBlock;
@@ -2600,7 +2770,7 @@ void AYenkaDesktopPawn::OnPrimaryClickReleased()
 		CurrentPullOutwardAdvance = 0.0f;
 		if (VirtualHand)
 		{
-			VirtualHand->SetHandPoseMode(bForceGesturePreview ? ActiveGesturePreview : (bIsPokeModeActive ? EHandPoseMode::FingerPoke : EHandPoseMode::OpenHand));
+			VirtualHand->SetHandPoseMode(bForceGesturePreview ? ActiveGesturePreview : EHandPoseMode::OpenHand);
 			FRotator HandRot = GetHorizontalFacingRotation(LastHitLocation);
 			FTransform HandTarget(HandRot.Quaternion(), LastHitLocation);
 			VirtualHand->SetTargetHandTransform(HandTarget, 0.0f);

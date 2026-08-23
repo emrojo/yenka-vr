@@ -12,7 +12,8 @@ enum class EHandPoseMode : uint8
 {
 	OpenHand,
 	GrabPinch,
-	FingerPoke
+	FingerPoke,
+	VerticalGrab
 };
 
 UENUM(BlueprintType)

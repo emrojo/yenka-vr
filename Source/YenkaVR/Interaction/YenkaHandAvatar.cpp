@@ -743,6 +743,44 @@ void AYenkaHandAvatar::LoadPresetPose(EHandPoseMode Mode)
 			PinkyPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, 0.0f };
 		}
 	}
+	else if (Mode == EHandPoseMode::VerticalGrab)
+	{
+		if (LoadCustomGestureFromDiskByName(TEXT("VerticalGrabGesture"), LoadedGesture) ||
+		    LoadCustomGestureFromDiskByName(TEXT("VerticalGrab"), LoadedGesture) ||
+		    LoadCustomGestureFromDiskByName(TEXT("VerticalPinch"), LoadedGesture) ||
+		    LoadCustomGestureFromDiskByName(TEXT("CraneGrab"), LoadedGesture))
+		{
+			ThumbPhalanges = LoadedGesture.Thumb;
+			IndexPhalanges = LoadedGesture.Index;
+			MiddlePhalanges = LoadedGesture.Middle;
+			RingPhalanges = LoadedGesture.Ring;
+			PinkyPhalanges = LoadedGesture.Pinky;
+			HandAxialRotation = LoadedGesture.HandAxialRotation;
+		}
+		else
+		{
+			// Safe default for Vertical Grab (Top-down claw/pinch)
+			ThumbPhalanges.Proximal = FPhalanxData{ -35.0f, -60.0f, 15.0f };
+			ThumbPhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, 20.0f };
+			ThumbPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, 15.0f };
+
+			IndexPhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, 35.0f };
+			IndexPhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, 40.0f };
+			IndexPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, 20.0f };
+
+			MiddlePhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, 35.0f };
+			MiddlePhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, 40.0f };
+			MiddlePhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, 20.0f };
+
+			RingPhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, 30.0f };
+			RingPhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, 35.0f };
+			RingPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, 15.0f };
+
+			PinkyPhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, 25.0f };
+			PinkyPhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, 30.0f };
+			PinkyPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, 10.0f };
+		}
+	}
 	else if (Mode == EHandPoseMode::OpenHand)
 	{
 		if (LoadCustomGestureFromDiskByName(TEXT("OpenHand"), LoadedGesture) ||
@@ -802,7 +840,11 @@ FString AYenkaHandAvatar::GetDetectedGestureDescription() const
 	float ThumbAvg = GetAvgMag(ThumbPhalanges);
 	float OthersAvg = (MiddleAvg + RingAvg + PinkyAvg) / 3.0f;
 
-	if (IndexAvg < 20.0f && OthersAvg > 40.0f)
+	if (CurrentPoseMode == EHandPoseMode::VerticalGrab)
+	{
+		return TEXT("🏗️ AGARRE VERTICAL (VerticalGrab / Modo Grúa)");
+	}
+	else if (IndexAvg < 20.0f && OthersAvg > 40.0f)
 	{
 		return TEXT("👉 EMPUJAR / SEÑALAR (FingerPoke)");
 	}
@@ -1110,6 +1152,11 @@ float AYenkaHandAvatar::GetExtendedFingertipOffset() const
 		// Scaled 0.5: Pinch caliper fingertips reach at X = 1.8cm
 		return 1.8f;
 	}
+	else if (CurrentPoseMode == EHandPoseMode::VerticalGrab)
+	{
+		// Scaled 0.5: Vertical grip fingertips reach at Z = -2.2cm
+		return 2.2f;
+	}
 	else // OpenHand
 	{
 		// Scaled 0.5: Middle finger tip at X = 2.5cm
@@ -1128,6 +1175,11 @@ FVector AYenkaHandAvatar::GetExtendedFingertipLocalOffset() const
 	{
 		// Scaled 0.5: Caliper pinch center aligns directly at (1.8cm, 0.0cm, 0.0cm)
 		return FVector(1.8f, 0.0f, 0.0f);
+	}
+	else if (CurrentPoseMode == EHandPoseMode::VerticalGrab)
+	{
+		// Scaled 0.5: Vertical claw center aligns at (0.0cm, 0.0cm, -2.0cm)
+		return FVector(0.0f, 0.0f, -2.0f);
 	}
 	else // OpenHand
 	{

@@ -9,6 +9,27 @@ class USpringArmComponent;
 class UCameraComponent;
 class AYenkaBlock;
 
+USTRUCT(BlueprintType)
+struct FYenkaInteractionConfig
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Config")
+	float VerticalGrabMinClearance = 0.5f; // cm (space required on both sides along long axis)
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Config")
+	float ProtrusionThreshold = 0.4f; // cm (distance required to consider a block protruding)
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Config")
+	float CraneLiftElevation = 3.0f; // cm
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Config")
+	float CraneVerticalSensitivity = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Config")
+	float CraneTopSnapRadius = 8.0f; // cm
+};
+
 /**
  * Desktop / Flat PC Pawn with orbital camera and mouse-driven virtual hand.
  */
@@ -62,6 +83,29 @@ protected:
 	FVector LastHitLocation;
 	FVector LastHitNormal;
 	float LastPrimaryClickTime;
+
+	// --- Crane / Vertical Grab Mode ---
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Crane")
+	bool bIsCraneGrabbing;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Crane")
+	float CraneCurrentZ;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Crane")
+	FVector CraneInitialGrabPos;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Crane")
+	FRotator CraneTargetRotation;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Config")
+	FYenkaInteractionConfig InteractionConfig;
+
+	UPROPERTY()
+	FDateTime LastInteractionConfigFileTimestamp;
+
+	bool LoadInteractionConfigFromDisk();
+	bool SaveInteractionConfigToDisk();
+	bool IsBlockTopFaceAccessible(const AYenkaBlock* Block, float MinClearance) const;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Pull")
 	FVector LockedPullInitialPos;
