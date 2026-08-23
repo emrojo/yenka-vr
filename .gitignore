@@ -10,7 +10,7 @@ Plugins/*/Intermediate/*
 DerivedDataCache/*
 Saved/*
 Build/*
-
+*CrashReport.*
 # Package and cooked output
 *.apk
 *.ipa
