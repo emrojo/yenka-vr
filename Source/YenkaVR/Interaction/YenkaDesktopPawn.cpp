@@ -670,11 +670,48 @@ void AYenkaDesktopPawn::LoadCustomGestureByIndex(int32 Index)
 
 	VirtualHand->ApplyCustomGesture(Gesture);
 
-	// Apply spatial offsets
-	PokeHandLocationOffset = Gesture.HandLocationOffset;
-	PokeHandRotationOffset = Gesture.HandRotationOffset;
-	GrabHandLocationOffset = Gesture.HandLocationOffset;
-	GrabHandRotationOffset = Gesture.HandRotationOffset;
+	// If loading LightPullGesture, bind and apply LightPullPositioning-1 transform!
+	if (Gesture.GestureName.Contains(TEXT("LightPull"), ESearchCase::IgnoreCase))
+	{
+		int32 TransformIdx = CustomTransformsList.IndexOfByPredicate([](const FCustomHandTransform& T) {
+			return T.TransformName.Equals(TEXT("LightPullPositioning-1"), ESearchCase::IgnoreCase);
+		});
+		if (TransformIdx != INDEX_NONE)
+		{
+			GrabHandLocationOffset = CustomTransformsList[TransformIdx].LocationOffset;
+			GrabHandRotationOffset = CustomTransformsList[TransformIdx].RotationOffset;
+			ActiveCustomTransformIndex = TransformIdx;
+		}
+		else
+		{
+			GrabHandLocationOffset = Gesture.HandLocationOffset;
+			GrabHandRotationOffset = Gesture.HandRotationOffset;
+		}
+	}
+	else if (Gesture.GestureName.Contains(TEXT("Point"), ESearchCase::IgnoreCase))
+	{
+		int32 TransformIdx = CustomTransformsList.IndexOfByPredicate([](const FCustomHandTransform& T) {
+			return T.TransformName.Equals(TEXT("PointPositioning-1"), ESearchCase::IgnoreCase);
+		});
+		if (TransformIdx != INDEX_NONE)
+		{
+			PokeHandLocationOffset = CustomTransformsList[TransformIdx].LocationOffset;
+			PokeHandRotationOffset = CustomTransformsList[TransformIdx].RotationOffset;
+			ActiveCustomTransformIndex = TransformIdx;
+		}
+		else
+		{
+			PokeHandLocationOffset = Gesture.HandLocationOffset;
+			PokeHandRotationOffset = Gesture.HandRotationOffset;
+		}
+	}
+	else
+	{
+		PokeHandLocationOffset = Gesture.HandLocationOffset;
+		PokeHandRotationOffset = Gesture.HandRotationOffset;
+		GrabHandLocationOffset = Gesture.HandLocationOffset;
+		GrabHandRotationOffset = Gesture.HandRotationOffset;
+	}
 
 	if (GEngine)
 	{
@@ -786,20 +823,31 @@ bool AYenkaDesktopPawn::LoadCustomTransformsFromDisk()
 	}
 
 	// Ensure default presets are present if list was empty
-	if (CustomTransformsList.Num() == 0)
+	int32 LightPullPosIdx = CustomTransformsList.IndexOfByPredicate([](const FCustomHandTransform& T) {
+		return T.TransformName.Equals(TEXT("LightPullPositioning-1"), ESearchCase::IgnoreCase);
+	});
+
+	if (LightPullPosIdx == INDEX_NONE)
 	{
-		FCustomHandTransform Standard;
-		Standard.TransformName = TEXT("StandardHorizontal");
-		Standard.LocationOffset = FVector(-5.50f, 8.50f, -0.50f);
-		Standard.RotationOffset = FRotator(0.0f, -90.0f, 0.0f);
-		CustomTransformsList.Add(Standard);
+		FCustomHandTransform LightPullPos;
+		LightPullPos.TransformName = TEXT("LightPullPositioning-1");
+		LightPullPos.LocationOffset = FVector(-5.50f, 8.50f, -0.50f);
+		LightPullPos.RotationOffset = FRotator(90.0f, -90.0f, 0.0f);
+		CustomTransformsList.Insert(LightPullPos, 0);
+		SaveCustomTransformsToDisk();
+	}
 
-		FCustomHandTransform Vertical;
-		Vertical.TransformName = TEXT("VerticalPitch90");
-		Vertical.LocationOffset = FVector(-5.50f, 8.50f, -0.50f);
-		Vertical.RotationOffset = FRotator(90.0f, -90.0f, 0.0f);
-		CustomTransformsList.Add(Vertical);
+	int32 PointPosIdx = CustomTransformsList.IndexOfByPredicate([](const FCustomHandTransform& T) {
+		return T.TransformName.Equals(TEXT("PointPositioning-1"), ESearchCase::IgnoreCase);
+	});
 
+	if (PointPosIdx == INDEX_NONE)
+	{
+		FCustomHandTransform PointPos;
+		PointPos.TransformName = TEXT("PointPositioning-1");
+		PointPos.LocationOffset = FVector(-5.50f, 8.50f, -0.50f);
+		PointPos.RotationOffset = FRotator(0.0f, -90.0f, 0.0f);
+		CustomTransformsList.Add(PointPos);
 		SaveCustomTransformsToDisk();
 	}
 
@@ -1420,6 +1468,18 @@ void AYenkaDesktopPawn::SetGesturePush()
 	ActiveGesturePreview = EHandPoseMode::FingerPoke;
 	bForceGesturePreview = true;
 	bIsPokeModeActive = true;
+
+	// Use PointPositioning-1 transform when using PointGesture / Push
+	int32 TransformIdx = CustomTransformsList.IndexOfByPredicate([](const FCustomHandTransform& T) {
+		return T.TransformName.Equals(TEXT("PointPositioning-1"), ESearchCase::IgnoreCase);
+	});
+	if (TransformIdx != INDEX_NONE)
+	{
+		PokeHandLocationOffset = CustomTransformsList[TransformIdx].LocationOffset;
+		PokeHandRotationOffset = CustomTransformsList[TransformIdx].RotationOffset;
+		ActiveCustomTransformIndex = TransformIdx;
+	}
+
 	if (VirtualHand)
 	{
 		VirtualHand->LoadPresetPose(EHandPoseMode::FingerPoke);
@@ -1433,6 +1493,18 @@ void AYenkaDesktopPawn::SetGestureGrab()
 	ActiveGesturePreview = EHandPoseMode::GrabPinch;
 	bForceGesturePreview = true;
 	bIsPokeModeActive = false;
+
+	// Use LightPullPositioning-1 transform when using LightPull / Grab
+	int32 TransformIdx = CustomTransformsList.IndexOfByPredicate([](const FCustomHandTransform& T) {
+		return T.TransformName.Equals(TEXT("LightPullPositioning-1"), ESearchCase::IgnoreCase);
+	});
+	if (TransformIdx != INDEX_NONE)
+	{
+		GrabHandLocationOffset = CustomTransformsList[TransformIdx].LocationOffset;
+		GrabHandRotationOffset = CustomTransformsList[TransformIdx].RotationOffset;
+		ActiveCustomTransformIndex = TransformIdx;
+	}
+
 	if (VirtualHand)
 	{
 		VirtualHand->LoadPresetPose(EHandPoseMode::GrabPinch);

@@ -1,20 +1,7 @@
 {
 	"transforms": [
 		{
-			"transformName": "StandardHorizontal",
-			"locationOffset": {
-				"x": -5.5,
-				"y": 8.5,
-				"z": -0.5
-			},
-			"rotationOffset": {
-				"pitch": 0,
-				"yaw": -90,
-				"roll": 0
-			}
-		},
-		{
-			"transformName": "VerticalPitch90",
+			"transformName": "LightPullPositioning-1",
 			"locationOffset": {
 				"x": -5.5,
 				"y": 8.5,
@@ -22,6 +9,19 @@
 			},
 			"rotationOffset": {
 				"pitch": 90,
+				"yaw": -90,
+				"roll": 0
+			}
+		},
+		{
+			"transformName": "PointPositioning-1",
+			"locationOffset": {
+				"x": -5.5,
+				"y": 8.5,
+				"z": -0.5
+			},
+			"rotationOffset": {
+				"pitch": 0,
 				"yaw": -90,
 				"roll": 0
 			}
