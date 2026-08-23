@@ -294,7 +294,7 @@ void AYenkaDesktopPawn::OnKeyXPressed()
 	}
 	else
 	{
-		QuickRotateYaw90();
+		QuickRotatePitch90();
 	}
 }
 
@@ -304,6 +304,10 @@ void AYenkaDesktopPawn::OnKeyCPressed()
 	if (bIsPhalanxEditMode)
 	{
 		SelectedPhalanx = 3; // Distal (Tip)
+	}
+	else
+	{
+		QuickRotateYaw90();
 	}
 }
 
@@ -691,6 +695,7 @@ void AYenkaDesktopPawn::LoadHandGesture(const FString& Name)
 
 void AYenkaDesktopPawn::LoadCustomGestureByIndex(int32 Index)
 {
+	LoadCustomTransformsFromDisk();
 	if (!CustomGesturesList.IsValidIndex(Index) || !VirtualHand) return;
 
 	ActiveCustomGestureIndex = Index;
@@ -1494,7 +1499,8 @@ void AYenkaDesktopPawn::AdjustHandRoll(float Delta)
 void AYenkaDesktopPawn::QuickRotateYaw90()
 {
 	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
-	if (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke))
+	const bool bInPoke = (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke));
+	if (bInPoke)
 	{
 		PokeHandRotationOffset.Yaw = FRotator::NormalizeAxis(PokeHandRotationOffset.Yaw + 90.0f);
 	}
@@ -1502,12 +1508,20 @@ void AYenkaDesktopPawn::QuickRotateYaw90()
 	{
 		GrabHandRotationOffset.Yaw = FRotator::NormalizeAxis(GrabHandRotationOffset.Yaw + 90.0f);
 	}
+
+	const FRotator ActiveRot = bInPoke ? PokeHandRotationOffset : GrabHandRotationOffset;
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(9988, 2.5f, FColor::Yellow,
+			FString::Printf(TEXT("🔄 Rotación Yaw (+90°): Pitch=%.0f, Yaw=%.0f, Roll=%.0f"), ActiveRot.Pitch, ActiveRot.Yaw, ActiveRot.Roll));
+	}
 }
 
 void AYenkaDesktopPawn::QuickRotateRoll90()
 {
 	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
-	if (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke))
+	const bool bInPoke = (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke));
+	if (bInPoke)
 	{
 		PokeHandRotationOffset.Roll = FRotator::NormalizeAxis(PokeHandRotationOffset.Roll + 90.0f);
 	}
@@ -1515,18 +1529,33 @@ void AYenkaDesktopPawn::QuickRotateRoll90()
 	{
 		GrabHandRotationOffset.Roll = FRotator::NormalizeAxis(GrabHandRotationOffset.Roll + 90.0f);
 	}
+
+	const FRotator ActiveRot = bInPoke ? PokeHandRotationOffset : GrabHandRotationOffset;
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(9988, 2.5f, FColor::Yellow,
+			FString::Printf(TEXT("🔄 Rotación Roll (+90°): Pitch=%.0f, Yaw=%.0f, Roll=%.0f"), ActiveRot.Pitch, ActiveRot.Yaw, ActiveRot.Roll));
+	}
 }
 
 void AYenkaDesktopPawn::QuickRotatePitch90()
 {
 	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
-	if (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke))
+	const bool bInPoke = (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke));
+	if (bInPoke)
 	{
 		PokeHandRotationOffset.Pitch = FRotator::NormalizeAxis(PokeHandRotationOffset.Pitch + 90.0f);
 	}
 	else
 	{
 		GrabHandRotationOffset.Pitch = FRotator::NormalizeAxis(GrabHandRotationOffset.Pitch + 90.0f);
+	}
+
+	const FRotator ActiveRot = bInPoke ? PokeHandRotationOffset : GrabHandRotationOffset;
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(9988, 2.5f, FColor::Yellow,
+			FString::Printf(TEXT("🔄 Rotación Pitch (+90°): Pitch=%.0f, Yaw=%.0f, Roll=%.0f"), ActiveRot.Pitch, ActiveRot.Yaw, ActiveRot.Roll));
 	}
 }
 
@@ -1548,6 +1577,7 @@ void AYenkaDesktopPawn::ResetHandCalibration()
 void AYenkaDesktopPawn::SetGesturePush()
 {
 	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
+	LoadCustomTransformsFromDisk();
 	ActiveGesturePreview = EHandPoseMode::FingerPoke;
 	bForceGesturePreview = true;
 	bIsPokeModeActive = true;
@@ -1575,6 +1605,7 @@ void AYenkaDesktopPawn::SetGesturePush()
 void AYenkaDesktopPawn::SetGestureGrab()
 {
 	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
+	LoadCustomTransformsFromDisk();
 	ActiveGesturePreview = EHandPoseMode::GrabPinch;
 	bForceGesturePreview = true;
 	bIsPokeModeActive = false;
@@ -2438,10 +2469,10 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 		FRotator BaseRot = (-ProtrudingNorm).Rotation();
 		BaseRot.Pitch = 0.0f;
 		BaseRot.Roll = 0.0f;
-		FRotator HandRot = BaseRot + GrabHandRotationOffset;
+		FQuat HandQuat = BaseRot.Quaternion() * GrabHandRotationOffset.Quaternion();
 		FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
-		FVector HandPos = ProtrudingPos - HandRot.RotateVector(LocalOffset);
-		FTransform HandTarget(HandRot.Quaternion(), HandPos);
+		FVector HandPos = ProtrudingPos - HandQuat.RotateVector(LocalOffset);
+		FTransform HandTarget(HandQuat, HandPos);
 		VirtualHand->SetTargetHandTransform(HandTarget, 1.0f);
 	}
 }
