@@ -133,8 +133,8 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		PlayerInputComponent->BindKey(EKeys::E, IE_Pressed, this, &AYenkaDesktopPawn::OnPokeKeyPressed);
 		PlayerInputComponent->BindKey(EKeys::E, IE_Released, this, &AYenkaDesktopPawn::OnPokeKeyReleased);
 		PlayerInputComponent->BindKey(EKeys::Q, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyQPressed);
+		PlayerInputComponent->BindKey(EKeys::M, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyMPressed);
 		PlayerInputComponent->BindKey(EKeys::F, IE_Pressed, this, &AYenkaDesktopPawn::OnTogglePokeMode);
-		PlayerInputComponent->BindKey(EKeys::M, IE_Pressed, this, &AYenkaDesktopPawn::OnToggleScenarioMenu);
 
 		// Phalanx Edit Mode Toggle & Custom Gestures
 		PlayerInputComponent->BindKey(EKeys::AnyKey, IE_Pressed, this, &AYenkaDesktopPawn::OnAnyKeyPressed);
@@ -805,76 +805,56 @@ void AYenkaDesktopPawn::OnToggleScenarioMenu()
 	}
 }
 
-void AYenkaDesktopPawn::AdjustHandOffsetX(float Delta)
+void AYenkaDesktopPawn::OnKeyMPressed()
 {
-	if (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke))
+	if (bIsPhalanxEditMode)
 	{
-		PokeHandLocationOffset.X += Delta;
+		SelectedFinger = 6; // Select Muñeca (Wrist / Whole Hand Rotation Mode)
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(9994, 2.5f, FColor(255, 220, 50), TEXT("🖐️ SELECCIONADA: MUÑECA (Rotación de la Mano Completa)"));
+		}
 	}
 	else
 	{
-		GrabHandLocationOffset.X += Delta;
+		OnToggleScenarioMenu();
 	}
+}
+
+void AYenkaDesktopPawn::AdjustHandOffsetX(float Delta)
+{
+	PokeHandLocationOffset.X += Delta;
+	GrabHandLocationOffset.X += Delta;
 }
 
 void AYenkaDesktopPawn::AdjustHandOffsetY(float Delta)
 {
-	if (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke))
-	{
-		PokeHandLocationOffset.Y += Delta;
-	}
-	else
-	{
-		GrabHandLocationOffset.Y += Delta;
-	}
+	PokeHandLocationOffset.Y += Delta;
+	GrabHandLocationOffset.Y += Delta;
 }
 
 void AYenkaDesktopPawn::AdjustHandOffsetZ(float Delta)
 {
-	if (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke))
-	{
-		PokeHandLocationOffset.Z += Delta;
-	}
-	else
-	{
-		GrabHandLocationOffset.Z += Delta;
-	}
+	PokeHandLocationOffset.Z += Delta;
+	GrabHandLocationOffset.Z += Delta;
 }
 
 void AYenkaDesktopPawn::AdjustHandPitch(float Delta)
 {
-	if (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke))
-	{
-		PokeHandRotationOffset.Pitch = FRotator::NormalizeAxis(PokeHandRotationOffset.Pitch + Delta);
-	}
-	else
-	{
-		GrabHandRotationOffset.Pitch = FRotator::NormalizeAxis(GrabHandRotationOffset.Pitch + Delta);
-	}
+	PokeHandRotationOffset.Pitch = FRotator::NormalizeAxis(PokeHandRotationOffset.Pitch + Delta);
+	GrabHandRotationOffset.Pitch = FRotator::NormalizeAxis(GrabHandRotationOffset.Pitch + Delta);
 }
 
 void AYenkaDesktopPawn::AdjustHandYaw(float Delta)
 {
-	if (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke))
-	{
-		PokeHandRotationOffset.Yaw = FRotator::NormalizeAxis(PokeHandRotationOffset.Yaw + Delta);
-	}
-	else
-	{
-		GrabHandRotationOffset.Yaw = FRotator::NormalizeAxis(GrabHandRotationOffset.Yaw + Delta);
-	}
+	PokeHandRotationOffset.Yaw = FRotator::NormalizeAxis(PokeHandRotationOffset.Yaw + Delta);
+	GrabHandRotationOffset.Yaw = FRotator::NormalizeAxis(GrabHandRotationOffset.Yaw + Delta);
 }
 
 void AYenkaDesktopPawn::AdjustHandRoll(float Delta)
 {
-	if (bIsPokeModeActive || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke))
-	{
-		PokeHandRotationOffset.Roll = FRotator::NormalizeAxis(PokeHandRotationOffset.Roll + Delta);
-	}
-	else
-	{
-		GrabHandRotationOffset.Roll = FRotator::NormalizeAxis(GrabHandRotationOffset.Roll + Delta);
-	}
+	PokeHandRotationOffset.Roll = FRotator::NormalizeAxis(PokeHandRotationOffset.Roll + Delta);
+	GrabHandRotationOffset.Roll = FRotator::NormalizeAxis(GrabHandRotationOffset.Roll + Delta);
 }
 
 void AYenkaDesktopPawn::QuickRotateYaw90()
