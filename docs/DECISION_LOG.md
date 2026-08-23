@@ -30,6 +30,7 @@ This document records all architectural, technical design, and mechanics decisio
 * [ADR-022: 15-Phalanx Forward Kinematics & Stationary Viewport Lock in Phalanx Edit Mode](#adr-022-15-phalanx-forward-kinematics--stationary-viewport-lock-in-phalanx-edit-mode)
 * [ADR-023: Dynamic JSON-Backed Gesture Library & Default Posture Ingestion](#adr-023-dynamic-json-backed-gesture-library--default-posture-ingestion)
 * [ADR-024: Real-Time Live File Watcher & Instant JSON Transform Synchronization](#adr-024-real-time-live-file-watcher--instant-json-transform-synchronization)
+* [ADR-025: Strictly Horizontal Perpendicular Block Pulling & Invariant Extraction Orientation](#adr-025-strictly-horizontal-perpendicular-block-pulling--invariant-extraction-orientation)
 
 ---
 
@@ -359,6 +360,20 @@ This document records all architectural, technical design, and mechanics decisio
   * Bind rapid 90-degree wrist rotation hotkeys (`C` for Yaw, `X` for Pitch, `Z` for Roll) with on-screen HUD feedback.
 * **Consequences:**
   * *(Positive)* Zero-friction calibration workflow: change angles in JSON or via hotkeys and see immediate real-time visual results.
+
+---
+
+### ADR-025: Strictly Horizontal Perpendicular Block Pulling & Invariant Extraction Orientation
+* **Date:** 2026-08-23
+* **Status:** Accepted
+* **Context:** During mouse block pulling, `HandleMouseTrace` dynamically recalculated the hand rotation from camera deprojection rays (`GetHorizontalFacingRotation`), causing the hand to spin/snap while dragging. Additionally, 3D mouse deprojection pulled the physics handle downwards into the table surface instead of horizontally outward.
+* **Decision:**
+  * Lock the extraction hand orientation (`LockedPullHandQuat`) upon grab start using `(-LockedPullDirection).Rotation().Quaternion() * GrabHandRotationOffset.Quaternion()` and keep it invariant throughout the pull.
+  * Raycast the mouse cursor against the block's horizontal layer plane ($Z = \text{LockedPullPlaneZ}$) and project displacement strictly onto $\text{LockedPullDirection}$, guaranteeing extraction force is 100% perpendicular to the tower face with constant elevation.
+  * Harden `PhysicsHandle` stiffness (`LinearStiffness = 2500`, `InterpolationSpeed = 50`) for immediate, responsive block extraction.
+* **Consequences:**
+  * *(Positive)* Completely stable hand posture during extraction without angle drift or snapping.
+  * *(Positive)* Effortless, clean block extraction along its slot without downward table drag friction.
 
 ---
 

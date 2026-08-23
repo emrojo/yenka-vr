@@ -155,6 +155,9 @@ This section maintains the immutable history of all requirements defined and agr
 * **`[REQ-CROSS-17]` Decoupled Push Block Locking & Immediate Release:**
   * Active block pushing is locked to the target block on primary click press (`LockedPushBlock`), preventing cursor hover drift across other blocks during continuous interaction.
   * On mouse release, `LockedPushBlock` is immediately cleared and physical linear velocity is stopped, enabling instant fluid transition to push adjacent or subsequent blocks.
+* **`[REQ-CROSS-18]` Strictly Horizontal Perpendicular Block Pulling & Locked Extraction Pose:**
+  * When initiating a pull interaction, the hand rotation is permanently locked (`LockedPullHandQuat`) along the block's outward normal with the configured `GrabHandRotationOffset`, remaining 100% invariant throughout the entire pull interaction.
+  * Mouse cursor rays are intersected with the horizontal plane of the active layer ($Z = \text{LockedPullPlaneZ}$) and projected onto the outward normal vector ($\text{LockedPullDirection}$), exerting extraction force strictly horizontal and perpendicular to the tower face without downward or vertical dragging into the table.
 
 ---
 
@@ -241,6 +244,7 @@ This section maintains the immutable history of all requirements defined and agr
 | `[REQ-CROSS-15]`| Dynamic JSON Gesture Ingestion        | `Source/YenkaVR/Interaction/YenkaHandAvatar.cpp` | Implemented |
 | `[REQ-CROSS-16]`| Live File Watcher & Instant JSON Sync  | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
 | `[REQ-CROSS-17]`| Decoupled Push Block Lock Release     | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
+| `[REQ-CROSS-18]`| Perpendicular Pull & Locked Rotation  | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
 | `[REQ-ART-01]`  | Photorealistic Wood Shaders | `Source/YenkaVR/Physics/YenkaBlock.cpp` | Implemented |
 | `[REQ-OPT-01]`  | PC VR 90FPS & Quest 2 Lens Optimization | `Config/DefaultEngine.ini` | Implemented |
 | `[REQ-VR-01]`   | Parabolic Arc Teleportation & Snap Turn | `Source/YenkaVR/Interaction/YenkaVRPawn.cpp` | Implemented |
