@@ -409,15 +409,16 @@ This document records all architectural, technical design, and mechanics decisio
 ### ADR-028: Strict Hand & Finger Physical Non-Penetration & Continuous Collision Solver
 * **Date:** 2026-08-24
 * **Status:** Accepted
-* **Context:** In flat desktop and VR interaction, pointing near the tabletop or rotating the camera could cause virtual hand fingers or palm mesh to clip through the table surface or penetrate inside solid tower blocks. The hand must strictly remain in valid physical space above the table and collide realistically with the tower.
+* **Context:** In flat desktop and VR interaction, pointing near the tabletop or rotating the camera could cause virtual hand fingers or palm mesh to clip through the table surface, the Jenga board ($35\text{ cm} \times 35\text{ cm} \times 4\text{ cm}$), or penetrate inside solid tower blocks. The hand must strictly remain in valid physical space above the table and board, and collide realistically with all scene obstacles.
 * **Decision:**
   * Implement `GetHandAnatomicalSamplePoints` in `AYenkaHandAvatar` sampling 14 anatomical landmarks (wrist, palm, knuckles, and all 5 fingertips).
   * Implement `ValidateAndResolveCollisions`:
-    1. Table plane non-penetration constraint ($Z \ge \text{TableSurfaceZ} + 0.25\text{ cm}$): lifts hand if any finger/palm descends below tabletop.
-    2. Kinematic OBB depenetration solver: pushes hand outwards along contact normals if any finger penetrates solid non-target tower blocks.
+    1. Table plane & Jenga board surface non-penetration constraint ($Z \ge \text{ActualTableZ} + 0.25\text{ cm}$ over the board, $Z \ge \text{ActualTableZ} - 2.0\text{ cm} + 0.25\text{ cm}$ over the desk): lifts hand if any finger/palm descends below solid surfaces.
+    2. Jenga board 3D volume & edge non-penetration: prevents horizontal/vertical penetration into the 4cm-thick board.
+    3. Kinematic OBB depenetration solver: pushes hand outwards along contact normals if any finger penetrates solid non-target tower blocks.
   * Apply `SetTargetHandTransformWithCollision` across all pawn interaction modes (Hover, Push, Pull, Crane, OpenHand, and Phalanx Edit).
 * **Consequences:**
-  * *(Positive)* Absolute physical non-penetration of table and blocks with zero clipping and natural, believable physical interactions.
+  * *(Positive)* Absolute physical non-penetration of table, Jenga board, and blocks with zero clipping and natural, believable physical interactions.
 
 ---
 
