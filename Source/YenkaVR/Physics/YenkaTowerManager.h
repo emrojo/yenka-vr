@@ -43,6 +43,9 @@ public:
 	virtual void BeginPlay() override;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	USceneComponent* TableRoot;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* TableMesh;
 
 	/** Generates the 54 blocks sequentially one-by-one on top of the calibrated table */

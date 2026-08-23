@@ -11,15 +11,18 @@ AYenkaTowerManager::AYenkaTowerManager()
 	PrimaryActorTick.bCanEverTick = true;
 	bReplicates = true;
 
+	TableRoot = CreateDefaultSubobject<USceneComponent>(TEXT("TableRoot"));
+	RootComponent = TableRoot;
+
 	TableMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TableMesh"));
-	RootComponent = TableMesh;
+	TableMesh->SetupAttachment(TableRoot);
 
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMeshAsset(TEXT("/Engine/BasicShapes/Cube.Cube"));
 	if (CubeMeshAsset.Succeeded())
 	{
 		TableMesh->SetStaticMesh(CubeMeshAsset.Object);
 		TableMesh->SetRelativeScale3D(FVector(0.35f, 0.35f, 0.04f)); // 35cm x 35cm board, 4cm thick
-		TableMesh->SetRelativeLocation(FVector(0.0f, 0.0f, -2.0f)); // Top surface at Z = 0
+		TableMesh->SetRelativeLocation(FVector(0.0f, 0.0f, -2.0f)); // Top surface exactly at Z = 0 (TableSurfaceZ)
 	}
 
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> TableBaseMatAsset(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));

@@ -213,6 +213,12 @@ protected:
 	FRotator PokeHandRotationOffset;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Hand Calibration")
+	FVector OpenHandLocationOffset;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Hand Calibration")
+	FRotator OpenHandRotationOffset;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Hand Calibration")
 	float GrabStandbySeparation;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Hand Calibration")

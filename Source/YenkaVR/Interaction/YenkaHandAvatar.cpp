@@ -219,6 +219,7 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 
 	ReplicatedGripStrength = 0.0f;
 	bIsLeftHand = false;
+	CurrentPoseMode = EHandPoseMode::OpenHand;
 	LastAppliedPoseMode = static_cast<EHandPoseMode>(255);
 }
 
@@ -454,13 +455,15 @@ void AYenkaHandAvatar::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 void AYenkaHandAvatar::GetHandAnatomicalSamplePoints(const FTransform& InTransform, TArray<FVector>& OutPoints, float& OutLowestZ) const
 {
 	OutPoints.Reset();
-	OutPoints.Reserve(14);
+	OutPoints.Reserve(24);
 
 	const float SkinPadding = 0.75f; // cm (half thickness of finger bones / skin surface)
 
-	// If skeletal/poseable mesh has bones instantiated, query bone locations
+	// If skeletal/poseable mesh has bones instantiated, query bone locations transformed by Mesh relative transform
 	if (PoseableHandMesh && PoseableHandMesh->GetSkinnedAsset())
 	{
+		const FTransform MeshCompTransform = PoseableHandMesh->GetRelativeTransform() * InTransform;
+
 		const TArray<FName> CriticalBones = {
 			TEXT("wrist_r"), TEXT("hand_r"),
 			TEXT("thumb_01_r"), TEXT("thumb_02_r"), TEXT("thumb_03_r"),
@@ -475,28 +478,28 @@ void AYenkaHandAvatar::GetHandAnatomicalSamplePoints(const FTransform& InTransfo
 			FVector CompLoc = PoseableHandMesh->GetBoneLocationByName(BName, EBoneSpaces::ComponentSpace);
 			if (!CompLoc.IsNearlyZero())
 			{
-				FVector WorldLoc = InTransform.TransformPosition(CompLoc);
+				FVector WorldLoc = MeshCompTransform.TransformPosition(CompLoc);
 				OutPoints.Add(WorldLoc);
 			}
 		}
 	}
 
-	// Fallback/Supplement anatomical landmark points relative to root transform:
+	// Fallback/Supplement anatomical landmark points relative to root transform (scaled to match 0.5x character scale):
 	if (OutPoints.Num() < 6)
 	{
 		const TArray<FVector> AnatomicalLocalPoints = {
 			FVector(0.0f, 0.0f, 0.0f),      // Wrist
-			FVector(4.5f, 0.0f, 0.0f),      // Palm Center
-			FVector(3.0f, -2.5f, 0.0f),     // Thumb Knuckle
-			FVector(5.5f, -4.0f, -1.0f),    // Thumb Tip
-			FVector(8.0f, -1.8f, 0.0f),     // Index Knuckle
-			FVector(13.5f, -1.8f, -0.5f),   // Index Tip
-			FVector(8.5f, 0.0f, 0.0f),      // Middle Knuckle
-			FVector(14.2f, 0.0f, -0.5f),    // Middle Tip
-			FVector(8.0f, 1.8f, 0.0f),      // Ring Knuckle
-			FVector(13.2f, 1.8f, -0.5f),    // Ring Tip
-			FVector(7.0f, 3.2f, 0.0f),      // Pinky Knuckle
-			FVector(11.5f, 3.2f, -0.5f)     // Pinky Tip
+			FVector(2.5f, 0.0f, 0.0f),      // Palm Center
+			FVector(1.5f, -1.5f, 0.0f),     // Thumb Knuckle
+			FVector(3.0f, -2.5f, -0.5f),    // Thumb Tip
+			FVector(4.5f, -1.0f, 0.0f),     // Index Knuckle
+			FVector(7.5f, -1.0f, -0.3f),    // Index Tip
+			FVector(4.8f, 0.0f, 0.0f),      // Middle Knuckle
+			FVector(8.0f, 0.0f, -0.3f),     // Middle Tip
+			FVector(4.5f, 1.0f, 0.0f),      // Ring Knuckle
+			FVector(7.5f, 1.0f, -0.3f),     // Ring Tip
+			FVector(4.0f, 1.8f, 0.0f),      // Pinky Knuckle
+			FVector(6.5f, 1.8f, -0.3f)      // Pinky Tip
 		};
 
 		for (const FVector& LocalPt : AnatomicalLocalPoints)
@@ -1004,7 +1007,9 @@ void AYenkaHandAvatar::LoadPresetPose(EHandPoseMode Mode)
 	}
 	else if (Mode == EHandPoseMode::OpenHand)
 	{
-		if (LoadCustomGestureFromDiskByName(TEXT("OpenHand"), LoadedGesture) ||
+		if (LoadCustomGestureFromDiskByName(TEXT("MANOABIERTA"), LoadedGesture) ||
+		    LoadCustomGestureFromDiskByName(TEXT("ManoAbierta"), LoadedGesture) ||
+		    LoadCustomGestureFromDiskByName(TEXT("OpenHand"), LoadedGesture) ||
 		    LoadCustomGestureFromDiskByName(TEXT("Neutral"), LoadedGesture))
 		{
 			ThumbPhalanges = LoadedGesture.Thumb;
