@@ -1,0 +1,246 @@
+{
+	"gestures": [
+		{
+			"gestureName": "PointGesture",
+			"thumb":
+			{
+				"proximal":
+				{
+					"pitch": -40,
+					"yaw": -50,
+					"roll": 0
+				},
+				"intermediate":
+				{
+					"pitch": -15,
+					"yaw": -20,
+					"roll": -1
+				},
+				"distal":
+				{
+					"pitch": 5,
+					"yaw": 25,
+					"roll": 0
+				}
+			},
+			"index":
+			{
+				"proximal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": -5
+				},
+				"intermediate":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 15
+				},
+				"distal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 15
+				}
+			},
+			"middle":
+			{
+				"proximal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": -20
+				},
+				"intermediate":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": -95
+				},
+				"distal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": -60
+				}
+			},
+			"ring":
+			{
+				"proximal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 20
+				},
+				"intermediate":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 75
+				},
+				"distal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": -80
+				}
+			},
+			"pinky":
+			{
+				"proximal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": -20
+				},
+				"intermediate":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": -80
+				},
+				"distal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": -95
+				}
+			},
+			"handLocationOffset":
+			{
+				"x": -5.5,
+				"y": 8.5,
+				"z": -0.5
+			},
+			"handRotationOffset":
+			{
+				"pitch": 0,
+				"yaw": -90,
+				"roll": 0
+			},
+			"handAxialRotation": 0
+		},
+		{
+			"gestureName": "LightPullGesture",
+			"thumb":
+			{
+				"proximal":
+				{
+					"pitch": -45,
+					"yaw": -85,
+					"roll": 20
+				},
+				"intermediate":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 15
+				},
+				"distal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": -10
+				}
+			},
+			"index":
+			{
+				"proximal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 0
+				},
+				"intermediate":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": -30
+				},
+				"distal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": -15
+				}
+			},
+			"middle":
+			{
+				"proximal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 10
+				},
+				"intermediate":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 0
+				},
+				"distal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 10
+				}
+			},
+			"ring":
+			{
+				"proximal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 15
+				},
+				"intermediate":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 0
+				},
+				"distal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 0
+				}
+			},
+			"pinky":
+			{
+				"proximal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 25
+				},
+				"intermediate":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 15
+				},
+				"distal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 0
+				}
+			},
+			"handLocationOffset":
+			{
+				"x": -5.5,
+				"y": 8.5,
+				"z": -0.5
+			},
+			"handRotationOffset":
+			{
+				"pitch": 90,
+				"yaw": -90,
+				"roll": 0
+			},
+			"handAxialRotation": 0
+		}
+	]
+}
