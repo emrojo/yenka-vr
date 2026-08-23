@@ -21,10 +21,13 @@ struct FPhalanxData
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Phalanx")
-	float FlexionAngle = 0.0f; // Degrees (Pitch: -20 to 90 deg)
+	float Pitch = 0.0f; // Rotation around Pitch (Y-axis) in degrees (-180 to +180)
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Phalanx")
-	float LateralAngle = 0.0f; // Degrees (Yaw: -45 to +45 deg)
+	float Yaw = 0.0f; // Rotation around Yaw (Z-axis) in degrees (-180 to +180)
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Phalanx")
+	float Roll = 0.0f; // Rotation around Roll (X-axis) in degrees (-180 to +180)
 };
 
 USTRUCT(BlueprintType)
@@ -64,12 +67,21 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Yenka|Hand")
 	void SetHandPoseMode(EHandPoseMode NewPoseMode);
 
-	// --- Phalanx Articulation System ---
+	// --- 3-DOF Phalanx Articulation System (Pitch, Yaw, Roll) ---
 	UFUNCTION(BlueprintCallable, Category = "Yenka|Phalanx")
-	void SetPhalanxFlexion(int32 FingerIndex, int32 PhalanxIndex, float DeltaAngle);
+	void SetPhalanxPitch(int32 FingerIndex, int32 PhalanxIndex, float DeltaAngle);
 
 	UFUNCTION(BlueprintCallable, Category = "Yenka|Phalanx")
-	void SetPhalanxLateral(int32 FingerIndex, int32 PhalanxIndex, float DeltaAngle);
+	void SetPhalanxYaw(int32 FingerIndex, int32 PhalanxIndex, float DeltaAngle);
+
+	UFUNCTION(BlueprintCallable, Category = "Yenka|Phalanx")
+	void SetPhalanxRoll(int32 FingerIndex, int32 PhalanxIndex, float DeltaAngle);
+
+	UFUNCTION(BlueprintCallable, Category = "Yenka|Phalanx")
+	void SetPhalanxFlexion(int32 FingerIndex, int32 PhalanxIndex, float DeltaAngle) { SetPhalanxPitch(FingerIndex, PhalanxIndex, DeltaAngle); }
+
+	UFUNCTION(BlueprintCallable, Category = "Yenka|Phalanx")
+	void SetPhalanxLateral(int32 FingerIndex, int32 PhalanxIndex, float DeltaAngle) { SetPhalanxYaw(FingerIndex, PhalanxIndex, DeltaAngle); }
 
 	UFUNCTION(BlueprintCallable, Category = "Yenka|Phalanx")
 	void ResetPhalanx(int32 FingerIndex, int32 PhalanxIndex);

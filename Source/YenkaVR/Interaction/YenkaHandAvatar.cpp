@@ -327,70 +327,88 @@ void AYenkaHandAvatar::UpdateFingerPoses(float GripStrength)
 	ApplyPhalanxTransforms();
 }
 
-static void ModifyPhalanxData(FPhalanxData& Data, float DeltaFlexion, float DeltaLateral)
+static void ModifyPhalanxData(FPhalanxData& Data, float DeltaPitch, float DeltaYaw, float DeltaRoll)
 {
-	// Flexion / Extension: -90 deg (full backward hyperextension) to +120 deg (full inward curl)
-	// Lateral spread: -60 deg to +60 deg
-	Data.FlexionAngle = FMath::Clamp(Data.FlexionAngle + DeltaFlexion, -90.0f, 120.0f);
-	Data.LateralAngle = FMath::Clamp(Data.LateralAngle + DeltaLateral, -60.0f, 60.0f);
+	Data.Pitch = FMath::Clamp(Data.Pitch + DeltaPitch, -180.0f, 180.0f);
+	Data.Yaw = FMath::Clamp(Data.Yaw + DeltaYaw, -180.0f, 180.0f);
+	Data.Roll = FMath::Clamp(Data.Roll + DeltaRoll, -180.0f, 180.0f);
 }
 
-static void ModifyFingerPhalanges(FFingerPhalanges& Finger, int32 PhalanxIndex, float DeltaFlexion, float DeltaLateral)
+static void ModifyFingerPhalanges(FFingerPhalanges& Finger, int32 PhalanxIndex, float DeltaPitch, float DeltaYaw, float DeltaRoll)
 {
 	if (PhalanxIndex == 0) // All phalanges
 	{
-		ModifyPhalanxData(Finger.Proximal, DeltaFlexion, DeltaLateral);
-		ModifyPhalanxData(Finger.Intermediate, DeltaFlexion, 0.0f);
-		ModifyPhalanxData(Finger.Distal, DeltaFlexion, 0.0f);
+		ModifyPhalanxData(Finger.Proximal, DeltaPitch, DeltaYaw, DeltaRoll);
+		ModifyPhalanxData(Finger.Intermediate, DeltaPitch, DeltaYaw, DeltaRoll);
+		ModifyPhalanxData(Finger.Distal, DeltaPitch, DeltaYaw, DeltaRoll);
 	}
 	else if (PhalanxIndex == 1) // Proximal
 	{
-		ModifyPhalanxData(Finger.Proximal, DeltaFlexion, DeltaLateral);
+		ModifyPhalanxData(Finger.Proximal, DeltaPitch, DeltaYaw, DeltaRoll);
 	}
 	else if (PhalanxIndex == 2) // Intermediate
 	{
-		ModifyPhalanxData(Finger.Intermediate, DeltaFlexion, DeltaLateral);
+		ModifyPhalanxData(Finger.Intermediate, DeltaPitch, DeltaYaw, DeltaRoll);
 	}
 	else if (PhalanxIndex == 3) // Distal
 	{
-		ModifyPhalanxData(Finger.Distal, DeltaFlexion, DeltaLateral);
+		ModifyPhalanxData(Finger.Distal, DeltaPitch, DeltaYaw, DeltaRoll);
 	}
 }
 
-void AYenkaHandAvatar::SetPhalanxFlexion(int32 FingerIndex, int32 PhalanxIndex, float DeltaAngle)
+void AYenkaHandAvatar::SetPhalanxPitch(int32 FingerIndex, int32 PhalanxIndex, float DeltaAngle)
 {
 	if (FingerIndex == 0) // All fingers
 	{
-		ModifyFingerPhalanges(ThumbPhalanges, PhalanxIndex, DeltaAngle, 0.0f);
-		ModifyFingerPhalanges(IndexPhalanges, PhalanxIndex, DeltaAngle, 0.0f);
-		ModifyFingerPhalanges(MiddlePhalanges, PhalanxIndex, DeltaAngle, 0.0f);
-		ModifyFingerPhalanges(RingPhalanges, PhalanxIndex, DeltaAngle, 0.0f);
-		ModifyFingerPhalanges(PinkyPhalanges, PhalanxIndex, DeltaAngle, 0.0f);
+		ModifyFingerPhalanges(ThumbPhalanges, PhalanxIndex, DeltaAngle, 0.0f, 0.0f);
+		ModifyFingerPhalanges(IndexPhalanges, PhalanxIndex, DeltaAngle, 0.0f, 0.0f);
+		ModifyFingerPhalanges(MiddlePhalanges, PhalanxIndex, DeltaAngle, 0.0f, 0.0f);
+		ModifyFingerPhalanges(RingPhalanges, PhalanxIndex, DeltaAngle, 0.0f, 0.0f);
+		ModifyFingerPhalanges(PinkyPhalanges, PhalanxIndex, DeltaAngle, 0.0f, 0.0f);
 	}
-	else if (FingerIndex == 1) ModifyFingerPhalanges(ThumbPhalanges, PhalanxIndex, DeltaAngle, 0.0f);
-	else if (FingerIndex == 2) ModifyFingerPhalanges(IndexPhalanges, PhalanxIndex, DeltaAngle, 0.0f);
-	else if (FingerIndex == 3) ModifyFingerPhalanges(MiddlePhalanges, PhalanxIndex, DeltaAngle, 0.0f);
-	else if (FingerIndex == 4) ModifyFingerPhalanges(RingPhalanges, PhalanxIndex, DeltaAngle, 0.0f);
-	else if (FingerIndex == 5) ModifyFingerPhalanges(PinkyPhalanges, PhalanxIndex, DeltaAngle, 0.0f);
+	else if (FingerIndex == 1) ModifyFingerPhalanges(ThumbPhalanges, PhalanxIndex, DeltaAngle, 0.0f, 0.0f);
+	else if (FingerIndex == 2) ModifyFingerPhalanges(IndexPhalanges, PhalanxIndex, DeltaAngle, 0.0f, 0.0f);
+	else if (FingerIndex == 3) ModifyFingerPhalanges(MiddlePhalanges, PhalanxIndex, DeltaAngle, 0.0f, 0.0f);
+	else if (FingerIndex == 4) ModifyFingerPhalanges(RingPhalanges, PhalanxIndex, DeltaAngle, 0.0f, 0.0f);
+	else if (FingerIndex == 5) ModifyFingerPhalanges(PinkyPhalanges, PhalanxIndex, DeltaAngle, 0.0f, 0.0f);
 
 	ApplyPhalanxTransforms();
 }
 
-void AYenkaHandAvatar::SetPhalanxLateral(int32 FingerIndex, int32 PhalanxIndex, float DeltaAngle)
+void AYenkaHandAvatar::SetPhalanxYaw(int32 FingerIndex, int32 PhalanxIndex, float DeltaAngle)
 {
 	if (FingerIndex == 0) // All fingers
 	{
-		ModifyFingerPhalanges(ThumbPhalanges, PhalanxIndex, 0.0f, -DeltaAngle);
-		ModifyFingerPhalanges(IndexPhalanges, PhalanxIndex, 0.0f, -DeltaAngle);
-		ModifyFingerPhalanges(MiddlePhalanges, PhalanxIndex, 0.0f, 0.0f);
-		ModifyFingerPhalanges(RingPhalanges, PhalanxIndex, 0.0f, DeltaAngle);
-		ModifyFingerPhalanges(PinkyPhalanges, PhalanxIndex, 0.0f, DeltaAngle);
+		ModifyFingerPhalanges(ThumbPhalanges, PhalanxIndex, 0.0f, DeltaAngle, 0.0f);
+		ModifyFingerPhalanges(IndexPhalanges, PhalanxIndex, 0.0f, DeltaAngle, 0.0f);
+		ModifyFingerPhalanges(MiddlePhalanges, PhalanxIndex, 0.0f, DeltaAngle, 0.0f);
+		ModifyFingerPhalanges(RingPhalanges, PhalanxIndex, 0.0f, DeltaAngle, 0.0f);
+		ModifyFingerPhalanges(PinkyPhalanges, PhalanxIndex, 0.0f, DeltaAngle, 0.0f);
 	}
-	else if (FingerIndex == 1) ModifyFingerPhalanges(ThumbPhalanges, PhalanxIndex, 0.0f, DeltaAngle);
-	else if (FingerIndex == 2) ModifyFingerPhalanges(IndexPhalanges, PhalanxIndex, 0.0f, DeltaAngle);
-	else if (FingerIndex == 3) ModifyFingerPhalanges(MiddlePhalanges, PhalanxIndex, 0.0f, DeltaAngle);
-	else if (FingerIndex == 4) ModifyFingerPhalanges(RingPhalanges, PhalanxIndex, 0.0f, DeltaAngle);
-	else if (FingerIndex == 5) ModifyFingerPhalanges(PinkyPhalanges, PhalanxIndex, 0.0f, DeltaAngle);
+	else if (FingerIndex == 1) ModifyFingerPhalanges(ThumbPhalanges, PhalanxIndex, 0.0f, DeltaAngle, 0.0f);
+	else if (FingerIndex == 2) ModifyFingerPhalanges(IndexPhalanges, PhalanxIndex, 0.0f, DeltaAngle, 0.0f);
+	else if (FingerIndex == 3) ModifyFingerPhalanges(MiddlePhalanges, PhalanxIndex, 0.0f, DeltaAngle, 0.0f);
+	else if (FingerIndex == 4) ModifyFingerPhalanges(RingPhalanges, PhalanxIndex, 0.0f, DeltaAngle, 0.0f);
+	else if (FingerIndex == 5) ModifyFingerPhalanges(PinkyPhalanges, PhalanxIndex, 0.0f, DeltaAngle, 0.0f);
+
+	ApplyPhalanxTransforms();
+}
+
+void AYenkaHandAvatar::SetPhalanxRoll(int32 FingerIndex, int32 PhalanxIndex, float DeltaAngle)
+{
+	if (FingerIndex == 0) // All fingers
+	{
+		ModifyFingerPhalanges(ThumbPhalanges, PhalanxIndex, 0.0f, 0.0f, DeltaAngle);
+		ModifyFingerPhalanges(IndexPhalanges, PhalanxIndex, 0.0f, 0.0f, DeltaAngle);
+		ModifyFingerPhalanges(MiddlePhalanges, PhalanxIndex, 0.0f, 0.0f, DeltaAngle);
+		ModifyFingerPhalanges(RingPhalanges, PhalanxIndex, 0.0f, 0.0f, DeltaAngle);
+		ModifyFingerPhalanges(PinkyPhalanges, PhalanxIndex, 0.0f, 0.0f, DeltaAngle);
+	}
+	else if (FingerIndex == 1) ModifyFingerPhalanges(ThumbPhalanges, PhalanxIndex, 0.0f, 0.0f, DeltaAngle);
+	else if (FingerIndex == 2) ModifyFingerPhalanges(IndexPhalanges, PhalanxIndex, 0.0f, 0.0f, DeltaAngle);
+	else if (FingerIndex == 3) ModifyFingerPhalanges(MiddlePhalanges, PhalanxIndex, 0.0f, 0.0f, DeltaAngle);
+	else if (FingerIndex == 4) ModifyFingerPhalanges(RingPhalanges, PhalanxIndex, 0.0f, 0.0f, DeltaAngle);
+	else if (FingerIndex == 5) ModifyFingerPhalanges(PinkyPhalanges, PhalanxIndex, 0.0f, 0.0f, DeltaAngle);
 
 	ApplyPhalanxTransforms();
 }
@@ -455,66 +473,62 @@ FFingerPhalanges AYenkaHandAvatar::GetFingerPhalanges(int32 FingerIndex) const
 
 FString AYenkaHandAvatar::GetDetectedGestureDescription() const
 {
-	float IndexAvg = (IndexPhalanges.Proximal.FlexionAngle + IndexPhalanges.Intermediate.FlexionAngle + IndexPhalanges.Distal.FlexionAngle) / 3.0f;
-	float MiddleAvg = (MiddlePhalanges.Proximal.FlexionAngle + MiddlePhalanges.Intermediate.FlexionAngle + MiddlePhalanges.Distal.FlexionAngle) / 3.0f;
-	float RingAvg = (RingPhalanges.Proximal.FlexionAngle + RingPhalanges.Intermediate.FlexionAngle + RingPhalanges.Distal.FlexionAngle) / 3.0f;
-	float PinkyAvg = (PinkyPhalanges.Proximal.FlexionAngle + PinkyPhalanges.Intermediate.FlexionAngle + PinkyPhalanges.Distal.FlexionAngle) / 3.0f;
-	float ThumbAvg = (ThumbPhalanges.Proximal.FlexionAngle + ThumbPhalanges.Intermediate.FlexionAngle + ThumbPhalanges.Distal.FlexionAngle) / 3.0f;
+	auto GetAvgMag = [](const FFingerPhalanges& F) -> float
+	{
+		return (FMath::Abs(F.Proximal.Pitch) + FMath::Abs(F.Proximal.Yaw) + FMath::Abs(F.Proximal.Roll) +
+				FMath::Abs(F.Intermediate.Pitch) + FMath::Abs(F.Intermediate.Yaw) + FMath::Abs(F.Intermediate.Roll) +
+				FMath::Abs(F.Distal.Pitch) + FMath::Abs(F.Distal.Yaw) + FMath::Abs(F.Distal.Roll)) / 3.0f;
+	};
 
+	float IndexAvg = GetAvgMag(IndexPhalanges);
+	float MiddleAvg = GetAvgMag(MiddlePhalanges);
+	float RingAvg = GetAvgMag(RingPhalanges);
+	float PinkyAvg = GetAvgMag(PinkyPhalanges);
+	float ThumbAvg = GetAvgMag(ThumbPhalanges);
 	float OthersAvg = (MiddleAvg + RingAvg + PinkyAvg) / 3.0f;
 
-	if (IndexAvg < 20.0f && OthersAvg > 50.0f)
+	if (IndexAvg < 20.0f && OthersAvg > 40.0f)
 	{
 		return TEXT("👉 EMPUJAR / SEÑALAR (FingerPoke)");
 	}
-	else if (IndexAvg > 15.0f && IndexAvg < 55.0f && ThumbAvg > 15.0f && OthersAvg > 50.0f)
+	else if (IndexAvg > 15.0f && IndexAvg < 60.0f && ThumbAvg > 15.0f && OthersAvg > 40.0f)
 	{
 		return TEXT("🤏 PINZA / AGARRAR (GrabPinch)");
 	}
-	else if (IndexAvg < 25.0f && OthersAvg < 25.0f && ThumbAvg < 25.0f)
+	else if (IndexAvg < 20.0f && OthersAvg < 20.0f && ThumbAvg < 20.0f)
 	{
-		return TEXT("🖐️ MANO ABIERTA / REPOSO (OpenHand)");
+		return TEXT("🖐️ MANO PLANA EXTENDIDA (OpenHand Base)");
 	}
-	else if (IndexAvg > 60.0f && OthersAvg > 60.0f && ThumbAvg > 40.0f)
+	else if (IndexAvg > 50.0f && OthersAvg > 50.0f && ThumbAvg > 35.0f)
 	{
 		return TEXT("✊ PUÑO CERRADO (Fist)");
 	}
-	else if (IndexAvg < 25.0f && MiddleAvg < 25.0f && RingAvg > 50.0f && PinkyAvg > 50.0f)
-	{
-		return TEXT("✌️ PAZ / DOS DEDOS (Peace / Victory)");
-	}
-	else if (ThumbAvg < 20.0f && IndexAvg > 50.0f && OthersAvg > 50.0f && ThumbPhalanges.Proximal.LateralAngle < -15.0f)
-	{
-		return TEXT("👍 PULGAR ARRIBA (Thumbs Up)");
-	}
 	return TEXT("🎨 GESTO PERSONALIZADO (Custom Pose)");
-}
-
-static FORCEINLINE FRotator MakePhalanxRot(float FlexionAngle, float LateralAngle)
-{
-	// InPitch (Y-axis): Lateral displacement (Horizontal Spread)
-	// InYaw (Z-axis): Vertical displacement (Vertical Flexion / Extension)
-	return FRotator(LateralAngle, -FlexionAngle, 0.0f);
 }
 
 FRotator AYenkaHandAvatar::GetPhalanxDeltaRotationForBone(FName BoneName) const
 {
 	FString Name = BoneName.ToString().ToLower();
 
+	auto ToRot = [](const FPhalanxData& P) -> FRotator
+	{
+		return FRotator(P.Pitch, P.Yaw, P.Roll);
+	};
+
 	// Thumb
 	if (Name.Contains(TEXT("thumb")))
 	{
 		if (Name.Contains(TEXT("01")) || Name.Contains(TEXT("metacarpal")) || (Name.Contains(TEXT("proximal")) && !Name.Contains(TEXT("intermediate")) && !Name.Contains(TEXT("distal"))))
 		{
-			return MakePhalanxRot(ThumbPhalanges.Proximal.FlexionAngle, ThumbPhalanges.Proximal.LateralAngle);
+			return ToRot(ThumbPhalanges.Proximal);
 		}
 		if (Name.Contains(TEXT("02")) || Name.Contains(TEXT("intermediate")) || Name.Contains(TEXT("proximal")))
 		{
-			return MakePhalanxRot(ThumbPhalanges.Intermediate.FlexionAngle, ThumbPhalanges.Intermediate.LateralAngle);
+			return ToRot(ThumbPhalanges.Intermediate);
 		}
 		if (Name.Contains(TEXT("03")) || Name.Contains(TEXT("distal")))
 		{
-			return MakePhalanxRot(ThumbPhalanges.Distal.FlexionAngle, ThumbPhalanges.Distal.LateralAngle);
+			return ToRot(ThumbPhalanges.Distal);
 		}
 	}
 
@@ -523,15 +537,15 @@ FRotator AYenkaHandAvatar::GetPhalanxDeltaRotationForBone(FName BoneName) const
 	{
 		if (Name.Contains(TEXT("01")) || Name.Contains(TEXT("metacarpal")) || (Name.Contains(TEXT("proximal")) && !Name.Contains(TEXT("intermediate")) && !Name.Contains(TEXT("distal"))))
 		{
-			return MakePhalanxRot(IndexPhalanges.Proximal.FlexionAngle, IndexPhalanges.Proximal.LateralAngle);
+			return ToRot(IndexPhalanges.Proximal);
 		}
 		if (Name.Contains(TEXT("02")) || Name.Contains(TEXT("intermediate")))
 		{
-			return MakePhalanxRot(IndexPhalanges.Intermediate.FlexionAngle, IndexPhalanges.Intermediate.LateralAngle);
+			return ToRot(IndexPhalanges.Intermediate);
 		}
 		if (Name.Contains(TEXT("03")) || Name.Contains(TEXT("distal")))
 		{
-			return MakePhalanxRot(IndexPhalanges.Distal.FlexionAngle, IndexPhalanges.Distal.LateralAngle);
+			return ToRot(IndexPhalanges.Distal);
 		}
 	}
 
@@ -540,15 +554,15 @@ FRotator AYenkaHandAvatar::GetPhalanxDeltaRotationForBone(FName BoneName) const
 	{
 		if (Name.Contains(TEXT("01")) || Name.Contains(TEXT("metacarpal")) || (Name.Contains(TEXT("proximal")) && !Name.Contains(TEXT("intermediate")) && !Name.Contains(TEXT("distal"))))
 		{
-			return MakePhalanxRot(MiddlePhalanges.Proximal.FlexionAngle, MiddlePhalanges.Proximal.LateralAngle);
+			return ToRot(MiddlePhalanges.Proximal);
 		}
 		if (Name.Contains(TEXT("02")) || Name.Contains(TEXT("intermediate")))
 		{
-			return MakePhalanxRot(MiddlePhalanges.Intermediate.FlexionAngle, MiddlePhalanges.Intermediate.LateralAngle);
+			return ToRot(MiddlePhalanges.Intermediate);
 		}
 		if (Name.Contains(TEXT("03")) || Name.Contains(TEXT("distal")))
 		{
-			return MakePhalanxRot(MiddlePhalanges.Distal.FlexionAngle, MiddlePhalanges.Distal.LateralAngle);
+			return ToRot(MiddlePhalanges.Distal);
 		}
 	}
 
@@ -557,15 +571,15 @@ FRotator AYenkaHandAvatar::GetPhalanxDeltaRotationForBone(FName BoneName) const
 	{
 		if (Name.Contains(TEXT("01")) || Name.Contains(TEXT("metacarpal")) || (Name.Contains(TEXT("proximal")) && !Name.Contains(TEXT("intermediate")) && !Name.Contains(TEXT("distal"))))
 		{
-			return MakePhalanxRot(RingPhalanges.Proximal.FlexionAngle, RingPhalanges.Proximal.LateralAngle);
+			return ToRot(RingPhalanges.Proximal);
 		}
 		if (Name.Contains(TEXT("02")) || Name.Contains(TEXT("intermediate")))
 		{
-			return MakePhalanxRot(RingPhalanges.Intermediate.FlexionAngle, RingPhalanges.Intermediate.LateralAngle);
+			return ToRot(RingPhalanges.Intermediate);
 		}
 		if (Name.Contains(TEXT("03")) || Name.Contains(TEXT("distal")))
 		{
-			return MakePhalanxRot(RingPhalanges.Distal.FlexionAngle, RingPhalanges.Distal.LateralAngle);
+			return ToRot(RingPhalanges.Distal);
 		}
 	}
 
@@ -574,15 +588,15 @@ FRotator AYenkaHandAvatar::GetPhalanxDeltaRotationForBone(FName BoneName) const
 	{
 		if (Name.Contains(TEXT("01")) || Name.Contains(TEXT("metacarpal")) || (Name.Contains(TEXT("proximal")) && !Name.Contains(TEXT("intermediate")) && !Name.Contains(TEXT("distal"))))
 		{
-			return MakePhalanxRot(PinkyPhalanges.Proximal.FlexionAngle, PinkyPhalanges.Proximal.LateralAngle);
+			return ToRot(PinkyPhalanges.Proximal);
 		}
 		if (Name.Contains(TEXT("02")) || Name.Contains(TEXT("intermediate")))
 		{
-			return MakePhalanxRot(PinkyPhalanges.Intermediate.FlexionAngle, PinkyPhalanges.Intermediate.LateralAngle);
+			return ToRot(PinkyPhalanges.Intermediate);
 		}
 		if (Name.Contains(TEXT("03")) || Name.Contains(TEXT("distal")))
 		{
-			return MakePhalanxRot(PinkyPhalanges.Distal.FlexionAngle, PinkyPhalanges.Distal.LateralAngle);
+			return ToRot(PinkyPhalanges.Distal);
 		}
 	}
 
@@ -626,41 +640,41 @@ void AYenkaHandAvatar::ApplyPhalanxTransforms()
 		}
 	}
 
-	// Update procedural mesh rotations based on phalanx flexion and lateral spread
+	// Update procedural mesh rotations based on phalanx pitch and yaw
 	if (IndexFinger)
 	{
-		float TotalFlex = IndexPhalanges.Proximal.FlexionAngle + IndexPhalanges.Intermediate.FlexionAngle * 0.5f + IndexPhalanges.Distal.FlexionAngle * 0.3f;
-		float TotalLat = IndexPhalanges.Proximal.LateralAngle + IndexPhalanges.Intermediate.LateralAngle;
+		float TotalPitch = IndexPhalanges.Proximal.Pitch + IndexPhalanges.Intermediate.Pitch * 0.5f + IndexPhalanges.Distal.Pitch * 0.3f;
+		float TotalYaw = IndexPhalanges.Proximal.Yaw + IndexPhalanges.Intermediate.Yaw;
 		IndexFinger->SetRelativeLocation(FVector(3.5f, -1.5f, 0.0f));
-		IndexFinger->SetRelativeRotation(FRotator(90.0f - TotalFlex, TotalLat, 0.0f));
+		IndexFinger->SetRelativeRotation(FRotator(90.0f - TotalPitch, TotalYaw, 0.0f));
 	}
 	if (MiddleFinger)
 	{
-		float TotalFlex = MiddlePhalanges.Proximal.FlexionAngle + MiddlePhalanges.Intermediate.FlexionAngle * 0.5f + MiddlePhalanges.Distal.FlexionAngle * 0.3f;
-		float TotalLat = MiddlePhalanges.Proximal.LateralAngle + MiddlePhalanges.Intermediate.LateralAngle;
+		float TotalPitch = MiddlePhalanges.Proximal.Pitch + MiddlePhalanges.Intermediate.Pitch * 0.5f + MiddlePhalanges.Distal.Pitch * 0.3f;
+		float TotalYaw = MiddlePhalanges.Proximal.Yaw + MiddlePhalanges.Intermediate.Yaw;
 		MiddleFinger->SetRelativeLocation(FVector(3.8f, -0.4f, 0.0f));
-		MiddleFinger->SetRelativeRotation(FRotator(90.0f - TotalFlex, TotalLat, 0.0f));
+		MiddleFinger->SetRelativeRotation(FRotator(90.0f - TotalPitch, TotalYaw, 0.0f));
 	}
 	if (RingFinger)
 	{
-		float TotalFlex = RingPhalanges.Proximal.FlexionAngle + RingPhalanges.Intermediate.FlexionAngle * 0.5f + RingPhalanges.Distal.FlexionAngle * 0.3f;
-		float TotalLat = RingPhalanges.Proximal.LateralAngle + RingPhalanges.Intermediate.LateralAngle;
+		float TotalPitch = RingPhalanges.Proximal.Pitch + RingPhalanges.Intermediate.Pitch * 0.5f + RingPhalanges.Distal.Pitch * 0.3f;
+		float TotalYaw = RingPhalanges.Proximal.Yaw + RingPhalanges.Intermediate.Yaw;
 		RingFinger->SetRelativeLocation(FVector(3.5f, 0.6f, 0.0f));
-		RingFinger->SetRelativeRotation(FRotator(90.0f - TotalFlex, TotalLat, 0.0f));
+		RingFinger->SetRelativeRotation(FRotator(90.0f - TotalPitch, TotalYaw, 0.0f));
 	}
 	if (PinkyFinger)
 	{
-		float TotalFlex = PinkyPhalanges.Proximal.FlexionAngle + PinkyPhalanges.Intermediate.FlexionAngle * 0.5f + PinkyPhalanges.Distal.FlexionAngle * 0.3f;
-		float TotalLat = PinkyPhalanges.Proximal.LateralAngle + PinkyPhalanges.Intermediate.LateralAngle;
+		float TotalPitch = PinkyPhalanges.Proximal.Pitch + PinkyPhalanges.Intermediate.Pitch * 0.5f + PinkyPhalanges.Distal.Pitch * 0.3f;
+		float TotalYaw = PinkyPhalanges.Proximal.Yaw + PinkyPhalanges.Intermediate.Yaw;
 		PinkyFinger->SetRelativeLocation(FVector(3.0f, 1.5f, 0.0f));
-		PinkyFinger->SetRelativeRotation(FRotator(90.0f - TotalFlex, TotalLat, 0.0f));
+		PinkyFinger->SetRelativeRotation(FRotator(90.0f - TotalPitch, TotalYaw, 0.0f));
 	}
 	if (ThumbMesh)
 	{
-		float TotalFlex = ThumbPhalanges.Proximal.FlexionAngle + ThumbPhalanges.Intermediate.FlexionAngle * 0.5f + ThumbPhalanges.Distal.FlexionAngle * 0.3f;
-		float TotalLat = ThumbPhalanges.Proximal.LateralAngle + ThumbPhalanges.Intermediate.LateralAngle;
+		float TotalPitch = ThumbPhalanges.Proximal.Pitch + ThumbPhalanges.Intermediate.Pitch * 0.5f + ThumbPhalanges.Distal.Pitch * 0.3f;
+		float TotalYaw = ThumbPhalanges.Proximal.Yaw + ThumbPhalanges.Intermediate.Yaw;
 		ThumbMesh->SetRelativeLocation(FVector(1.0f, -2.2f, 0.0f));
-		ThumbMesh->SetRelativeRotation(FRotator(TotalFlex, -40.0f + TotalLat, 0.0f));
+		ThumbMesh->SetRelativeRotation(FRotator(TotalPitch, -40.0f + TotalYaw, 0.0f));
 	}
 }
 

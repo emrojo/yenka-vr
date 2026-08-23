@@ -154,15 +154,22 @@ protected:
 	void TogglePhalanxEditMode();
 	void SelectFinger(int32 FingerIdx);
 	void SelectPhalanx(int32 PhalanxIdx);
-	void OnPhalanxFlexionPlus();
-	void OnPhalanxFlexionMinus();
-	void OnPhalanxLateralPlus();
-	void OnPhalanxLateralMinus();
+	void OnPhalanxPitchPlus();
+	void OnPhalanxPitchMinus();
+	void OnPhalanxYawPlus();
+	void OnPhalanxYawMinus();
+	void OnPhalanxRollPlus();
+	void OnPhalanxRollMinus();
+	void OnPhalanxFlexionPlus() { OnPhalanxPitchPlus(); }
+	void OnPhalanxFlexionMinus() { OnPhalanxPitchMinus(); }
+	void OnPhalanxLateralPlus() { OnPhalanxYawPlus(); }
+	void OnPhalanxLateralMinus() { OnPhalanxYawMinus(); }
 	void OnResetSelectedPhalanx();
 	void OnKeyZPressed();
 	void OnKeyXPressed();
 	void OnKeyCPressed();
 	void OnKeyVPressed();
+	void OnKeyQPressed();
 
 	void OnSelectScenario1() { SelectScenarioTheme(0); }
 	void OnSelectScenario2() { SelectScenarioTheme(1); }
