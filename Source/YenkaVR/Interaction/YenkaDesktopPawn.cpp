@@ -39,11 +39,10 @@ AYenkaDesktopPawn::AYenkaDesktopPawn()
 	LastHitNormal = FVector::UpVector;
 	LastPrimaryClickTime = -10.0f;
 
-	// Hand Calibration defaults
-	GrabHandLocationOffset = FVector::ZeroVector;
-	GrabHandRotationOffset = FRotator::ZeroRotator;
+	// Hand Calibration defaults (Applied to ALL gestures: Push, Grab, OpenHand)
+	GrabHandLocationOffset = FVector(-5.50f, 8.50f, -0.50f);
+	GrabHandRotationOffset = FRotator(0.0f, -90.0f, 0.0f);
 
-	// User-calibrated Push (Poke) gesture correction: Yaw = -90 deg, X = -5.50cm, Y = +8.50cm, Z = -0.50cm
 	PokeHandLocationOffset = FVector(-5.50f, 8.50f, -0.50f);
 	PokeHandRotationOffset = FRotator(0.0f, -90.0f, 0.0f);
 
@@ -326,8 +325,8 @@ void AYenkaDesktopPawn::QuickRotatePitch90()
 
 void AYenkaDesktopPawn::ResetHandCalibration()
 {
-	GrabHandLocationOffset = FVector::ZeroVector;
-	GrabHandRotationOffset = FRotator::ZeroRotator;
+	GrabHandLocationOffset = FVector(-5.50f, 8.50f, -0.50f);
+	GrabHandRotationOffset = FRotator(0.0f, -90.0f, 0.0f);
 	PokeHandLocationOffset = FVector(-5.50f, 8.50f, -0.50f);
 	PokeHandRotationOffset = FRotator(0.0f, -90.0f, 0.0f);
 	bForceGesturePreview = false;
@@ -758,35 +757,42 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 
 				if (bInProximity && HoveredBlock)
 				{
+					const float BlockZ = HoveredBlock->GetActorLocation().Z;
 					FVector ProtrudingPos, ProtrudingNorm;
 					bool bIsProtruding = IsBlockProtruding(HoveredBlock, ProtrudingPos, ProtrudingNorm);
 
 					if (bIsProtruding)
 					{
-						// Block is protruding: position pinch fingers 1.0cm from protruding edge
+						// Block is protruding: position pinch fingers at standby separation from protruding edge
 						bIsLockedPerpendicular = false;
 						VirtualHand->SetHandPoseMode(bForceGesturePreview ? ActiveGesturePreview : EHandPoseMode::GrabPinch);
-						FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset; // (3.5, 0.0, 0.0)
-						FVector StandbyFingertipPos = ProtrudingPos + (ProtrudingNorm * GRAB_STANDBY_SEPARATION);
+						FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
+						FVector StandbyFingertipPos = ProtrudingPos + (ProtrudingNorm * GrabStandbySeparation);
+						StandbyFingertipPos.Z = BlockZ;
 
-						FRotator HandRot = (-ProtrudingNorm).Rotation() + GrabHandRotationOffset;
+						FRotator BaseRot = (-ProtrudingNorm).Rotation();
+						BaseRot.Pitch = 0.0f;
+						BaseRot.Roll = 0.0f;
+						FRotator HandRot = BaseRot + GrabHandRotationOffset;
 
 						FVector SafeHandPos = StandbyFingertipPos - HandRot.RotateVector(LocalOffset);
 						VirtualHand->SetTargetHandTransform(FTransform(HandRot.Quaternion(), SafeHandPos), 0.0f);
 					}
 					else
 					{
-						// Block is flush/not protruding: hand hovers outside in inspection mode (fingertips strictly 1cm from tower)
+						// Block is flush/not protruding: hand hovers outside in inspection mode (fingertips strictly outside tower at block height)
 						bIsLockedPerpendicular = false;
 						VirtualHand->SetHandPoseMode(bForceGesturePreview ? ActiveGesturePreview : EHandPoseMode::OpenHand);
-						FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset; // (6.4, -0.4, 0.0)
+						FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
 
 						FVector Diff = HitResult.ImpactPoint - TowerCenter;
 						float Angle = FMath::Atan2(Diff.Y, Diff.X);
-						float DistXY = FVector2D(Diff.X, Diff.Y).Size();
-						float SafeFingertipRadius = FMath::Max(DistXY, TOWER_BASE_RADIUS + 1.0f);
-						FVector TargetFingertipPos = TowerCenter + FVector(FMath::Cos(Angle) * SafeFingertipRadius, FMath::Sin(Angle) * SafeFingertipRadius, Diff.Z);
-						FRotator InspectRot = GetHorizontalFacingRotation(TargetFingertipPos) + GrabHandRotationOffset;
+						float SafeFingertipRadius = FMath::Max(FVector2D(Diff.X, Diff.Y).Size(), TOWER_BASE_RADIUS + 1.0f);
+						FVector TargetFingertipPos = FVector(TowerCenter.X + FMath::Cos(Angle) * SafeFingertipRadius, TowerCenter.Y + FMath::Sin(Angle) * SafeFingertipRadius, BlockZ);
+						FRotator BaseRot = GetHorizontalFacingRotation(TargetFingertipPos);
+						BaseRot.Pitch = 0.0f;
+						BaseRot.Roll = 0.0f;
+						FRotator InspectRot = BaseRot + GrabHandRotationOffset;
 
 						FVector SafeHandPos = TargetFingertipPos - InspectRot.RotateVector(LocalOffset);
 						VirtualHand->SetTargetHandTransform(FTransform(InspectRot.Quaternion(), SafeHandPos), 0.0f);
@@ -797,14 +803,16 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 					// --- PROXIMITY TO TABLE (No Block Hovered) ---
 					bIsLockedPerpendicular = false;
 					VirtualHand->SetHandPoseMode(bForceGesturePreview ? ActiveGesturePreview : EHandPoseMode::OpenHand);
-					FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset; // (6.4, -0.4, 0.0)
+					FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
 
 					FVector Diff = HitResult.ImpactPoint - TowerCenter;
 					float Angle = FMath::Atan2(Diff.Y, Diff.X);
-					float DistXY = FVector2D(Diff.X, Diff.Y).Size();
-					float SafeFingertipRadius = FMath::Max(DistXY, TOWER_BASE_RADIUS + 1.0f);
-					FVector TargetFingertipPos = TowerCenter + FVector(FMath::Cos(Angle) * SafeFingertipRadius, FMath::Sin(Angle) * SafeFingertipRadius, Diff.Z);
-					FRotator InspectRot = GetHorizontalFacingRotation(TargetFingertipPos) + GrabHandRotationOffset;
+					float SafeFingertipRadius = FMath::Max(FVector2D(Diff.X, Diff.Y).Size(), TOWER_BASE_RADIUS + 1.0f);
+					FVector TargetFingertipPos = FVector(TowerCenter.X + FMath::Cos(Angle) * SafeFingertipRadius, TowerCenter.Y + FMath::Sin(Angle) * SafeFingertipRadius, HitResult.ImpactPoint.Z);
+					FRotator BaseRot = GetHorizontalFacingRotation(TargetFingertipPos);
+					BaseRot.Pitch = 0.0f;
+					BaseRot.Roll = 0.0f;
+					FRotator InspectRot = BaseRot + GrabHandRotationOffset;
 
 					FVector SafeHandPos = TargetFingertipPos - InspectRot.RotateVector(LocalOffset);
 					VirtualHand->SetTargetHandTransform(FTransform(InspectRot.Quaternion(), SafeHandPos), 0.0f);
@@ -928,7 +936,11 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 			ProtrudingPos,
 			GrabbedBlock->GetActorRotation()
 		);
-		FRotator HandRot = (-ProtrudingNorm).Rotation() + GrabHandRotationOffset;
+		ProtrudingPos.Z = GrabbedBlock->GetActorLocation().Z;
+		FRotator BaseRot = (-ProtrudingNorm).Rotation();
+		BaseRot.Pitch = 0.0f;
+		BaseRot.Roll = 0.0f;
+		FRotator HandRot = BaseRot + GrabHandRotationOffset;
 		FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
 		FVector HandPos = ProtrudingPos - HandRot.RotateVector(LocalOffset);
 		FTransform HandTarget(HandRot.Quaternion(), HandPos);
