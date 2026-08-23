@@ -1551,6 +1551,8 @@ void AYenkaDesktopPawn::SetGesturePush()
 	ActiveGesturePreview = EHandPoseMode::FingerPoke;
 	bForceGesturePreview = true;
 	bIsPokeModeActive = true;
+	LockedPushBlock = nullptr;
+	bIsPushingBlock = false;
 
 	// Use PointPositioning-1 transform when using PointGesture / Push
 	int32 TransformIdx = CustomTransformsList.IndexOfByPredicate([](const FCustomHandTransform& T) {
@@ -1576,6 +1578,8 @@ void AYenkaDesktopPawn::SetGestureGrab()
 	ActiveGesturePreview = EHandPoseMode::GrabPinch;
 	bForceGesturePreview = true;
 	bIsPokeModeActive = false;
+	LockedPushBlock = nullptr;
+	bIsPushingBlock = false;
 
 	// Use LightPullPositioning-1 transform when using LightPull / Grab
 	int32 TransformIdx = CustomTransformsList.IndexOfByPredicate([](const FCustomHandTransform& T) {
@@ -1601,6 +1605,9 @@ void AYenkaDesktopPawn::SetGestureOpen()
 	ActiveGesturePreview = EHandPoseMode::OpenHand;
 	bForceGesturePreview = true;
 	bIsPokeModeActive = false;
+	LockedPushBlock = nullptr;
+	bIsPushingBlock = false;
+
 	if (VirtualHand)
 	{
 		VirtualHand->LoadPresetPose(EHandPoseMode::OpenHand);
@@ -2114,7 +2121,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 			LastHitLocation = HitResult.ImpactPoint;
 			LastHitNormal = HitResult.ImpactNormal;
 		}
-		else if (!LockedPushBlock)
+		else if (!bIsPushingBlock)
 		{
 			HoveredBlock = nullptr;
 		}
@@ -2125,14 +2132,11 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 
 			if (bIsPokeModeActive || bIsPushingBlock || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke))
 			{
-				if (HoveredBlock && !LockedPushBlock)
+				AYenkaBlock* ActivePushBlock = (bIsPushingBlock && LockedPushBlock) ? LockedPushBlock : HoveredBlock;
+				if (!bIsPushingBlock)
 				{
-					LockedPushBlock = HoveredBlock;
-					PushBlockInitialLocation = LockedPushBlock->GetActorLocation();
-					CurrentPushDisplacement = 0.0f;
+					LockedPushBlock = nullptr;
 				}
-
-				AYenkaBlock* ActivePushBlock = LockedPushBlock ? LockedPushBlock : HoveredBlock;
 
 				if (ActivePushBlock)
 				{
@@ -2362,17 +2366,14 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 		}
 	}
 
-	AYenkaBlock* TargetPush = LockedPushBlock ? LockedPushBlock : HoveredBlock;
+	AYenkaBlock* TargetPush = HoveredBlock;
 	if (bIsPokeModeActive && TargetPush)
 	{
 		// In poke mode, clicking advances to contact and actively pushes along the locked axis
 		bIsPushingBlock = true;
-		if (!LockedPushBlock)
-		{
-			LockedPushBlock = TargetPush;
-			PushBlockInitialLocation = LockedPushBlock->GetActorLocation();
-			CurrentPushDisplacement = 0.0f;
-		}
+		LockedPushBlock = TargetPush;
+		PushBlockInitialLocation = LockedPushBlock->GetActorLocation();
+		CurrentPushDisplacement = 0.0f;
 		CurrentPushAdvance = PUSH_STANDBY_SEPARATION;
 
 		if (TargetPush->BlockMesh)
@@ -2457,6 +2458,8 @@ void AYenkaDesktopPawn::OnPrimaryClickReleased()
 		}
 	}
 	bIsPushingBlock = false;
+	LockedPushBlock = nullptr;
+	CurrentPushAdvance = 0.0f;
 
 	if (GrabbedBlock)
 	{
