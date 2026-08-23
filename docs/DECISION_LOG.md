@@ -382,33 +382,32 @@ This document records all architectural, technical design, and mechanics decisio
 ### ADR-026: Face-Specific Context-Aware Intelligent Gesture Selection Matrix
 * **Date:** 2026-08-23
 * **Status:** Accepted
-* **Context:** Switching between pushing, pulling, and grabbing previously required manual key toggles or evaluated protrusion globally rather than for the specific face hovered, causing friction when players aimed at the recessed side of a partially pushed block.
+* **Context:** Switching between pushing, pulling, and grabbing previously required manual key toggles or caused gesture flickering when hovering across different edges of the block.
 * **Decision:**
-  * Implement an automatic face-specific 4-way gesture matrix evaluated every frame in `HandleMouseTrace`:
-    1. **`FingerPoke` (Push):** Activated when cursor is on an end/side face of a block that is flush or recessed/metido inside the tower perimeter.
-    2. **`GrabPinch` (Pull):** Activated when cursor is on the specific end/side face of a block that protrudes ($\ge 0.4\text{ cm}$) from the tower perimeter.
+  * Implement an automatic face-specific 4-way gesture matrix evaluated in `HandleMouseTrace`:
+    1. **`FingerPoke` (Push):** Activated when cursor is on the small end faces ($2.5\text{ cm} \times 1.5\text{ cm}$) aligned with the longitudinal axis ($\pm \text{ForwardVector}$). Locked in `FingerPoke` during active push until mouse is released.
+    2. **`GrabPinch` (Pull):** Activated when cursor is on the protruding section of the large lateral faces ($7.5\text{ cm} \times 1.5\text{ cm}$) extending beyond the tower boundary.
     3. **`VerticalGrab` (Top-Down Claw):** Activated when cursor is on the top face of a block with clearance ($\ge 0.5\text{ cm}$) on both sides of the layer above.
-    4. **`OpenHand` (Neutral):** Displayed in all other cases (table, ambient air, or blocked top faces).
+    4. **`OpenHand` (Neutral):** Displayed in all other cases (table, ambient air, blocked top faces, or unprotruding large sides).
 * **Consequences:**
-  * *(Positive)* Natural, fluid interaction where the virtual hand intuitively anticipates player intent based purely on cursor placement.
+  * *(Positive)* Natural, anatomically grounded interaction where small faces push inward and protruding long sides are pinched outward.
 
 ---
 
-### ADR-027: 3D Crane Block Manipulation with Smooth S-Curve Elevation Profile
+### ADR-027: 3D Crane Block Manipulation with Smooth S-Curve Elevation & Safe Tower Clearance
 * **Date:** 2026-08-23
 * **Status:** Accepted
-* **Context:** In standard Jenga rules, extracted blocks must be lifted and placed on the highest level of the tower. Manual elevation control (such as mouse wheel) adds cognitive burden and discrete height steps.
+* **Context:** Moving an extracted piece toward the top of the tower could cause collisions with the tower body or protruding blocks if the elevation curve did not clear the tower perimeter at a safe distance.
 * **Decision:**
-  * When initiating a grab on an accessible top face in `VerticalGrab`, engage Crane Mode (`bIsCraneGrabbing`).
+  * Engage Crane Mode (`bIsCraneGrabbing`) on vertical grab.
   * 2D mouse drag translates the block horizontally in $XY$.
-  * Elevation is governed by an automated continuous Hermite SmoothStep cubic curve ($S(t) = 3t^2 - 2t^3$):
-    * Away from tower (table region): elevation holds steady at $5.0\text{ cm}$ above tabletop (`CraneTableClearanceHeight`).
-    * In proximity to tower: elevation smoothly ascends to $3.0\text{ cm}$ above the tower apex (`CraneTowerTopClearanceHeight`).
-  * When hovered above the top of the tower, dynamically calculate layer index and assist rotation alignment to the orthogonal layer grid ($0^\circ$ vs $90^\circ$).
-  * Parameterize clearance and elevation in `Saved/Config/YenkaInteractionConfig.json` with live hot-reloading on save.
+  * Automated Hermite SmoothStep cubic curve ($S(t) = 3t^2 - 2t^3$) with safe clearance:
+    * $R_{\text{inner}} = 12.5\text{ cm}$ ($8.75\text{ cm} > 7.5\text{ cm}$ separation from tower perimeter): achieves $100\%$ apex elevation ($3.0\text{ cm}$ above tower top) *before* reaching the tower zone.
+    * $R_{\text{outer}} = 22.0\text{ cm}$: settles at $5.0\text{ cm}$ above table surface.
+  * Rotation aligns orthogonally ($0^\circ$ vs $90^\circ$) when directly hovering above the topmost layer.
+  * Live hot-reloading from `Saved/Config/YenkaInteractionConfig.json`.
 * **Consequences:**
-  * *(Positive)* Intuitive, organic crane-like placement of blocks onto the top of the tower without discrete vertical jumps.
-  * *(Positive)* Zero-friction game balance tuning via live JSON configuration.
+  * *(Positive)* Intuitive, completely collision-free crane-like transport of blocks onto the top of the tower without discrete vertical jumps.
 
 ---
 
