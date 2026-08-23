@@ -287,8 +287,8 @@ void AYenkaDesktopPawn::CheckForLiveJsonModifications()
 			if (GEngine)
 			{
 				GEngine->AddOnScreenDebugMessage(9995, 4.0f, FColor::Cyan,
-					FString::Printf(TEXT("⚡ AUTO-RECARGADO YenkaInteractionConfig.json [Clearance=%.2f cm | Protrusion=%.2f cm | CraneElev=%.1f cm]"),
-						InteractionConfig.VerticalGrabMinClearance, InteractionConfig.ProtrusionThreshold, InteractionConfig.CraneLiftElevation));
+					FString::Printf(TEXT("⚡ AUTO-RECARGADO YenkaInteractionConfig.json [Clearance=%.2f cm | Protrusion=%.2f cm | CraneTable=%.1f cm | CraneTower=%.1f cm]"),
+						InteractionConfig.VerticalGrabMinClearance, InteractionConfig.ProtrusionThreshold, InteractionConfig.CraneTableClearanceHeight, InteractionConfig.CraneTowerTopClearanceHeight));
 			}
 		}
 	}
@@ -2149,11 +2149,7 @@ void AYenkaDesktopPawn::OnMouseY(float Val)
 void AYenkaDesktopPawn::OnMouseWheel(float Val)
 {
 	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
-	if (bIsCraneGrabbing && FMath::Abs(Val) > 0.001f)
-	{
-		CraneCurrentZ = FMath::Clamp(CraneCurrentZ + (Val * 2.0f * InteractionConfig.CraneVerticalSensitivity), 92.0f, 200.0f);
-	}
-	else if (CameraBoom && FMath::Abs(Val) > 0.001f)
+	if (CameraBoom && FMath::Abs(Val) > 0.001f)
 	{
 		CameraBoom->TargetArmLength = FMath::Clamp(CameraBoom->TargetArmLength - (Val * 8.0f), 30.0f, 250.0f);
 	}
@@ -2260,6 +2256,75 @@ bool AYenkaDesktopPawn::IsBlockProtruding(const AYenkaBlock* Block, FVector& Out
 	return false;
 }
 
+bool AYenkaDesktopPawn::IsHoveredFaceProtruding(const AYenkaBlock* Block, const FVector& HitLocation, FVector& OutProtrudingPos, FVector& OutProtrudingNorm) const
+{
+	if (!Block) return false;
+
+	AActor* TowerActor = UGameplayStatics::GetActorOfClass(GetWorld(), AYenkaTowerManager::StaticClass());
+	FVector TowerCenter = TowerActor ? TowerActor->GetActorLocation() : FVector(0.0f, 0.0f, 90.0f);
+	FVector BlockCenter = Block->GetActorLocation();
+	FVector ForwardVec = Block->GetActorForwardVector(); // 7.5cm length (+- 3.75cm)
+
+	// The two longitudinal ends
+	FVector EndPos = BlockCenter + (ForwardVec * 3.75f);
+	FVector EndNeg = BlockCenter - (ForwardVec * 3.75f);
+
+	// Check which longitudinal end is closest to the hit location
+	float DistToHitPos = FVector::DistSquared(HitLocation, EndPos);
+	float DistToHitNeg = FVector::DistSquared(HitLocation, EndNeg);
+
+	FVector ChosenEnd = (DistToHitPos <= DistToHitNeg) ? EndPos : EndNeg;
+	FVector ChosenNormal = (DistToHitPos <= DistToHitNeg) ? ForwardVec : -ForwardVec;
+
+	// Distance of this specific chosen end from the tower center in the horizontal XY plane
+	float DistEndToTower = FVector::Dist2D(ChosenEnd, TowerCenter);
+
+	// Flush tower radius is 3.75cm. A side is protruding if its distance exceeds 3.75cm + ProtrusionThreshold:
+	float ProtrusionThreshold = InteractionConfig.ProtrusionThreshold;
+	const float PROTRUSION_CUTOFF = TOWER_BASE_RADIUS + ProtrusionThreshold;
+
+	OutProtrudingPos = ChosenEnd;
+	OutProtrudingNorm = ChosenNormal;
+
+	return (DistEndToTower > PROTRUSION_CUTOFF);
+}
+
+float AYenkaDesktopPawn::CalculateCraneTargetZ(const FVector& TargetXY, float HighestBlockZ) const
+{
+	AActor* TowerActor = UGameplayStatics::GetActorOfClass(GetWorld(), AYenkaTowerManager::StaticClass());
+	FVector TowerCenter = TowerActor ? TowerActor->GetActorLocation() : FVector(0.0f, 0.0f, 90.0f);
+
+	float DistToTowerXY = FVector::Dist2D(TargetXY, TowerCenter);
+
+	float TableClearanceZ = LockedFloorZ + InteractionConfig.CraneTableClearanceHeight; // e.g. 90.0 + 5.0 = 95.0 cm
+	float TowerTopClearanceZ = HighestBlockZ + InteractionConfig.CraneTowerTopClearanceHeight; // e.g. 117.0 + 3.0 = 120.0 cm
+
+	// Radial boundaries for smooth transition curve
+	const float InnerRadius = 4.5f; // Within tower core
+	const float OuterRadius = FMath::Max(InteractionConfig.CraneTransitionRadius, InnerRadius + 1.0f); // e.g. 16.0 cm
+
+	if (DistToTowerXY <= InnerRadius)
+	{
+		return TowerTopClearanceZ;
+	}
+	else if (DistToTowerXY >= OuterRadius)
+	{
+		return TableClearanceZ;
+	}
+
+	// Normalized factor U in [0, 1] from inner to outer
+	float U = (DistToTowerXY - InnerRadius) / (OuterRadius - InnerRadius);
+	U = FMath::Clamp(U, 0.0f, 1.0f);
+
+	// Weight T in [0, 1]: T = 1 at tower, T = 0 at table
+	float T = 1.0f - U;
+
+	// Hermite SmoothStep cubic S-curve: S(t) = 3t^2 - 2t^3
+	float SmoothT = T * T * (3.0f - 2.0f * T);
+
+	return FMath::Lerp(TableClearanceZ, TowerTopClearanceZ, SmoothT);
+}
+
 void AYenkaDesktopPawn::HandleMouseTrace()
 {
 	if (bIsPhalanxEditMode)
@@ -2313,21 +2378,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 		// 1. If currently in Crane Mode (Vertical Grab Drag)
 		if (bIsCraneGrabbing && GrabbedBlock && VirtualHand && VirtualHand->PhysicsHandle)
 		{
-			FVector PlaneIntersection = CraneInitialGrabPos;
-			if (FMath::Abs(WorldDirection.Z) > 0.001f)
-			{
-				float T = (CraneCurrentZ - WorldLocation.Z) / WorldDirection.Z;
-				if (T > 0.0f)
-				{
-					PlaneIntersection = WorldLocation + (WorldDirection * T);
-				}
-			}
-
-			FVector TargetLocation = PlaneIntersection;
-			TargetLocation.Z = CraneCurrentZ;
-
-			// Check if piece is hovering above the highest layer of the tower for smart top placement snap
-			float DistToTowerXY = FVector::Dist2D(TargetLocation, TowerCenter);
+			// Query highest block on the tower
 			TArray<AActor*> AllBlocks;
 			UGameplayStatics::GetAllActorsOfClass(GetWorld(), AYenkaBlock::StaticClass(), AllBlocks);
 			float HighestBlockZ = 90.0f;
@@ -2339,6 +2390,30 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 				}
 			}
 
+			// Raycast mouse against a reference horizontal plane to determine XY position
+			float RefZ = CraneCurrentZ;
+			FVector PlaneIntersection = CraneInitialGrabPos;
+			if (FMath::Abs(WorldDirection.Z) > 0.001f)
+			{
+				float T = (RefZ - WorldLocation.Z) / WorldDirection.Z;
+				if (T > 0.0f)
+				{
+					PlaneIntersection = WorldLocation + (WorldDirection * T);
+				}
+			}
+
+			// Calculate smooth elevation based on continuous S-curve (5cm over table, 3cm over tower)
+			float TargetZ = CalculateCraneTargetZ(PlaneIntersection, HighestBlockZ);
+
+			// Smoothly interpolate current Z towards TargetZ for organic fluid movement
+			float DeltaTime = GetWorld() ? GetWorld()->GetDeltaSeconds() : 0.016f;
+			CraneCurrentZ = FMath::FInterpTo(CraneCurrentZ, TargetZ, DeltaTime, 14.0f);
+
+			FVector TargetLocation = PlaneIntersection;
+			TargetLocation.Z = CraneCurrentZ;
+
+			// Check if piece is hovering directly above the top layer of the tower for smart orientation snapping
+			float DistToTowerXY = FVector::Dist2D(TargetLocation, TowerCenter);
 			if (DistToTowerXY < InteractionConfig.CraneTopSnapRadius && TargetLocation.Z >= HighestBlockZ)
 			{
 				int32 CurrentTopLayer = FMath::RoundToInt((HighestBlockZ - 90.0f) / 1.5f);
@@ -2450,7 +2525,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 				bool bIsTopAccessible = bIsTopFace && IsBlockTopFaceAccessible(HoveredBlock, InteractionConfig.VerticalGrabMinClearance);
 
 				FVector ProtrudingPos, ProtrudingNorm;
-				bool bIsProtruding = IsBlockProtruding(HoveredBlock, ProtrudingPos, ProtrudingNorm);
+				bool bIsProtruding = IsHoveredFaceProtruding(HoveredBlock, HitResult.ImpactPoint, ProtrudingPos, ProtrudingNorm);
 
 				if (bIsTopAccessible)
 				{
@@ -2469,7 +2544,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 				else if (bIsProtruding && !bIsTopFace)
 				{
 					// ==========================================
-					// CONTEXT 2: PULL GESTURE (Extremo que sobresale de la torre)
+					// CONTEXT 2: PULL GESTURE (El lado apuntado sobresale de la torre)
 					// ==========================================
 					bIsLockedPerpendicular = false;
 					VirtualHand->SetHandPoseMode(EHandPoseMode::GrabPinch);
@@ -2489,7 +2564,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 				else if (!bIsTopFace)
 				{
 					// ==========================================
-					// CONTEXT 3: PUSH GESTURE (Lado/extremo enrasado o metido)
+					// CONTEXT 3: PUSH GESTURE (El lado apuntado está enrasado o metido en su interior)
 					// ==========================================
 					AYenkaBlock* ActivePushBlock = (bIsPushingBlock && LockedPushBlock) ? LockedPushBlock : HoveredBlock;
 					VirtualHand->SetHandPoseMode(EHandPoseMode::FingerPoke);
@@ -2625,7 +2700,7 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 		bool bIsTopAccessible = bIsTopFace && IsBlockTopFaceAccessible(HoveredBlock, InteractionConfig.VerticalGrabMinClearance);
 
 		FVector ProtrudingPos, ProtrudingNorm;
-		bool bIsProtruding = IsBlockProtruding(HoveredBlock, ProtrudingPos, ProtrudingNorm);
+		bool bIsProtruding = IsHoveredFaceProtruding(HoveredBlock, LastHitLocation, ProtrudingPos, ProtrudingNorm);
 
 		if (bIsTopAccessible)
 		{
@@ -2639,7 +2714,19 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 				GrabbedBlock->BlockMesh->WakeRigidBody();
 			}
 			CraneInitialGrabPos = LastHitLocation;
-			CraneCurrentZ = GrabbedBlock->GetActorLocation().Z + InteractionConfig.CraneLiftElevation;
+
+			// Initialize crane elevation smoothly based on initial grab location
+			TArray<AActor*> AllBlocks;
+			UGameplayStatics::GetAllActorsOfClass(GetWorld(), AYenkaBlock::StaticClass(), AllBlocks);
+			float HighestBlockZ = 90.0f;
+			for (AActor* Actor : AllBlocks)
+			{
+				if (Actor != GrabbedBlock)
+				{
+					HighestBlockZ = FMath::Max(HighestBlockZ, Actor->GetActorLocation().Z);
+				}
+			}
+			CraneCurrentZ = CalculateCraneTargetZ(LastHitLocation, HighestBlockZ);
 			CraneTargetRotation = GrabbedBlock->GetActorRotation();
 
 			VirtualHand->SetHandPoseMode(EHandPoseMode::VerticalGrab);
@@ -2654,7 +2741,7 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 		else if (bIsProtruding && !bIsTopFace)
 		{
 			// ==========================================
-			// 2. INITIATE PULL (Pieza sobresaliente)
+			// 2. INITIATE PULL (El lado apuntado sobresale)
 			// ==========================================
 			GrabbedBlock = HoveredBlock;
 			if (GrabbedBlock && GrabbedBlock->BlockMesh)
@@ -2693,7 +2780,7 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 		else if (!bIsTopFace)
 		{
 			// ==========================================
-			// 3. INITIATE PUSH (Pieza enrasada o metida)
+			// 3. INITIATE PUSH (El lado apuntado está enrasado o metido)
 			// ==========================================
 			bIsPushingBlock = true;
 			LockedPushBlock = HoveredBlock;

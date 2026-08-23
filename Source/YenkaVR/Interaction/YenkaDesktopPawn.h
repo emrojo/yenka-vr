@@ -18,13 +18,16 @@ struct FYenkaInteractionConfig
 	float VerticalGrabMinClearance = 0.5f; // cm (space required on both sides along long axis)
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Config")
-	float ProtrusionThreshold = 0.4f; // cm (distance required to consider a block protruding)
+	float ProtrusionThreshold = 0.4f; // cm (distance required to consider a specific side protruding)
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Config")
-	float CraneLiftElevation = 3.0f; // cm
+	float CraneTableClearanceHeight = 5.0f; // cm (elevation above table surface when outside tower)
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Config")
-	float CraneVerticalSensitivity = 1.0f;
+	float CraneTowerTopClearanceHeight = 3.0f; // cm (elevation above highest tower block when over tower)
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Config")
+	float CraneTransitionRadius = 16.0f; // cm (radial distance over which elevation is smoothly interpolated)
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Config")
 	float CraneTopSnapRadius = 8.0f; // cm
@@ -143,6 +146,8 @@ protected:
 	FVector GetBlockStandOffLocation(const AYenkaBlock* Block, const FVector& ViewOrigin, FVector& OutApproachNormal, float Clearance = 8.0f, const FVector& LocalFingertipOffset = FVector(6.0f, -1.5f, 0.0f)) const;
 	FVector GetBlockChosenFacePos(const AYenkaBlock* Block, const FVector& ApproachNormal) const;
 	bool IsBlockProtruding(const AYenkaBlock* Block, FVector& OutProtrudingEdgePos, FVector& OutProtrudingNormal) const;
+	bool IsHoveredFaceProtruding(const AYenkaBlock* Block, const FVector& HitLocation, FVector& OutProtrudingPos, FVector& OutProtrudingNorm) const;
+	float CalculateCraneTargetZ(const FVector& TargetXY, float HighestBlockZ) const;
 	void OnMouseX(float Val);
 	void OnMouseY(float Val);
 	void OnMouseWheel(float Val);
