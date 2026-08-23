@@ -549,7 +549,7 @@ void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
 			FString Line1 = FString::Printf(TEXT("=== 🖐️ MODO EDICIÓN DE FALANGES ACTIVO [Pulsa F4 o K para Salir] ==="));
 			FString Line2 = FString::Printf(TEXT("🎯 SELECCIÓN: [ DEDO (%d): %s | FALANGE (%d): %s ]  (Teclas: 1-5 Dedo, 0 Todos | Z: Base, X: Media, C: Punta, V: Todas)"),
 				SelectedFinger, ActiveFingerName, SelectedPhalanx, ActivePhalanxName);
-			FString Line3 = FString::Printf(TEXT("⌨️ ARTICULACIÓN: [ Flechas Arriba/Abajo: Flexión +-5° | Izq/Der: Lateral +-5° | Espacio: Reset Falange ]"));
+			FString Line3 = FString::Printf(TEXT("⌨️ ARTICULACIÓN: [ Flecha Arriba: EXTENDER -5° | Flecha Abajo: DOBLAR +5° | Izq/Der: Lateral +-5° | Espacio: Reset ]"));
 			FString Line4 = FString::Printf(TEXT("📊 PULGAR: [%+.0f°/%+.0f°, %+.0f°/%+.0f°, %+.0f°/%+.0f°] | ÍNDICE: [%+.0f°/%+.0f°, %+.0f°/%+.0f°, %+.0f°/%+.0f°]"),
 				Thumb.Proximal.FlexionAngle, Thumb.Proximal.LateralAngle, Thumb.Intermediate.FlexionAngle, Thumb.Intermediate.LateralAngle, Thumb.Distal.FlexionAngle, Thumb.Distal.LateralAngle,
 				Index.Proximal.FlexionAngle, Index.Proximal.LateralAngle, Index.Intermediate.FlexionAngle, Index.Intermediate.LateralAngle, Index.Distal.FlexionAngle, Index.Distal.LateralAngle);

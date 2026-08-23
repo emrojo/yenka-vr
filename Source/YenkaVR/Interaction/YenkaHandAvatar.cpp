@@ -329,8 +329,10 @@ void AYenkaHandAvatar::UpdateFingerPoses(float GripStrength)
 
 static void ModifyPhalanxData(FPhalanxData& Data, float DeltaFlexion, float DeltaLateral)
 {
-	Data.FlexionAngle = FMath::Clamp(Data.FlexionAngle + DeltaFlexion, -20.0f, 90.0f);
-	Data.LateralAngle = FMath::Clamp(Data.LateralAngle + DeltaLateral, -45.0f, 45.0f);
+	// Flexion / Extension: -90 deg (full backward hyperextension) to +120 deg (full inward curl)
+	// Lateral spread: -60 deg to +60 deg
+	Data.FlexionAngle = FMath::Clamp(Data.FlexionAngle + DeltaFlexion, -90.0f, 120.0f);
+	Data.LateralAngle = FMath::Clamp(Data.LateralAngle + DeltaLateral, -60.0f, 60.0f);
 }
 
 static void ModifyFingerPhalanges(FFingerPhalanges& Finger, int32 PhalanxIndex, float DeltaFlexion, float DeltaLateral)
@@ -432,32 +434,12 @@ void AYenkaHandAvatar::ResetAllPhalanges()
 void AYenkaHandAvatar::LoadPresetPose(EHandPoseMode Mode)
 {
 	CurrentPoseMode = Mode;
-	if (Mode == EHandPoseMode::FingerPoke)
-	{
-		// Index straight, other 4 closed in fist
-		ThumbPhalanges = { {45.0f, -40.0f}, {60.0f, 0.0f}, {40.0f, 0.0f} };
-		IndexPhalanges = { {0.0f, 0.0f}, {0.0f, 0.0f}, {0.0f, 0.0f} };
-		MiddlePhalanges = { {80.0f, 0.0f}, {85.0f, 0.0f}, {75.0f, 0.0f} };
-		RingPhalanges = { {80.0f, 0.0f}, {85.0f, 0.0f}, {75.0f, 0.0f} };
-		PinkyPhalanges = { {80.0f, 0.0f}, {85.0f, 0.0f}, {75.0f, 0.0f} };
-	}
-	else if (Mode == EHandPoseMode::GrabPinch)
-	{
-		// Thumb and index form pinch caliper
-		ThumbPhalanges = { {20.0f, 32.0f}, {25.0f, 0.0f}, {15.0f, 0.0f} };
-		IndexPhalanges = { {25.0f, -20.0f}, {35.0f, 0.0f}, {20.0f, 0.0f} };
-		MiddlePhalanges = { {75.0f, 0.0f}, {80.0f, 0.0f}, {70.0f, 0.0f} };
-		RingPhalanges = { {80.0f, 0.0f}, {85.0f, 0.0f}, {75.0f, 0.0f} };
-		PinkyPhalanges = { {80.0f, 0.0f}, {85.0f, 0.0f}, {75.0f, 0.0f} };
-	}
-	else // OpenHand
-	{
-		ThumbPhalanges = { {10.0f, -30.0f}, {10.0f, 0.0f}, {5.0f, 0.0f} };
-		IndexPhalanges = { {0.0f, -5.0f}, {0.0f, 0.0f}, {0.0f, 0.0f} };
-		MiddlePhalanges = { {0.0f, 0.0f}, {0.0f, 0.0f}, {0.0f, 0.0f} };
-		RingPhalanges = { {0.0f, 5.0f}, {0.0f, 0.0f}, {0.0f, 0.0f} };
-		PinkyPhalanges = { {0.0f, 10.0f}, {0.0f, 0.0f}, {0.0f, 0.0f} };
-	}
+	// All gesture poses reset to a completely flat, straight, extended hand (0 deg base)
+	ThumbPhalanges = FFingerPhalanges();
+	IndexPhalanges = FFingerPhalanges();
+	MiddlePhalanges = FFingerPhalanges();
+	RingPhalanges = FFingerPhalanges();
+	PinkyPhalanges = FFingerPhalanges();
 	ApplyPhalanxTransforms();
 }
 
