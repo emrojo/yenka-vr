@@ -114,19 +114,35 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		PlayerInputComponent->BindKey(EKeys::F, IE_Pressed, this, &AYenkaDesktopPawn::OnTogglePokeMode);
 		PlayerInputComponent->BindKey(EKeys::M, IE_Pressed, this, &AYenkaDesktopPawn::OnToggleScenarioMenu);
 
-		// Hand Calibration Hotkeys (Live in-game tuning)
+		// Hand Calibration Hotkeys (Live in-game tuning via NumPad and Letters)
+		PlayerInputComponent->BindKey(EKeys::NumPadFour, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYawMinus);
+		PlayerInputComponent->BindKey(EKeys::NumPadSix, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYawPlus);
+		PlayerInputComponent->BindKey(EKeys::NumPadEight, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibPitchPlus);
+		PlayerInputComponent->BindKey(EKeys::NumPadTwo, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibPitchMinus);
+		PlayerInputComponent->BindKey(EKeys::NumPadSeven, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibRollMinus);
+		PlayerInputComponent->BindKey(EKeys::NumPadNine, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibRollPlus);
+		PlayerInputComponent->BindKey(EKeys::NumPadFive, IE_Pressed, this, &AYenkaDesktopPawn::QuickRotateYaw90);
+		PlayerInputComponent->BindKey(EKeys::NumPadOne, IE_Pressed, this, &AYenkaDesktopPawn::QuickRotateRoll90);
+		PlayerInputComponent->BindKey(EKeys::NumPadThree, IE_Pressed, this, &AYenkaDesktopPawn::QuickRotatePitch90);
+		PlayerInputComponent->BindKey(EKeys::NumPadZero, IE_Pressed, this, &AYenkaDesktopPawn::ResetHandCalibration);
+		PlayerInputComponent->BindKey(EKeys::Add, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibZPlus);
+		PlayerInputComponent->BindKey(EKeys::Subtract, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibZMinus);
+
+		// Alternative Letter Key Bindings
+		PlayerInputComponent->BindKey(EKeys::Y, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYawPlus);
+		PlayerInputComponent->BindKey(EKeys::H, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYawMinus);
+		PlayerInputComponent->BindKey(EKeys::T, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibPitchPlus);
+		PlayerInputComponent->BindKey(EKeys::G, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibPitchMinus);
+		PlayerInputComponent->BindKey(EKeys::B, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibRollMinus);
+		PlayerInputComponent->BindKey(EKeys::N, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibRollPlus);
+		PlayerInputComponent->BindKey(EKeys::X, IE_Pressed, this, &AYenkaDesktopPawn::QuickRotateYaw90);
+		PlayerInputComponent->BindKey(EKeys::Z, IE_Pressed, this, &AYenkaDesktopPawn::QuickRotateRoll90);
 		PlayerInputComponent->BindKey(EKeys::I, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibXPlus);
 		PlayerInputComponent->BindKey(EKeys::K, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibXMinus);
 		PlayerInputComponent->BindKey(EKeys::J, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYMinus);
 		PlayerInputComponent->BindKey(EKeys::L, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYPlus);
 		PlayerInputComponent->BindKey(EKeys::U, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibZPlus);
 		PlayerInputComponent->BindKey(EKeys::O, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibZMinus);
-		PlayerInputComponent->BindKey(EKeys::LeftBracket, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibPitchMinus);
-		PlayerInputComponent->BindKey(EKeys::RightBracket, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibPitchPlus);
-		PlayerInputComponent->BindKey(EKeys::Semicolon, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYawMinus);
-		PlayerInputComponent->BindKey(EKeys::Quote, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYawPlus);
-		PlayerInputComponent->BindKey(EKeys::Comma, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibRollMinus);
-		PlayerInputComponent->BindKey(EKeys::Period, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibRollPlus);
 		PlayerInputComponent->BindKey(EKeys::R, IE_Pressed, this, &AYenkaDesktopPawn::ResetHandCalibration);
 
 		// Scenario Theme Hotkeys (1 to 7)
@@ -137,14 +153,6 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		PlayerInputComponent->BindKey(EKeys::Five, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario5);
 		PlayerInputComponent->BindKey(EKeys::Six, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario6);
 		PlayerInputComponent->BindKey(EKeys::Seven, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario7);
-
-		PlayerInputComponent->BindKey(EKeys::NumPadOne, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario1);
-		PlayerInputComponent->BindKey(EKeys::NumPadTwo, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario2);
-		PlayerInputComponent->BindKey(EKeys::NumPadThree, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario3);
-		PlayerInputComponent->BindKey(EKeys::NumPadFour, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario4);
-		PlayerInputComponent->BindKey(EKeys::NumPadFive, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario5);
-		PlayerInputComponent->BindKey(EKeys::NumPadSix, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario6);
-		PlayerInputComponent->BindKey(EKeys::NumPadSeven, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario7);
 
 		PlayerInputComponent->BindAxisKey(EKeys::MouseX, this, &AYenkaDesktopPawn::OnMouseX);
 		PlayerInputComponent->BindAxisKey(EKeys::MouseY, this, &AYenkaDesktopPawn::OnMouseY);
@@ -205,22 +213,43 @@ void AYenkaDesktopPawn::AdjustHandOffsetZ(float Delta)
 
 void AYenkaDesktopPawn::AdjustHandPitch(float Delta)
 {
-	GrabHandRotationOffset.Pitch += Delta;
-	PokeHandRotationOffset.Pitch += Delta;
+	GrabHandRotationOffset.Pitch = FRotator::NormalizeAxis(GrabHandRotationOffset.Pitch + Delta);
+	PokeHandRotationOffset.Pitch = GrabHandRotationOffset.Pitch;
 	DisplayHandCalibrationOnScreen();
 }
 
 void AYenkaDesktopPawn::AdjustHandYaw(float Delta)
 {
-	GrabHandRotationOffset.Yaw += Delta;
-	PokeHandRotationOffset.Yaw += Delta;
+	GrabHandRotationOffset.Yaw = FRotator::NormalizeAxis(GrabHandRotationOffset.Yaw + Delta);
+	PokeHandRotationOffset.Yaw = GrabHandRotationOffset.Yaw;
 	DisplayHandCalibrationOnScreen();
 }
 
 void AYenkaDesktopPawn::AdjustHandRoll(float Delta)
 {
-	GrabHandRotationOffset.Roll += Delta;
-	PokeHandRotationOffset.Roll += Delta;
+	GrabHandRotationOffset.Roll = FRotator::NormalizeAxis(GrabHandRotationOffset.Roll + Delta);
+	PokeHandRotationOffset.Roll = GrabHandRotationOffset.Roll;
+	DisplayHandCalibrationOnScreen();
+}
+
+void AYenkaDesktopPawn::QuickRotateYaw90()
+{
+	GrabHandRotationOffset.Yaw = FRotator::NormalizeAxis(GrabHandRotationOffset.Yaw + 90.0f);
+	PokeHandRotationOffset.Yaw = GrabHandRotationOffset.Yaw;
+	DisplayHandCalibrationOnScreen();
+}
+
+void AYenkaDesktopPawn::QuickRotateRoll90()
+{
+	GrabHandRotationOffset.Roll = FRotator::NormalizeAxis(GrabHandRotationOffset.Roll + 90.0f);
+	PokeHandRotationOffset.Roll = GrabHandRotationOffset.Roll;
+	DisplayHandCalibrationOnScreen();
+}
+
+void AYenkaDesktopPawn::QuickRotatePitch90()
+{
+	GrabHandRotationOffset.Pitch = FRotator::NormalizeAxis(GrabHandRotationOffset.Pitch + 90.0f);
+	PokeHandRotationOffset.Pitch = GrabHandRotationOffset.Pitch;
 	DisplayHandCalibrationOnScreen();
 }
 
@@ -237,10 +266,10 @@ void AYenkaDesktopPawn::DisplayHandCalibrationOnScreen()
 {
 	if (GEngine)
 	{
-		FString Msg = FString::Printf(TEXT("Hand Offset: [X: %+.2f cm, Y: %+.2f cm, Z: %+.2f cm] | Rot: [P: %+.1f deg, Y: %+.1f deg, R: %+.1f deg] | Keys: I/K (X), J/L (Y), U/O (Z), [/] (Pitch), ;/' (Yaw), ,/. (Roll), R (Reset)"),
-			GrabHandLocationOffset.X, GrabHandLocationOffset.Y, GrabHandLocationOffset.Z,
-			GrabHandRotationOffset.Pitch, GrabHandRotationOffset.Yaw, GrabHandRotationOffset.Roll);
-		GEngine->AddOnScreenDebugMessage(1001, 3.0f, FColor::Cyan, Msg);
+		FString Msg = FString::Printf(TEXT("✋ Hand: ROT [Yaw: %+.0f deg, Pitch: %+.0f deg, Roll(Muneca): %+.0f deg] | POS [X: %+.1f, Y: %+.1f, Z: %+.1f cm]\nNumPad: 4/6(Yaw) 8/2(Pitch) 7/9(Roll) 5(+90 Yaw) 1/3(+90 Roll/Pitch) 0(Reset) | Teclas: Y/H(Yaw) T/G(Pitch) B/N(Roll) X(+90 Yaw) Z(+90 Roll)"),
+			GrabHandRotationOffset.Yaw, GrabHandRotationOffset.Pitch, GrabHandRotationOffset.Roll,
+			GrabHandLocationOffset.X, GrabHandLocationOffset.Y, GrabHandLocationOffset.Z);
+		GEngine->AddOnScreenDebugMessage(1001, 3.5f, FColor::Cyan, Msg);
 	}
 }
 

@@ -112,21 +112,25 @@ protected:
 	void AdjustHandPitch(float Delta);
 	void AdjustHandYaw(float Delta);
 	void AdjustHandRoll(float Delta);
+	void QuickRotateYaw90();
+	void QuickRotateRoll90();
+	void QuickRotatePitch90();
 	void ResetHandCalibration();
 	void DisplayHandCalibrationOnScreen();
 
-	void OnCalibXPlus() { AdjustHandOffsetX(+0.25f); }
-	void OnCalibXMinus() { AdjustHandOffsetX(-0.25f); }
-	void OnCalibYMinus() { AdjustHandOffsetY(-0.25f); }
-	void OnCalibYPlus() { AdjustHandOffsetY(+0.25f); }
-	void OnCalibZPlus() { AdjustHandOffsetZ(+0.25f); }
-	void OnCalibZMinus() { AdjustHandOffsetZ(-0.25f); }
-	void OnCalibPitchMinus() { AdjustHandPitch(-2.5f); }
-	void OnCalibPitchPlus() { AdjustHandPitch(+2.5f); }
-	void OnCalibYawMinus() { AdjustHandYaw(-2.5f); }
-	void OnCalibYawPlus() { AdjustHandYaw(+2.5f); }
-	void OnCalibRollMinus() { AdjustHandRoll(-2.5f); }
-	void OnCalibRollPlus() { AdjustHandRoll(+2.5f); }
+	void OnCalibXPlus() { AdjustHandOffsetX(+0.5f); }
+	void OnCalibXMinus() { AdjustHandOffsetX(-0.5f); }
+	void OnCalibYMinus() { AdjustHandOffsetY(-0.5f); }
+	void OnCalibYPlus() { AdjustHandOffsetY(+0.5f); }
+	void OnCalibZPlus() { AdjustHandOffsetZ(+0.5f); }
+	void OnCalibZMinus() { AdjustHandOffsetZ(-0.5f); }
+
+	void OnCalibPitchMinus() { AdjustHandPitch(-15.0f); }
+	void OnCalibPitchPlus() { AdjustHandPitch(+15.0f); }
+	void OnCalibYawMinus() { AdjustHandYaw(-15.0f); }
+	void OnCalibYawPlus() { AdjustHandYaw(+15.0f); }
+	void OnCalibRollMinus() { AdjustHandRoll(-15.0f); }
+	void OnCalibRollPlus() { AdjustHandRoll(+15.0f); }
 
 	void OnSelectScenario1() { SelectScenarioTheme(0); }
 	void OnSelectScenario2() { SelectScenarioTheme(1); }
