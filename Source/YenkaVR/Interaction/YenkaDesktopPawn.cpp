@@ -2193,18 +2193,37 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 	FVector WorldLocation, WorldDirection;
 	if (PC->DeprojectMousePositionToWorld(WorldLocation, WorldDirection))
 	{
-		// 1. If currently dragging a block with Physics Handle
+		// 1. If currently dragging a block with Physics Handle (Pull Mode)
 		if (GrabbedBlock && VirtualHand && VirtualHand->PhysicsHandle)
 		{
-			FVector DragTargetLocation = WorldLocation + (WorldDirection * GrabDistance);
-			VirtualHand->PhysicsHandle->SetTargetLocation(DragTargetLocation);
-			FRotator BaseRot = GetHorizontalFacingRotation(DragTargetLocation);
-			BaseRot.Pitch = 0.0f;
-			BaseRot.Roll = 0.0f;
-			FQuat HandQuat = BaseRot.Quaternion() * GrabHandRotationOffset.Quaternion();
+			// Raycast mouse against the horizontal plane at Z = LockedPullPlaneZ
+			FVector PlaneIntersection = LockedPullInitialPos;
+			if (FMath::Abs(WorldDirection.Z) > 0.001f)
+			{
+				float T = (LockedPullPlaneZ - WorldLocation.Z) / WorldDirection.Z;
+				if (T > 0.0f)
+				{
+					PlaneIntersection = WorldLocation + (WorldDirection * T);
+				}
+			}
+
+			// Project plane displacement onto the outward perpendicular direction (LockedPullDirection)
+			FVector DiffFromInitial = PlaneIntersection - LockedPullInitialPos;
+			DiffFromInitial.Z = 0.0f;
+			float OutwardDisplacement = FVector::DotProduct(DiffFromInitial, LockedPullDirection);
+
+			// Clamp advance: allow pulling outward up to 25.0 cm, no pushing inward past initial grab pos (-0.5cm tolerance)
+			CurrentPullOutwardAdvance = FMath::Clamp(OutwardDisplacement, -0.5f, 25.0f);
+
+			FVector TargetLocation = LockedPullInitialPos + (LockedPullDirection * CurrentPullOutwardAdvance);
+			TargetLocation.Z = LockedPullPlaneZ; // STRICTLY HORIZONTAL - NO DOWNWARD OR VERTICAL SAGGING!
+
+			VirtualHand->PhysicsHandle->SetTargetLocationAndRotation(TargetLocation, GrabbedBlock->GetActorRotation());
+
+			// Maintain the locked hand rotation (no spinning or snapping while pulling)
 			FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
-			FVector HandPos = DragTargetLocation - HandQuat.RotateVector(LocalOffset);
-			FTransform HandTarget(HandQuat, HandPos);
+			FVector HandPos = TargetLocation - LockedPullHandQuat.RotateVector(LocalOffset);
+			FTransform HandTarget(LockedPullHandQuat, HandPos);
 			VirtualHand->SetHandPoseMode(EHandPoseMode::GrabPinch);
 			VirtualHand->SetTargetHandTransform(HandTarget, 1.0f);
 			return;
@@ -2521,36 +2540,37 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 			return;
 		}
 
-		if (PC)
-		{
-			FVector WorldLocation, WorldDirection;
-			if (PC->DeprojectMousePositionToWorld(WorldLocation, WorldDirection))
-			{
-				GrabDistance = FMath::Clamp((ProtrudingPos - WorldLocation).Size(), 20.0f, 250.0f);
-			}
-		}
-
 		GrabbedBlock = HoveredBlock;
 		if (GrabbedBlock && GrabbedBlock->BlockMesh)
 		{
 			GrabbedBlock->BlockMesh->WakeRigidBody();
 		}
 
+		// Ensure strictly horizontal direction perpendicular to the tower face
+		ProtrudingNorm.Z = 0.0f;
+		LockedPullDirection = ProtrudingNorm.GetSafeNormal();
+		LockedPullPlaneZ = GrabbedBlock->GetActorLocation().Z;
+		LockedPullInitialPos = ProtrudingPos;
+		LockedPullInitialPos.Z = LockedPullPlaneZ;
+		CurrentPullOutwardAdvance = 0.0f;
+
+		// Lock hand rotation along the block's outward normal with GrabHandRotationOffset
+		FRotator BaseRot = (-LockedPullDirection).Rotation();
+		BaseRot.Pitch = 0.0f;
+		BaseRot.Roll = 0.0f;
+		LockedPullHandQuat = BaseRot.Quaternion() * GrabHandRotationOffset.Quaternion();
+
 		VirtualHand->SetHandPoseMode(EHandPoseMode::GrabPinch);
 		VirtualHand->PhysicsHandle->GrabComponentAtLocationWithRotation(
 			GrabbedBlock->BlockMesh,
 			NAME_None,
-			ProtrudingPos,
+			LockedPullInitialPos,
 			GrabbedBlock->GetActorRotation()
 		);
-		ProtrudingPos.Z = GrabbedBlock->GetActorLocation().Z;
-		FRotator BaseRot = (-ProtrudingNorm).Rotation();
-		BaseRot.Pitch = 0.0f;
-		BaseRot.Roll = 0.0f;
-		FQuat HandQuat = BaseRot.Quaternion() * GrabHandRotationOffset.Quaternion();
+
 		FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
-		FVector HandPos = ProtrudingPos - HandQuat.RotateVector(LocalOffset);
-		FTransform HandTarget(HandQuat, HandPos);
+		FVector HandPos = LockedPullInitialPos - LockedPullHandQuat.RotateVector(LocalOffset);
+		FTransform HandTarget(LockedPullHandQuat, HandPos);
 		VirtualHand->SetTargetHandTransform(HandTarget, 1.0f);
 	}
 }
@@ -2577,9 +2597,10 @@ void AYenkaDesktopPawn::OnPrimaryClickReleased()
 			VirtualHand->PhysicsHandle->ReleaseComponent();
 		}
 		GrabbedBlock = nullptr;
+		CurrentPullOutwardAdvance = 0.0f;
 		if (VirtualHand)
 		{
-			VirtualHand->SetHandPoseMode(bIsPokeModeActive ? EHandPoseMode::FingerPoke : EHandPoseMode::OpenHand);
+			VirtualHand->SetHandPoseMode(bForceGesturePreview ? ActiveGesturePreview : (bIsPokeModeActive ? EHandPoseMode::FingerPoke : EHandPoseMode::OpenHand));
 			FRotator HandRot = GetHorizontalFacingRotation(LastHitLocation);
 			FTransform HandTarget(HandRot.Quaternion(), LastHitLocation);
 			VirtualHand->SetTargetHandTransform(HandTarget, 0.0f);

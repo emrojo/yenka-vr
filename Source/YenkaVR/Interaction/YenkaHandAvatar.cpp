@@ -200,6 +200,11 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 	}
 
 	PhysicsHandle = CreateDefaultSubobject<UPhysicsHandleComponent>(TEXT("PhysicsHandle"));
+	PhysicsHandle->LinearDamping = 50.0f;
+	PhysicsHandle->LinearStiffness = 2500.0f;
+	PhysicsHandle->AngularDamping = 50.0f;
+	PhysicsHandle->AngularStiffness = 2500.0f;
+	PhysicsHandle->InterpolationSpeed = 50.0f;
 
 	// Ultra-realistic Human Skin PBR & Subsurface Scattering defaults
 	SkinTone = FLinearColor(0.86f, 0.67f, 0.57f, 1.0f); // Warm natural melanin skin tone

@@ -63,6 +63,21 @@ protected:
 	FVector LastHitNormal;
 	float LastPrimaryClickTime;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Pull")
+	FVector LockedPullInitialPos;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Pull")
+	FVector LockedPullDirection;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Pull")
+	FQuat LockedPullHandQuat;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Pull")
+	float LockedPullPlaneZ;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Pull")
+	float CurrentPullOutwardAdvance;
+
 	static constexpr float HAND_LENGTH = 11.0f;
 	static constexpr float PROXIMITY_THRESHOLD = 2.0f * HAND_LENGTH;
 	static constexpr float TOWER_BASE_RADIUS = 3.75f;
