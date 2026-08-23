@@ -1,29 +1,63 @@
 {
 	"transforms": [
 		{
-			"transformName": "LightPullPositioning-1",
-			"locationOffset": {
+			"transformName": "PULLNUMBER2",
+			"locationOffset":
+			{
+				"x": 0,
+				"y": 0,
+				"z": 0
+			},
+			"rotationOffset":
+			{
+				"pitch": 0,
+				"yaw": 180,
+				"roll": 0
+			}
+		},
+		{
+			"transformName": "LightPullPositioning-2",
+			"locationOffset":
+			{
 				"x": -5.5,
 				"y": 8.5,
 				"z": -0.5
 			},
-			"rotationOffset": {
-				"pitch": 90,
-				"yaw": -90,
+			"rotationOffset":
+			{
+				"pitch": 45,
+				"yaw": 90,
 				"roll": 0
 			}
 		},
 		{
 			"transformName": "PointPositioning-1",
-			"locationOffset": {
+			"locationOffset":
+			{
 				"x": -5.5,
 				"y": 8.5,
-				"z": -0.5
+				"z": -2.5
 			},
-			"rotationOffset": {
+			"rotationOffset":
+			{
 				"pitch": 0,
 				"yaw": -90,
-				"roll": 0
+				"roll": -30
+			}
+		},
+		{
+			"transformName": "LightPullPositioning-1",
+			"locationOffset":
+			{
+				"x": -5,
+				"y": 4,
+				"z": -1.5
+			},
+			"rotationOffset":
+			{
+				"pitch": 90,
+				"yaw": -135,
+				"roll": -90
 			}
 		}
 	]

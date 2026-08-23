@@ -1,9 +1,9 @@
 # System Requirements Specification - YenkaVR
 
 **Project:** YenkaVR  
-**Version:** 1.3.0  
+**Version:** 1.4.0  
 **Status:** Approved  
-**Last Updated:** 2026-08-22  
+**Last Updated:** 2026-08-23  
 
 ---
 
@@ -23,9 +23,10 @@ This section maintains the immutable history of all requirements defined and agr
 | **v1.1.0** | 2026-08-22 | User & Antigravity | Physics stabilization via $0.3\text{ mm}$ lateral micro-clearance, Chaos solver configuration (16 position iterations), extraction via `PhysicsHandle`, dynamic procedural wood shaders for blocks and table, articulated 3D hand avatar with grasping kinematics, index finger poke mode, and strictly horizontal hand alignment. |
 | **v1.2.0** | 2026-08-22 | User & Antigravity | 7-color balanced wood-stain palette (`[REQ-ART-03]`), protrusion-only selective grabbing (`[REQ-CROSS-09]`), organic placement error ($\pm 0.2\text{ cm}$) with $\le 1.0\text{ cm}$ safety clamp (`[REQ-PHYS-05]`), sequential top-down FIFO construction with 1.0cm drop clearance and 0.05s interval (`[REQ-PHYS-06]`), non-slip table base (`[REQ-PHYS-07]`), high-power push mechanics (`[REQ-CROSS-10]`), and double-click strike tap mechanics (`[REQ-CROSS-12]`). |
 | **v1.3.0** | 2026-08-22 | User & Antigravity | Standardized tabletop height to 90.0cm above floor level (`[REQ-PHYS-08]`), and implemented anatomical index-thumb caliper pinch grip for protruding block extraction (`[REQ-CROSS-13]`). |
+| **v1.4.0** | 2026-08-23 | User & Antigravity | 15-phalanx anatomical forward kinematics with stationary camera-independent edit mode (`[REQ-CROSS-14]`), dynamic JSON gesture library ingestion (`[REQ-CROSS-15]`), live file watcher for real-time JSON hot-reloading (`[REQ-CROSS-16]`), and decoupled push block lock release mechanics (`[REQ-CROSS-17]`). |
 
 > [!NOTE]
-> Any new requirements or modifications agreed upon in the future must be added to this table with an incremental version tag (`v1.3.0`, etc.) and referenced in [`docs/DECISION_LOG.md`](DECISION_LOG.md).
+> Any new requirements or modifications agreed upon in the future must be added to this table with an incremental version tag (`v1.4.0`, etc.) and referenced in [`docs/DECISION_LOG.md`](DECISION_LOG.md).
 
 ---
 
@@ -141,6 +142,19 @@ This section maintains the immutable history of all requirements defined and agr
     * Index finger curves on the right lateral side ($Y = +1.25\text{ cm}$).
     * Thumb extends on the left lateral side ($Y = -1.25\text{ cm}$).
     * The two fingertips clamp directly onto the opposite lateral extremities ($2.5\text{ cm}$ piece width) of the protruding block, while the middle, ring, and pinky fingers remain cleanly tucked into the palm.
+* **`[REQ-CROSS-14]` Anatomical Phalanx Forward Kinematics & Stationary Viewport:**
+  * Real-time 3-axis (Pitch, Yaw, Roll) rotation control across all 15 hand phalanges (Thumb, Index, Middle, Ring, Pinky with Proximal, Intermediate, Distal bones) utilizing forward kinematics evaluated in component space.
+  * In Phalanx Edit Mode (`F4` / `K`), the hand avatar is anchored stationary in 3D world space at the camera view upon mode entry, decoupling viewpoint controls (orbit, pan, scroll-wheel zoom) so players can navigate and inspect joint modifications without displacing the hand.
+* **`[REQ-CROSS-15]` Dynamic JSON-Backed Gesture Library & Default Posture Ingestion:**
+  * Custom gesture libraries serialized to and loaded from `Saved/HandGestures/CustomGestures.json`.
+  * Preset postures (`FingerPoke`, `GrabPinch`, `OpenHand`) dynamically ingest their baseline joint transforms from disk, allowing real-time personalization of standard gameplay poses.
+* **`[REQ-CROSS-16]` Real-Time Live File Watcher & Instant JSON Transform Synchronization:**
+  * Continuous timestamp monitoring (`CheckForLiveJsonModifications`) for `Saved/HandTransforms/CustomTransforms.json` and `Saved/HandGestures/CustomGestures.json`.
+  * External file saves (`Ctrl+S`) automatically trigger hot-reloading and instantaneous viewport synchronization in that same frame without requiring game restarts or manual reload keys.
+  * Rapid wrist orientation adjustments via hotkeys (`C` for +90° Yaw, `X` for +90° Pitch, `Z` for +90° Roll) using quaternion composition with on-screen HUD feedback.
+* **`[REQ-CROSS-17]` Decoupled Push Block Locking & Immediate Release:**
+  * Active block pushing is locked to the target block on primary click press (`LockedPushBlock`), preventing cursor hover drift across other blocks during continuous interaction.
+  * On mouse release, `LockedPushBlock` is immediately cleared and physical linear velocity is stopped, enabling instant fluid transition to push adjacent or subsequent blocks.
 
 ---
 
@@ -223,6 +237,10 @@ This section maintains the immutable history of all requirements defined and agr
 | `[REQ-CROSS-09]`| Protrusion-Only Selective Grabbing | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
 | `[REQ-CROSS-10]`| High-Power Active Push (18.0 - 24.0 cm/s)| `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
 | `[REQ-CROSS-13]`| Anatomical Caliper Pinch Grip          | `Source/YenkaVR/Interaction/YenkaHandAvatar.cpp` | Implemented |
+| `[REQ-CROSS-14]`| 15-Phalanx Forward Kinematics & Fixed Viewport | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
+| `[REQ-CROSS-15]`| Dynamic JSON Gesture Ingestion        | `Source/YenkaVR/Interaction/YenkaHandAvatar.cpp` | Implemented |
+| `[REQ-CROSS-16]`| Live File Watcher & Instant JSON Sync  | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
+| `[REQ-CROSS-17]`| Decoupled Push Block Lock Release     | `Source/YenkaVR/Interaction/YenkaDesktopPawn.cpp` | Implemented |
 | `[REQ-ART-01]`  | Photorealistic Wood Shaders | `Source/YenkaVR/Physics/YenkaBlock.cpp` | Implemented |
 | `[REQ-OPT-01]`  | PC VR 90FPS & Quest 2 Lens Optimization | `Config/DefaultEngine.ini` | Implemented |
 | `[REQ-VR-01]`   | Parabolic Arc Teleportation & Snap Turn | `Source/YenkaVR/Interaction/YenkaVRPawn.cpp` | Implemented |

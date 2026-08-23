@@ -25,6 +25,11 @@ This document records all architectural, technical design, and mechanics decisio
 * [ADR-017: Standardized Table Surface Elevation ($90.0\text{ cm}$) Above Ground](#adr-017-standardized-table-surface-elevation-900text-cm-above-ground)
 * [ADR-018: Anatomical Index-Thumb Caliper Pinch Pose for Block Extraction](#adr-018-anatomical-index-thumb-caliper-pinch-pose-for-block-extraction)
 * [ADR-019: Photorealistic Human Skin Subsurface Scattering (SSS) & Skeletal Hand Architecture](#adr-019-photorealistic-human-skin-subsurface-scattering-sss--skeletal-hand-architecture)
+* [ADR-020: PC VR 90 FPS Optimization and Meta Quest 2 Lens Clarity Calibration](#adr-020-pc-vr-90-fps-optimization-and-meta-quest-2-lens-clarity-calibration)
+* [ADR-021: Parabolic Arc Teleportation ("Caña de Teletransporte") & Snap Turning in VR](#adr-021-parabolic-arc-teleportation-caña-de-teletransporte--snap-turning-in-vr)
+* [ADR-022: 15-Phalanx Forward Kinematics & Stationary Viewport Lock in Phalanx Edit Mode](#adr-022-15-phalanx-forward-kinematics--stationary-viewport-lock-in-phalanx-edit-mode)
+* [ADR-023: Dynamic JSON-Backed Gesture Library & Default Posture Ingestion](#adr-023-dynamic-json-backed-gesture-library--default-posture-ingestion)
+* [ADR-024: Real-Time Live File Watcher & Instant JSON Transform Synchronization](#adr-024-real-time-live-file-watcher--instant-json-transform-synchronization)
 
 ---
 
@@ -316,6 +321,44 @@ This document records all architectural, technical design, and mechanics decisio
 * **Consequences:**
   * *(Positive)* Completely eliminates VR motion sickness while enabling total, effortless 360-degree navigation around the Jenga table.
   * *(Positive)* Clear visual feedback with the parabolic arc and ground ring.
+
+---
+
+### ADR-022: 15-Phalanx Forward Kinematics & Stationary Viewport Lock in Phalanx Edit Mode
+* **Date:** 2026-08-23
+* **Status:** Accepted
+* **Context:** Fine-tuning hand postures required full articulation across 15 anatomical phalanges. However, when navigating the camera in edit mode (`F4`/`K`), camera movement previously displaced the hand away from view, preventing close-up inspection of modified joints.
+* **Decision:**
+  * Implement component-space Forward Kinematics evaluating local Pitch, Yaw, and Roll transforms across all 15 bones in `AYenkaHandAvatar::ApplyPhalanxTransforms`.
+  * Lock the 3D hand transform strictly stationary in world coordinates upon entering `bIsPhalanxEditMode` (`FixedPhalanxEditTransform`), decoupling orbital camera rotation, WASD panning, and mouse-wheel zoom so the player can zoom in and inspect finger modifications from any perspective.
+* **Consequences:**
+  * *(Positive)* Intuitive, comfortable 3D pose authoring with complete viewport navigation freedom.
+
+---
+
+### ADR-023: Dynamic JSON-Backed Gesture Library & Default Posture Ingestion
+* **Date:** 2026-08-23
+* **Status:** Accepted
+* **Context:** Hand poses were hardcoded in C++ source files, requiring code compilation to test new gestures or tweak default postures (`FingerPoke`, `GrabPinch`, `OpenHand`).
+* **Decision:**
+  * Persist hand postures to `Saved/HandGestures/CustomGestures.json` using `FJsonObjectConverter`.
+  * Update `AYenkaHandAvatar::LoadPresetPose` and `BeginPlay` to dynamically ingest joint angles from disk.
+* **Consequences:**
+  * *(Positive)* Posture presets are fully customizable and moddable without touching C++ code.
+
+---
+
+### ADR-024: Real-Time Live File Watcher & Instant JSON Transform Synchronization
+* **Date:** 2026-08-23
+* **Status:** Accepted
+* **Context:** Editing `CustomTransforms.json` or `CustomGestures.json` while the game was running did not update the active offsets because the in-memory array was cached and `BeginPlay` did not copy disk transforms directly into active pawn offsets.
+* **Decision:**
+  * Implement `CheckForLiveJsonModifications` checking `IFileManager::Get().GetTimeStamp` every frame in `AYenkaDesktopPawn::Tick`.
+  * External file saves (`Ctrl+S`) in any text editor trigger instantaneous hot-reloading and viewport update in the very same frame.
+  * Replace Euler addition with quaternion composition (`BaseRot.Quaternion() * GrabHandRotationOffset.Quaternion()`) in grab physics manipulation.
+  * Bind rapid 90-degree wrist rotation hotkeys (`C` for Yaw, `X` for Pitch, `Z` for Roll) with on-screen HUD feedback.
+* **Consequences:**
+  * *(Positive)* Zero-friction calibration workflow: change angles in JSON or via hotkeys and see immediate real-time visual results.
 
 ---
 
