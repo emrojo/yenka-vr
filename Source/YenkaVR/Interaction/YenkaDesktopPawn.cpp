@@ -50,6 +50,9 @@ AYenkaDesktopPawn::AYenkaDesktopPawn()
 	PokeStandbySeparation = 1.0f;
 	ActiveGesturePreview = EHandPoseMode::OpenHand;
 	bForceGesturePreview = false;
+	bIsPhalanxEditMode = false;
+	SelectedFinger = 2;  // Index Finger by default
+	SelectedPhalanx = 1; // Proximal Phalanx by default
 }
 
 #include "YenkaVR/Physics/YenkaTowerManager.h"
@@ -119,6 +122,10 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		PlayerInputComponent->BindKey(EKeys::F, IE_Pressed, this, &AYenkaDesktopPawn::OnTogglePokeMode);
 		PlayerInputComponent->BindKey(EKeys::M, IE_Pressed, this, &AYenkaDesktopPawn::OnToggleScenarioMenu);
 
+		// Phalanx Edit Mode Toggle
+		PlayerInputComponent->BindKey(EKeys::F4, IE_Pressed, this, &AYenkaDesktopPawn::TogglePhalanxEditMode);
+		PlayerInputComponent->BindKey(EKeys::SpaceBar, IE_Pressed, this, &AYenkaDesktopPawn::OnResetSelectedPhalanx);
+
 		// Gesture Switching Keys
 		PlayerInputComponent->BindKey(EKeys::F1, IE_Pressed, this, &AYenkaDesktopPawn::SetGesturePush);
 		PlayerInputComponent->BindKey(EKeys::P, IE_Pressed, this, &AYenkaDesktopPawn::SetGesturePush);
@@ -128,11 +135,11 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		PlayerInputComponent->BindKey(EKeys::V, IE_Pressed, this, &AYenkaDesktopPawn::SetGestureOpen);
 		PlayerInputComponent->BindKey(EKeys::Tab, IE_Pressed, this, &AYenkaDesktopPawn::CycleGesture);
 
-		// Hand Calibration Hotkeys (Live in-game tuning via NumPad, Arrows and Letters)
-		PlayerInputComponent->BindKey(EKeys::NumPadFour, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYawMinus);
-		PlayerInputComponent->BindKey(EKeys::NumPadSix, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYawPlus);
-		PlayerInputComponent->BindKey(EKeys::NumPadEight, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibPitchPlus);
-		PlayerInputComponent->BindKey(EKeys::NumPadTwo, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibPitchMinus);
+		// Hand Calibration & Phalanx Hotkeys
+		PlayerInputComponent->BindKey(EKeys::NumPadFour, IE_Pressed, this, &AYenkaDesktopPawn::OnPhalanxLateralMinus);
+		PlayerInputComponent->BindKey(EKeys::NumPadSix, IE_Pressed, this, &AYenkaDesktopPawn::OnPhalanxLateralPlus);
+		PlayerInputComponent->BindKey(EKeys::NumPadEight, IE_Pressed, this, &AYenkaDesktopPawn::OnPhalanxFlexionMinus);
+		PlayerInputComponent->BindKey(EKeys::NumPadTwo, IE_Pressed, this, &AYenkaDesktopPawn::OnPhalanxFlexionPlus);
 		PlayerInputComponent->BindKey(EKeys::NumPadSeven, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibRollMinus);
 		PlayerInputComponent->BindKey(EKeys::NumPadNine, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibRollPlus);
 		PlayerInputComponent->BindKey(EKeys::NumPadFive, IE_Pressed, this, &AYenkaDesktopPawn::QuickRotateYaw90);
@@ -145,11 +152,11 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		PlayerInputComponent->BindKey(EKeys::Divide, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibXMinus);
 		PlayerInputComponent->BindKey(EKeys::Decimal, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYMinus);
 
-		// Arrow and Navigation Key Bindings for Position
-		PlayerInputComponent->BindKey(EKeys::Up, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibXPlus);
-		PlayerInputComponent->BindKey(EKeys::Down, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibXMinus);
-		PlayerInputComponent->BindKey(EKeys::Left, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYMinus);
-		PlayerInputComponent->BindKey(EKeys::Right, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYPlus);
+		// Arrow and Navigation Key Bindings for Position & Phalanx
+		PlayerInputComponent->BindKey(EKeys::Up, IE_Pressed, this, &AYenkaDesktopPawn::OnPhalanxFlexionMinus);
+		PlayerInputComponent->BindKey(EKeys::Down, IE_Pressed, this, &AYenkaDesktopPawn::OnPhalanxFlexionPlus);
+		PlayerInputComponent->BindKey(EKeys::Left, IE_Pressed, this, &AYenkaDesktopPawn::OnPhalanxLateralMinus);
+		PlayerInputComponent->BindKey(EKeys::Right, IE_Pressed, this, &AYenkaDesktopPawn::OnPhalanxLateralPlus);
 		PlayerInputComponent->BindKey(EKeys::PageUp, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibZPlus);
 		PlayerInputComponent->BindKey(EKeys::PageDown, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibZMinus);
 
@@ -157,20 +164,19 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		PlayerInputComponent->BindKey(EKeys::Y, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYawPlus);
 		PlayerInputComponent->BindKey(EKeys::H, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYawMinus);
 		PlayerInputComponent->BindKey(EKeys::T, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibPitchPlus);
-		PlayerInputComponent->BindKey(EKeys::G, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibPitchMinus);
 		PlayerInputComponent->BindKey(EKeys::B, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibRollMinus);
 		PlayerInputComponent->BindKey(EKeys::N, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibRollPlus);
 		PlayerInputComponent->BindKey(EKeys::X, IE_Pressed, this, &AYenkaDesktopPawn::QuickRotateYaw90);
 		PlayerInputComponent->BindKey(EKeys::Z, IE_Pressed, this, &AYenkaDesktopPawn::QuickRotateRoll90);
 		PlayerInputComponent->BindKey(EKeys::I, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibXPlus);
-		PlayerInputComponent->BindKey(EKeys::K, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibXMinus);
+		PlayerInputComponent->BindKey(EKeys::K, IE_Pressed, this, &AYenkaDesktopPawn::TogglePhalanxEditMode);
 		PlayerInputComponent->BindKey(EKeys::J, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYMinus);
 		PlayerInputComponent->BindKey(EKeys::L, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYPlus);
 		PlayerInputComponent->BindKey(EKeys::U, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibZPlus);
 		PlayerInputComponent->BindKey(EKeys::O, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibZMinus);
 		PlayerInputComponent->BindKey(EKeys::R, IE_Pressed, this, &AYenkaDesktopPawn::ResetHandCalibration);
 
-		// Scenario Theme Hotkeys (1 to 7)
+		// Scenario Theme / Finger Selection Hotkeys (1 to 7)
 		PlayerInputComponent->BindKey(EKeys::One, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario1);
 		PlayerInputComponent->BindKey(EKeys::Two, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario2);
 		PlayerInputComponent->BindKey(EKeys::Three, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario3);
@@ -189,8 +195,94 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	}
 }
 
+void AYenkaDesktopPawn::TogglePhalanxEditMode()
+{
+	bIsPhalanxEditMode = !bIsPhalanxEditMode;
+}
+
+void AYenkaDesktopPawn::SelectFinger(int32 FingerIdx)
+{
+	SelectedFinger = FingerIdx;
+}
+
+void AYenkaDesktopPawn::SelectPhalanx(int32 PhalanxIdx)
+{
+	SelectedPhalanx = PhalanxIdx;
+}
+
+void AYenkaDesktopPawn::OnPhalanxFlexionPlus()
+{
+	if (bIsPhalanxEditMode && VirtualHand)
+	{
+		VirtualHand->SetPhalanxFlexion(SelectedFinger, SelectedPhalanx, +5.0f);
+	}
+	else
+	{
+		OnCalibXMinus();
+	}
+}
+
+void AYenkaDesktopPawn::OnPhalanxFlexionMinus()
+{
+	if (bIsPhalanxEditMode && VirtualHand)
+	{
+		VirtualHand->SetPhalanxFlexion(SelectedFinger, SelectedPhalanx, -5.0f);
+	}
+	else
+	{
+		OnCalibXPlus();
+	}
+}
+
+void AYenkaDesktopPawn::OnPhalanxLateralPlus()
+{
+	if (bIsPhalanxEditMode && VirtualHand)
+	{
+		VirtualHand->SetPhalanxLateral(SelectedFinger, SelectedPhalanx, +5.0f);
+	}
+	else
+	{
+		OnCalibYPlus();
+	}
+}
+
+void AYenkaDesktopPawn::OnPhalanxLateralMinus()
+{
+	if (bIsPhalanxEditMode && VirtualHand)
+	{
+		VirtualHand->SetPhalanxLateral(SelectedFinger, SelectedPhalanx, -5.0f);
+	}
+	else
+	{
+		OnCalibYMinus();
+	}
+}
+
+void AYenkaDesktopPawn::OnResetSelectedPhalanx()
+{
+	if (bIsPhalanxEditMode && VirtualHand)
+	{
+		VirtualHand->ResetPhalanx(SelectedFinger, SelectedPhalanx);
+	}
+}
+
 void AYenkaDesktopPawn::SelectScenarioTheme(int32 ThemeIndex)
 {
+	if (bIsPhalanxEditMode)
+	{
+		// In Phalanx Edit Mode, keys 1 to 5 select fingers!
+		if (ThemeIndex >= 0 && ThemeIndex <= 4)
+		{
+			SelectedFinger = ThemeIndex + 1; // 1: Thumb, 2: Index, 3: Middle, 4: Ring, 5: Pinky
+			return;
+		}
+		else if (ThemeIndex == 5)
+		{
+			SelectedFinger = 0; // All fingers
+			return;
+		}
+	}
+
 	AYenkaScenarioMenu* Menu = Cast<AYenkaScenarioMenu>(UGameplayStatics::GetActorOfClass(GetWorld(), AYenkaScenarioMenu::StaticClass()));
 	if (Menu)
 	{
@@ -331,6 +423,10 @@ void AYenkaDesktopPawn::ResetHandCalibration()
 	PokeHandRotationOffset = FRotator(0.0f, -90.0f, 0.0f);
 	bForceGesturePreview = false;
 	ActiveGesturePreview = EHandPoseMode::OpenHand;
+	if (VirtualHand)
+	{
+		VirtualHand->ResetAllPhalanges();
+	}
 }
 
 void AYenkaDesktopPawn::SetGesturePush()
@@ -338,7 +434,11 @@ void AYenkaDesktopPawn::SetGesturePush()
 	ActiveGesturePreview = EHandPoseMode::FingerPoke;
 	bForceGesturePreview = true;
 	bIsPokeModeActive = true;
-	if (VirtualHand) VirtualHand->SetHandPoseMode(EHandPoseMode::FingerPoke);
+	if (VirtualHand)
+	{
+		VirtualHand->LoadPresetPose(EHandPoseMode::FingerPoke);
+		VirtualHand->SetHandPoseMode(EHandPoseMode::FingerPoke);
+	}
 }
 
 void AYenkaDesktopPawn::SetGestureGrab()
@@ -346,7 +446,11 @@ void AYenkaDesktopPawn::SetGestureGrab()
 	ActiveGesturePreview = EHandPoseMode::GrabPinch;
 	bForceGesturePreview = true;
 	bIsPokeModeActive = false;
-	if (VirtualHand) VirtualHand->SetHandPoseMode(EHandPoseMode::GrabPinch);
+	if (VirtualHand)
+	{
+		VirtualHand->LoadPresetPose(EHandPoseMode::GrabPinch);
+		VirtualHand->SetHandPoseMode(EHandPoseMode::GrabPinch);
+	}
 }
 
 void AYenkaDesktopPawn::SetGestureOpen()
@@ -354,7 +458,11 @@ void AYenkaDesktopPawn::SetGestureOpen()
 	ActiveGesturePreview = EHandPoseMode::OpenHand;
 	bForceGesturePreview = true;
 	bIsPokeModeActive = false;
-	if (VirtualHand) VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
+	if (VirtualHand)
+	{
+		VirtualHand->LoadPresetPose(EHandPoseMode::OpenHand);
+		VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
+	}
 }
 
 void AYenkaDesktopPawn::CycleGesture()
@@ -362,23 +470,15 @@ void AYenkaDesktopPawn::CycleGesture()
 	bForceGesturePreview = true;
 	if (ActiveGesturePreview == EHandPoseMode::OpenHand)
 	{
-		ActiveGesturePreview = EHandPoseMode::GrabPinch;
-		bIsPokeModeActive = false;
+		SetGestureGrab();
 	}
 	else if (ActiveGesturePreview == EHandPoseMode::GrabPinch)
 	{
-		ActiveGesturePreview = EHandPoseMode::FingerPoke;
-		bIsPokeModeActive = true;
+		SetGesturePush();
 	}
 	else
 	{
-		ActiveGesturePreview = EHandPoseMode::OpenHand;
-		bIsPokeModeActive = false;
-	}
-
-	if (VirtualHand)
-	{
-		VirtualHand->SetHandPoseMode(ActiveGesturePreview);
+		SetGestureOpen();
 	}
 }
 
@@ -386,11 +486,49 @@ void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
 {
 	if (GEngine && IsLocallyControlled())
 	{
+		if (bIsPhalanxEditMode && VirtualHand)
+		{
+			// --- PHALANX EDIT MODE HUD ---
+			static const TCHAR* FingerNames[] = { TEXT("Todos los Dedos"), TEXT("Pulgar"), TEXT("Índice"), TEXT("Medio"), TEXT("Anular"), TEXT("Meñique") };
+			static const TCHAR* PhalanxNames[] = { TEXT("Todas las Falanges"), TEXT("Proximal (Base)"), TEXT("Media (Centro)"), TEXT("Distal (Punta)") };
+
+			const TCHAR* ActiveFingerName = (SelectedFinger >= 0 && SelectedFinger <= 5) ? FingerNames[SelectedFinger] : TEXT("Desconocido");
+			const TCHAR* ActivePhalanxName = (SelectedPhalanx >= 0 && SelectedPhalanx <= 3) ? PhalanxNames[SelectedPhalanx] : TEXT("Desconocido");
+
+			FFingerPhalanges Thumb = VirtualHand->ThumbPhalanges;
+			FFingerPhalanges Index = VirtualHand->IndexPhalanges;
+			FFingerPhalanges Middle = VirtualHand->MiddlePhalanges;
+			FFingerPhalanges Ring = VirtualHand->RingPhalanges;
+			FFingerPhalanges Pinky = VirtualHand->PinkyPhalanges;
+
+			FString Line1 = FString::Printf(TEXT("=== 🖐️ MODO EDICIÓN DE FALANGES ACTIVO [Pulsa F4 o K para Salir] ==="));
+			FString Line2 = FString::Printf(TEXT("🎯 SELECCIÓN: [ DEDO (%d): %s | FALANGE (%d): %s ]  (Teclas: 1-5 Elegir Dedo | Z, X, C, A Elegir Falange)"),
+				SelectedFinger, ActiveFingerName, SelectedPhalanx, ActivePhalanxName);
+			FString Line3 = FString::Printf(TEXT("⌨️ ARTICULACIÓN: [ Flechas Arriba/Abajo: Flexión +-5° | Izq/Der: Lateral +-5° | Espacio: Reset Falange ]"));
+			FString Line4 = FString::Printf(TEXT("📊 PULGAR: [%+.0f°/%+.0f°, %+.0f°/%+.0f°, %+.0f°/%+.0f°] | ÍNDICE: [%+.0f°/%+.0f°, %+.0f°/%+.0f°, %+.0f°/%+.0f°]"),
+				Thumb.Proximal.FlexionAngle, Thumb.Proximal.LateralAngle, Thumb.Intermediate.FlexionAngle, Thumb.Intermediate.LateralAngle, Thumb.Distal.FlexionAngle, Thumb.Distal.LateralAngle,
+				Index.Proximal.FlexionAngle, Index.Proximal.LateralAngle, Index.Intermediate.FlexionAngle, Index.Intermediate.LateralAngle, Index.Distal.FlexionAngle, Index.Distal.LateralAngle);
+			FString Line5 = FString::Printf(TEXT("📊 MEDIO: [%+.0f°/%+.0f°, %+.0f°/%+.0f°, %+.0f°/%+.0f°] | ANULAR: [%+.0f°/%+.0f°, %+.0f°/%+.0f°, %+.0f°/%+.0f°] | MEÑIQUE: [%+.0f°/%+.0f°, %+.0f°/%+.0f°, %+.0f°/%+.0f°]"),
+				Middle.Proximal.FlexionAngle, Middle.Proximal.LateralAngle, Middle.Intermediate.FlexionAngle, Middle.Intermediate.LateralAngle, Middle.Distal.FlexionAngle, Middle.Distal.LateralAngle,
+				Ring.Proximal.FlexionAngle, Ring.Proximal.LateralAngle, Ring.Intermediate.FlexionAngle, Ring.Intermediate.LateralAngle, Ring.Distal.FlexionAngle, Ring.Distal.LateralAngle,
+				Pinky.Proximal.FlexionAngle, Pinky.Proximal.LateralAngle, Pinky.Intermediate.FlexionAngle, Pinky.Intermediate.LateralAngle, Pinky.Distal.FlexionAngle, Pinky.Distal.LateralAngle);
+			FString Line6 = FString::Printf(TEXT("🏷️ DEFINICIÓN GESTO: [ %s ] | Presets: F1(Empujar), F2(Pinza), F3(Mano Libre)"),
+				*VirtualHand->GetDetectedGestureDescription());
+
+			GEngine->AddOnScreenDebugMessage(1001, 0.20f, FColor(255, 100, 255), Line1);
+			GEngine->AddOnScreenDebugMessage(1002, 0.20f, FColor(255, 220, 50), Line2);
+			GEngine->AddOnScreenDebugMessage(1003, 0.20f, FColor(50, 255, 255), Line3);
+			GEngine->AddOnScreenDebugMessage(1004, 0.20f, FColor(120, 255, 120), Line4);
+			GEngine->AddOnScreenDebugMessage(1005, 0.20f, FColor(120, 255, 180), Line5);
+			GEngine->AddOnScreenDebugMessage(1006, 0.20f, FColor(255, 160, 50), Line6);
+			return;
+		}
+
 		const bool bInPoke = (bIsPokeModeActive || bIsPushingBlock || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke));
 		const FVector ActivePos = bInPoke ? PokeHandLocationOffset : GrabHandLocationOffset;
 		const FRotator ActiveRot = bInPoke ? PokeHandRotationOffset : GrabHandRotationOffset;
 
-		FString GestureName = TEXT("🖐️ LIBRE / INSPECCIÓN (OpenHand)");
+		FString GestureName = VirtualHand ? VirtualHand->GetDetectedGestureDescription() : TEXT("🖐️ LIBRE / INSPECCIÓN (OpenHand)");
 		if (bForceGesturePreview)
 		{
 			if (ActiveGesturePreview == EHandPoseMode::FingerPoke) GestureName = TEXT("👉 EMPUJAR FORZADO (FingerPoke)");
@@ -411,17 +549,17 @@ void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
 			bInPoke ? TEXT("EMPUJAR") : TEXT("AGARRAR/LIBRE"), ActivePos.X, ActivePos.Y, ActivePos.Z);
 		FString Line3 = FString::Printf(TEXT("🔄 ROTACIÓN [%s]:  [ Yaw: %+.0f° | Pitch: %+.0f° | Roll: %+.0f° ]"),
 			bInPoke ? TEXT("EMPUJAR") : TEXT("AGARRAR/LIBRE"), ActiveRot.Yaw, ActiveRot.Pitch, ActiveRot.Roll);
-		FString Line4 = FString::Printf(TEXT("✋ GESTO:     [ %s ]  (Teclas: F1/P Empujar, F2/G Agarrar, F3/V Libre, Tab Ciclar)"),
+		FString Line4 = FString::Printf(TEXT("✋ GESTO:     [ %s ]  (Teclas: F1 Empujar, F2 Agarrar, F3 Libre, Tab Ciclar)"),
 			*GestureName);
-		FString Line5 = FString::Printf(TEXT("⌨️ POSICIÓN:  I/K o Flechas Arriba/Abajo(X) | J/L o Flechas Izq/Der(Y) | U/O o RePág/AvPág(Z) | NumPad / * + - ."));
-		FString Line6 = FString::Printf(TEXT("⌨️ ROTACIÓN:  NumPad 4/6 o Y/H(Yaw) | 8/2 o T/G(Pitch) | 7/9 o B/N(Roll) | Num 5 o X(+90° Yaw) | Num 1 o Z(+90° Roll) | Num 0 o R(Reset)"));
+		FString Line5 = FString::Printf(TEXT("⌨️ POSICIÓN:  I/K o Flechas(X) | J/L o Flechas(Y) | U/O o RePág/AvPág(Z) | NumPad / * + - ."));
+		FString Line6 = FString::Printf(TEXT("⌨️ FALANGES:  ⭐ Pulsa [F4] o [K] para entrar al MODO EDICIÓN DE FALANGES (Control Dedo a Dedo)"));
 
 		GEngine->AddOnScreenDebugMessage(1001, 0.20f, FColor(255, 215, 0), Line1);
 		GEngine->AddOnScreenDebugMessage(1002, 0.20f, FColor(0, 240, 255), Line2);
 		GEngine->AddOnScreenDebugMessage(1003, 0.20f, FColor(50, 255, 120), Line3);
 		GEngine->AddOnScreenDebugMessage(1004, 0.20f, FColor(255, 140, 0), Line4);
 		GEngine->AddOnScreenDebugMessage(1005, 0.20f, FColor(220, 220, 220), Line5);
-		GEngine->AddOnScreenDebugMessage(1006, 0.20f, FColor(180, 200, 255), Line6);
+		GEngine->AddOnScreenDebugMessage(1006, 0.20f, FColor(255, 130, 255), Line6);
 	}
 }
 
@@ -628,6 +766,15 @@ bool AYenkaDesktopPawn::IsBlockProtruding(const AYenkaBlock* Block, FVector& Out
 
 void AYenkaDesktopPawn::HandleMouseTrace()
 {
+	if (bIsPhalanxEditMode)
+	{
+		if (VirtualHand)
+		{
+			VirtualHand->SetActorHiddenInGame(false);
+		}
+		return;
+	}
+
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (!PC) return;
 

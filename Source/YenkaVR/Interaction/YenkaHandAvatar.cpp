@@ -324,127 +324,252 @@ void AYenkaHandAvatar::SetHandPoseMode(EHandPoseMode NewPoseMode)
 void AYenkaHandAvatar::UpdateFingerPoses(float GripStrength)
 {
 	LastAppliedPoseMode = CurrentPoseMode;
+	ApplyPhalanxTransforms();
+}
 
+static void ModifyPhalanxData(FPhalanxData& Data, float DeltaFlexion, float DeltaLateral)
+{
+	Data.FlexionAngle = FMath::Clamp(Data.FlexionAngle + DeltaFlexion, -20.0f, 90.0f);
+	Data.LateralAngle = FMath::Clamp(Data.LateralAngle + DeltaLateral, -45.0f, 45.0f);
+}
+
+static void ModifyFingerPhalanges(FFingerPhalanges& Finger, int32 PhalanxIndex, float DeltaFlexion, float DeltaLateral)
+{
+	if (PhalanxIndex == 0) // All phalanges
+	{
+		ModifyPhalanxData(Finger.Proximal, DeltaFlexion, DeltaLateral);
+		ModifyPhalanxData(Finger.Intermediate, DeltaFlexion, 0.0f);
+		ModifyPhalanxData(Finger.Distal, DeltaFlexion, 0.0f);
+	}
+	else if (PhalanxIndex == 1) // Proximal
+	{
+		ModifyPhalanxData(Finger.Proximal, DeltaFlexion, DeltaLateral);
+	}
+	else if (PhalanxIndex == 2) // Intermediate
+	{
+		ModifyPhalanxData(Finger.Intermediate, DeltaFlexion, DeltaLateral);
+	}
+	else if (PhalanxIndex == 3) // Distal
+	{
+		ModifyPhalanxData(Finger.Distal, DeltaFlexion, DeltaLateral);
+	}
+}
+
+void AYenkaHandAvatar::SetPhalanxFlexion(int32 FingerIndex, int32 PhalanxIndex, float DeltaAngle)
+{
+	if (FingerIndex == 0) // All fingers
+	{
+		ModifyFingerPhalanges(ThumbPhalanges, PhalanxIndex, DeltaAngle, 0.0f);
+		ModifyFingerPhalanges(IndexPhalanges, PhalanxIndex, DeltaAngle, 0.0f);
+		ModifyFingerPhalanges(MiddlePhalanges, PhalanxIndex, DeltaAngle, 0.0f);
+		ModifyFingerPhalanges(RingPhalanges, PhalanxIndex, DeltaAngle, 0.0f);
+		ModifyFingerPhalanges(PinkyPhalanges, PhalanxIndex, DeltaAngle, 0.0f);
+	}
+	else if (FingerIndex == 1) ModifyFingerPhalanges(ThumbPhalanges, PhalanxIndex, DeltaAngle, 0.0f);
+	else if (FingerIndex == 2) ModifyFingerPhalanges(IndexPhalanges, PhalanxIndex, DeltaAngle, 0.0f);
+	else if (FingerIndex == 3) ModifyFingerPhalanges(MiddlePhalanges, PhalanxIndex, DeltaAngle, 0.0f);
+	else if (FingerIndex == 4) ModifyFingerPhalanges(RingPhalanges, PhalanxIndex, DeltaAngle, 0.0f);
+	else if (FingerIndex == 5) ModifyFingerPhalanges(PinkyPhalanges, PhalanxIndex, DeltaAngle, 0.0f);
+
+	ApplyPhalanxTransforms();
+}
+
+void AYenkaHandAvatar::SetPhalanxLateral(int32 FingerIndex, int32 PhalanxIndex, float DeltaAngle)
+{
+	if (FingerIndex == 0) // All fingers
+	{
+		ModifyFingerPhalanges(ThumbPhalanges, PhalanxIndex, 0.0f, -DeltaAngle);
+		ModifyFingerPhalanges(IndexPhalanges, PhalanxIndex, 0.0f, -DeltaAngle);
+		ModifyFingerPhalanges(MiddlePhalanges, PhalanxIndex, 0.0f, 0.0f);
+		ModifyFingerPhalanges(RingPhalanges, PhalanxIndex, 0.0f, DeltaAngle);
+		ModifyFingerPhalanges(PinkyPhalanges, PhalanxIndex, 0.0f, DeltaAngle);
+	}
+	else if (FingerIndex == 1) ModifyFingerPhalanges(ThumbPhalanges, PhalanxIndex, 0.0f, DeltaAngle);
+	else if (FingerIndex == 2) ModifyFingerPhalanges(IndexPhalanges, PhalanxIndex, 0.0f, DeltaAngle);
+	else if (FingerIndex == 3) ModifyFingerPhalanges(MiddlePhalanges, PhalanxIndex, 0.0f, DeltaAngle);
+	else if (FingerIndex == 4) ModifyFingerPhalanges(RingPhalanges, PhalanxIndex, 0.0f, DeltaAngle);
+	else if (FingerIndex == 5) ModifyFingerPhalanges(PinkyPhalanges, PhalanxIndex, 0.0f, DeltaAngle);
+
+	ApplyPhalanxTransforms();
+}
+
+void AYenkaHandAvatar::ResetPhalanx(int32 FingerIndex, int32 PhalanxIndex)
+{
+	auto ResetFinger = [PhalanxIndex](FFingerPhalanges& Finger)
+	{
+		if (PhalanxIndex == 0 || PhalanxIndex == 1) Finger.Proximal = FPhalanxData();
+		if (PhalanxIndex == 0 || PhalanxIndex == 2) Finger.Intermediate = FPhalanxData();
+		if (PhalanxIndex == 0 || PhalanxIndex == 3) Finger.Distal = FPhalanxData();
+	};
+
+	if (FingerIndex == 0)
+	{
+		ResetFinger(ThumbPhalanges);
+		ResetFinger(IndexPhalanges);
+		ResetFinger(MiddlePhalanges);
+		ResetFinger(RingPhalanges);
+		ResetFinger(PinkyPhalanges);
+	}
+	else if (FingerIndex == 1) ResetFinger(ThumbPhalanges);
+	else if (FingerIndex == 2) ResetFinger(IndexPhalanges);
+	else if (FingerIndex == 3) ResetFinger(MiddlePhalanges);
+	else if (FingerIndex == 4) ResetFinger(RingPhalanges);
+	else if (FingerIndex == 5) ResetFinger(PinkyPhalanges);
+
+	ApplyPhalanxTransforms();
+}
+
+void AYenkaHandAvatar::ResetAllPhalanges()
+{
+	ThumbPhalanges = FFingerPhalanges();
+	IndexPhalanges = FFingerPhalanges();
+	MiddlePhalanges = FFingerPhalanges();
+	RingPhalanges = FFingerPhalanges();
+	PinkyPhalanges = FFingerPhalanges();
+	ApplyPhalanxTransforms();
+}
+
+void AYenkaHandAvatar::LoadPresetPose(EHandPoseMode Mode)
+{
+	CurrentPoseMode = Mode;
+	if (Mode == EHandPoseMode::FingerPoke)
+	{
+		// Index straight, other 4 closed in fist
+		ThumbPhalanges = { {45.0f, -40.0f}, {60.0f, 0.0f}, {40.0f, 0.0f} };
+		IndexPhalanges = { {0.0f, 0.0f}, {0.0f, 0.0f}, {0.0f, 0.0f} };
+		MiddlePhalanges = { {80.0f, 0.0f}, {85.0f, 0.0f}, {75.0f, 0.0f} };
+		RingPhalanges = { {80.0f, 0.0f}, {85.0f, 0.0f}, {75.0f, 0.0f} };
+		PinkyPhalanges = { {80.0f, 0.0f}, {85.0f, 0.0f}, {75.0f, 0.0f} };
+	}
+	else if (Mode == EHandPoseMode::GrabPinch)
+	{
+		// Thumb and index form pinch caliper
+		ThumbPhalanges = { {20.0f, 32.0f}, {25.0f, 0.0f}, {15.0f, 0.0f} };
+		IndexPhalanges = { {25.0f, -20.0f}, {35.0f, 0.0f}, {20.0f, 0.0f} };
+		MiddlePhalanges = { {75.0f, 0.0f}, {80.0f, 0.0f}, {70.0f, 0.0f} };
+		RingPhalanges = { {80.0f, 0.0f}, {85.0f, 0.0f}, {75.0f, 0.0f} };
+		PinkyPhalanges = { {80.0f, 0.0f}, {85.0f, 0.0f}, {75.0f, 0.0f} };
+	}
+	else // OpenHand
+	{
+		ThumbPhalanges = { {10.0f, -30.0f}, {10.0f, 0.0f}, {5.0f, 0.0f} };
+		IndexPhalanges = { {0.0f, -5.0f}, {0.0f, 0.0f}, {0.0f, 0.0f} };
+		MiddlePhalanges = { {0.0f, 0.0f}, {0.0f, 0.0f}, {0.0f, 0.0f} };
+		RingPhalanges = { {0.0f, 5.0f}, {0.0f, 0.0f}, {0.0f, 0.0f} };
+		PinkyPhalanges = { {0.0f, 10.0f}, {0.0f, 0.0f}, {0.0f, 0.0f} };
+	}
+	ApplyPhalanxTransforms();
+}
+
+FFingerPhalanges AYenkaHandAvatar::GetFingerPhalanges(int32 FingerIndex) const
+{
+	if (FingerIndex == 1) return ThumbPhalanges;
+	if (FingerIndex == 2) return IndexPhalanges;
+	if (FingerIndex == 3) return MiddlePhalanges;
+	if (FingerIndex == 4) return RingPhalanges;
+	if (FingerIndex == 5) return PinkyPhalanges;
+	return IndexPhalanges;
+}
+
+FString AYenkaHandAvatar::GetDetectedGestureDescription() const
+{
+	float IndexAvg = (IndexPhalanges.Proximal.FlexionAngle + IndexPhalanges.Intermediate.FlexionAngle + IndexPhalanges.Distal.FlexionAngle) / 3.0f;
+	float MiddleAvg = (MiddlePhalanges.Proximal.FlexionAngle + MiddlePhalanges.Intermediate.FlexionAngle + MiddlePhalanges.Distal.FlexionAngle) / 3.0f;
+	float RingAvg = (RingPhalanges.Proximal.FlexionAngle + RingPhalanges.Intermediate.FlexionAngle + RingPhalanges.Distal.FlexionAngle) / 3.0f;
+	float PinkyAvg = (PinkyPhalanges.Proximal.FlexionAngle + PinkyPhalanges.Intermediate.FlexionAngle + PinkyPhalanges.Distal.FlexionAngle) / 3.0f;
+	float ThumbAvg = (ThumbPhalanges.Proximal.FlexionAngle + ThumbPhalanges.Intermediate.FlexionAngle + ThumbPhalanges.Distal.FlexionAngle) / 3.0f;
+
+	float OthersAvg = (MiddleAvg + RingAvg + PinkyAvg) / 3.0f;
+
+	if (IndexAvg < 20.0f && OthersAvg > 50.0f)
+	{
+		return TEXT("👉 EMPUJAR / SEÑALAR (FingerPoke)");
+	}
+	else if (IndexAvg > 15.0f && IndexAvg < 55.0f && ThumbAvg > 15.0f && OthersAvg > 50.0f)
+	{
+		return TEXT("🤏 PINZA / AGARRAR (GrabPinch)");
+	}
+	else if (IndexAvg < 25.0f && OthersAvg < 25.0f && ThumbAvg < 25.0f)
+	{
+		return TEXT("🖐️ MANO ABIERTA / REPOSO (OpenHand)");
+	}
+	else if (IndexAvg > 60.0f && OthersAvg > 60.0f && ThumbAvg > 40.0f)
+	{
+		return TEXT("✊ PUÑO CERRADO (Fist)");
+	}
+	else if (IndexAvg < 25.0f && MiddleAvg < 25.0f && RingAvg > 50.0f && PinkyAvg > 50.0f)
+	{
+		return TEXT("✌️ PAZ / DOS DEDOS (Peace / Victory)");
+	}
+	else if (ThumbAvg < 20.0f && IndexAvg > 50.0f && OthersAvg > 50.0f && ThumbPhalanges.Proximal.LateralAngle < -15.0f)
+	{
+		return TEXT("👍 PULGAR ARRIBA (Thumbs Up)");
+	}
+	return TEXT("🎨 GESTO PERSONALIZADO (Custom Pose)");
+}
+
+void AYenkaHandAvatar::ApplyPhalanxTransforms()
+{
+	// Update procedural mesh rotations based on phalanx flexion and lateral spread
+	if (IndexFinger)
+	{
+		float TotalFlex = IndexPhalanges.Proximal.FlexionAngle + IndexPhalanges.Intermediate.FlexionAngle * 0.5f + IndexPhalanges.Distal.FlexionAngle * 0.3f;
+		float TotalLat = IndexPhalanges.Proximal.LateralAngle + IndexPhalanges.Intermediate.LateralAngle;
+		IndexFinger->SetRelativeLocation(FVector(3.5f, -1.5f, 0.0f));
+		IndexFinger->SetRelativeRotation(FRotator(90.0f - TotalFlex, TotalLat, 0.0f));
+	}
+	if (MiddleFinger)
+	{
+		float TotalFlex = MiddlePhalanges.Proximal.FlexionAngle + MiddlePhalanges.Intermediate.FlexionAngle * 0.5f + MiddlePhalanges.Distal.FlexionAngle * 0.3f;
+		float TotalLat = MiddlePhalanges.Proximal.LateralAngle + MiddlePhalanges.Intermediate.LateralAngle;
+		MiddleFinger->SetRelativeLocation(FVector(3.8f, -0.4f, 0.0f));
+		MiddleFinger->SetRelativeRotation(FRotator(90.0f - TotalFlex, TotalLat, 0.0f));
+	}
+	if (RingFinger)
+	{
+		float TotalFlex = RingPhalanges.Proximal.FlexionAngle + RingPhalanges.Intermediate.FlexionAngle * 0.5f + RingPhalanges.Distal.FlexionAngle * 0.3f;
+		float TotalLat = RingPhalanges.Proximal.LateralAngle + RingPhalanges.Intermediate.LateralAngle;
+		RingFinger->SetRelativeLocation(FVector(3.5f, 0.6f, 0.0f));
+		RingFinger->SetRelativeRotation(FRotator(90.0f - TotalFlex, TotalLat, 0.0f));
+	}
+	if (PinkyFinger)
+	{
+		float TotalFlex = PinkyPhalanges.Proximal.FlexionAngle + PinkyPhalanges.Intermediate.FlexionAngle * 0.5f + PinkyPhalanges.Distal.FlexionAngle * 0.3f;
+		float TotalLat = PinkyPhalanges.Proximal.LateralAngle + PinkyPhalanges.Intermediate.LateralAngle;
+		PinkyFinger->SetRelativeLocation(FVector(3.0f, 1.5f, 0.0f));
+		PinkyFinger->SetRelativeRotation(FRotator(90.0f - TotalFlex, TotalLat, 0.0f));
+	}
+	if (ThumbMesh)
+	{
+		float TotalFlex = ThumbPhalanges.Proximal.FlexionAngle + ThumbPhalanges.Intermediate.FlexionAngle * 0.5f + ThumbPhalanges.Distal.FlexionAngle * 0.3f;
+		float TotalLat = ThumbPhalanges.Proximal.LateralAngle + ThumbPhalanges.Intermediate.LateralAngle;
+		ThumbMesh->SetRelativeLocation(FVector(1.0f, -2.2f, 0.0f));
+		ThumbMesh->SetRelativeRotation(FRotator(TotalFlex, -40.0f + TotalLat, 0.0f));
+	}
+
+	// Update skeletal animation position based on gesture
 	if (HandSkeletalMesh)
 	{
-		if (CurrentPoseMode == EHandPoseMode::FingerPoke)
-		{
-			if (AnimPoint)
-			{
-				HandSkeletalMesh->PlayAnimation(AnimPoint, false);
-				HandSkeletalMesh->SetPosition(AnimPoint->GetPlayLength() * 0.90f);
-				HandSkeletalMesh->SetPlayRate(0.0f);
-			}
-		}
-		else if (CurrentPoseMode == EHandPoseMode::GrabPinch)
-		{
-			if (AnimGrasp)
-			{
-				HandSkeletalMesh->PlayAnimation(AnimGrasp, false);
-				HandSkeletalMesh->SetPosition(AnimGrasp->GetPlayLength() * 0.70f);
-				HandSkeletalMesh->SetPlayRate(0.0f);
-			}
-		}
-		else // OpenHand
-		{
-			if (AnimIdle)
-			{
-				HandSkeletalMesh->PlayAnimation(AnimIdle, true);
-				HandSkeletalMesh->SetPlayRate(1.0f);
-			}
-		}
-	}
+		float IndexAvg = (IndexPhalanges.Proximal.FlexionAngle + IndexPhalanges.Intermediate.FlexionAngle + IndexPhalanges.Distal.FlexionAngle) / 3.0f;
+		float OthersAvg = (MiddlePhalanges.Proximal.FlexionAngle + RingPhalanges.Proximal.FlexionAngle + PinkyPhalanges.Proximal.FlexionAngle) / 3.0f;
 
-	if (CurrentPoseMode == EHandPoseMode::FingerPoke)
-	{
-		// Finger Poke: Index Finger fully extended forward; other 4 fingers curled tightly into fist
-		if (IndexFinger)
+		if (IndexAvg < 20.0f && OthersAvg > 45.0f && AnimPoint)
 		{
-			IndexFinger->SetRelativeLocation(FVector(3.5f, -1.5f, 0.0f));
-			IndexFinger->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f)); // Pointing forward along +X
+			HandSkeletalMesh->PlayAnimation(AnimPoint, false);
+			HandSkeletalMesh->SetPosition(AnimPoint->GetPlayLength() * 0.90f);
+			HandSkeletalMesh->SetPlayRate(0.0f);
 		}
-		if (ThumbMesh)
+		else if (OthersAvg > 40.0f && AnimGrasp)
 		{
-			ThumbMesh->SetRelativeLocation(FVector(0.5f, -2.0f, 0.3f));
-			ThumbMesh->SetRelativeRotation(FRotator(0.0f, -75.0f, 0.0f)); // Tucked tightly against fist
+			HandSkeletalMesh->PlayAnimation(AnimGrasp, false);
+			float GraspProgress = FMath::Clamp(OthersAvg / 80.0f, 0.0f, 1.0f);
+			HandSkeletalMesh->SetPosition(AnimGrasp->GetPlayLength() * (0.3f + GraspProgress * 0.5f));
+			HandSkeletalMesh->SetPlayRate(0.0f);
 		}
-		if (MiddleFinger)
+		else if (AnimIdle)
 		{
-			MiddleFinger->SetRelativeLocation(FVector(1.0f, -0.4f, -0.6f));
-			MiddleFinger->SetRelativeRotation(FRotator(0.0f, 0.0f, 0.0f)); // Curled vertical into palm
-		}
-		if (RingFinger)
-		{
-			RingFinger->SetRelativeLocation(FVector(0.9f, 0.6f, -0.6f));
-			RingFinger->SetRelativeRotation(FRotator(0.0f, 0.0f, 0.0f)); // Curled vertical into palm
-		}
-		if (PinkyFinger)
-		{
-			PinkyFinger->SetRelativeLocation(FVector(0.8f, 1.5f, -0.6f));
-			PinkyFinger->SetRelativeRotation(FRotator(0.0f, 0.0f, 0.0f)); // Curled vertical into palm
-		}
-	}
-	else if (CurrentPoseMode == EHandPoseMode::GrabPinch)
-	{
-		// Grab Pinch: Thumb and Index finger form an anatomical caliper grasping the two lateral ends (+-1.25cm) of the protruding block (2.5cm width)
-		// Index finger: Reaches forward on the right lateral side (+1.25cm)
-		if (IndexFinger)
-		{
-			IndexFinger->SetRelativeLocation(FVector(2.6f, 0.8f, 0.0f));
-			IndexFinger->SetRelativeRotation(FRotator(90.0f, -20.0f, 0.0f)); // Fingertip at (4.8cm, +1.25cm, 0.0cm)
-		}
-		// Thumb: Reaches forward on the left lateral side (-1.25cm)
-		if (ThumbMesh)
-		{
-			ThumbMesh->SetRelativeLocation(FVector(2.0f, -1.8f, 0.0f));
-			ThumbMesh->SetRelativeRotation(FRotator(0.0f, 32.0f, 0.0f)); // Fingertip at (4.8cm, -1.25cm, 0.0cm)
-		}
-		// Middle, Ring, Pinky: Curled backward into palm out of the way
-		if (MiddleFinger)
-		{
-			MiddleFinger->SetRelativeLocation(FVector(1.0f, -0.2f, -0.6f));
-			MiddleFinger->SetRelativeRotation(FRotator(0.0f, 0.0f, 0.0f));
-		}
-		if (RingFinger)
-		{
-			RingFinger->SetRelativeLocation(FVector(0.9f, 0.6f, -0.6f));
-			RingFinger->SetRelativeRotation(FRotator(0.0f, 0.0f, 0.0f));
-		}
-		if (PinkyFinger)
-		{
-			PinkyFinger->SetRelativeLocation(FVector(0.8f, 1.4f, -0.6f));
-			PinkyFinger->SetRelativeRotation(FRotator(0.0f, 0.0f, 0.0f));
-		}
-	}
-	else
-	{
-		// Open / Grip mode: Natural relaxed human hand curvature
-		const float GripAngle = FMath::Clamp(GripStrength, 0.0f, 1.0f) * 45.0f;
-
-		if (IndexFinger)
-		{
-			IndexFinger->SetRelativeLocation(FVector(3.5f, -1.5f, 0.0f));
-			IndexFinger->SetRelativeRotation(FRotator(90.0f - GripAngle, 0.0f, 0.0f));
-		}
-		if (MiddleFinger)
-		{
-			MiddleFinger->SetRelativeLocation(FVector(3.8f, -0.4f, 0.0f));
-			MiddleFinger->SetRelativeRotation(FRotator(90.0f - GripAngle, 0.0f, 0.0f));
-		}
-		if (RingFinger)
-		{
-			RingFinger->SetRelativeLocation(FVector(3.5f, 0.6f, 0.0f));
-			RingFinger->SetRelativeRotation(FRotator(90.0f - GripAngle, 0.0f, 0.0f));
-		}
-		if (PinkyFinger)
-		{
-			PinkyFinger->SetRelativeLocation(FVector(3.0f, 1.5f, 0.0f));
-			PinkyFinger->SetRelativeRotation(FRotator(90.0f - GripAngle, 0.0f, 0.0f));
-		}
-		if (ThumbMesh)
-		{
-			ThumbMesh->SetRelativeLocation(FVector(0.5f, -2.5f, 0.0f));
-			ThumbMesh->SetRelativeRotation(FRotator(GripAngle * 0.5f, -45.0f + (GripAngle * 0.5f), 0.0f));
+			HandSkeletalMesh->PlayAnimation(AnimIdle, true);
+			HandSkeletalMesh->SetPlayRate(1.0f);
 		}
 	}
 }

@@ -142,6 +142,24 @@ protected:
 	void OnCalibRollMinus() { AdjustHandRoll(-15.0f); }
 	void OnCalibRollPlus() { AdjustHandRoll(+15.0f); }
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Phalanx Edit")
+	bool bIsPhalanxEditMode;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Phalanx Edit")
+	int32 SelectedFinger; // 0=All, 1=Thumb, 2=Index, 3=Middle, 4=Ring, 5=Pinky
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Phalanx Edit")
+	int32 SelectedPhalanx; // 0=All, 1=Proximal, 2=Intermediate, 3=Distal
+
+	void TogglePhalanxEditMode();
+	void SelectFinger(int32 FingerIdx);
+	void SelectPhalanx(int32 PhalanxIdx);
+	void OnPhalanxFlexionPlus();
+	void OnPhalanxFlexionMinus();
+	void OnPhalanxLateralPlus();
+	void OnPhalanxLateralMinus();
+	void OnResetSelectedPhalanx();
+
 	void OnSelectScenario1() { SelectScenarioTheme(0); }
 	void OnSelectScenario2() { SelectScenarioTheme(1); }
 	void OnSelectScenario3() { SelectScenarioTheme(2); }

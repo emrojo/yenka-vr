@@ -15,6 +15,33 @@ enum class EHandPoseMode : uint8
 	FingerPoke
 };
 
+USTRUCT(BlueprintType)
+struct FPhalanxData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Phalanx")
+	float FlexionAngle = 0.0f; // Degrees (Pitch: -20 to 90 deg)
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Phalanx")
+	float LateralAngle = 0.0f; // Degrees (Yaw: -45 to +45 deg)
+};
+
+USTRUCT(BlueprintType)
+struct FFingerPhalanges
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Phalanx")
+	FPhalanxData Proximal; // Base / Knuckle
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Phalanx")
+	FPhalanxData Intermediate; // Middle
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Phalanx")
+	FPhalanxData Distal; // Tip / Nail
+};
+
 /**
  * Replicated visual representation of a player's hand in 3D space, visible to all users.
  */
@@ -36,6 +63,45 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Yenka|Hand")
 	void SetHandPoseMode(EHandPoseMode NewPoseMode);
+
+	// --- Phalanx Articulation System ---
+	UFUNCTION(BlueprintCallable, Category = "Yenka|Phalanx")
+	void SetPhalanxFlexion(int32 FingerIndex, int32 PhalanxIndex, float DeltaAngle);
+
+	UFUNCTION(BlueprintCallable, Category = "Yenka|Phalanx")
+	void SetPhalanxLateral(int32 FingerIndex, int32 PhalanxIndex, float DeltaAngle);
+
+	UFUNCTION(BlueprintCallable, Category = "Yenka|Phalanx")
+	void ResetPhalanx(int32 FingerIndex, int32 PhalanxIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "Yenka|Phalanx")
+	void ResetAllPhalanges();
+
+	UFUNCTION(BlueprintCallable, Category = "Yenka|Phalanx")
+	void LoadPresetPose(EHandPoseMode Mode);
+
+	UFUNCTION(BlueprintPure, Category = "Yenka|Phalanx")
+	FFingerPhalanges GetFingerPhalanges(int32 FingerIndex) const;
+
+	UFUNCTION(BlueprintPure, Category = "Yenka|Phalanx")
+	FString GetDetectedGestureDescription() const;
+
+	void ApplyPhalanxTransforms();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Phalanx")
+	FFingerPhalanges ThumbPhalanges;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Phalanx")
+	FFingerPhalanges IndexPhalanges;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Phalanx")
+	FFingerPhalanges MiddlePhalanges;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Phalanx")
+	FFingerPhalanges RingPhalanges;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Phalanx")
+	FFingerPhalanges PinkyPhalanges;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	USceneComponent* HandRoot;
