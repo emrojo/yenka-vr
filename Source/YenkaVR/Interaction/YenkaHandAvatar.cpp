@@ -11,6 +11,8 @@
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "HAL/FileManager.h"
+#include "Physics/YenkaBlock.h"
+#include "Kismet/GameplayStatics.h"
 
 AYenkaHandAvatar::AYenkaHandAvatar()
 {
@@ -447,11 +449,172 @@ void AYenkaHandAvatar::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(AYenkaHandAvatar, bIsLeftHand);
 }
 
+void AYenkaHandAvatar::GetHandAnatomicalSamplePoints(const FTransform& InTransform, TArray<FVector>& OutPoints, float& OutLowestZ) const
+{
+	OutPoints.Reset();
+	OutPoints.Reserve(14);
+
+	const float SkinPadding = 0.75f; // cm (half thickness of finger bones / skin surface)
+
+	// If skeletal/poseable mesh has bones instantiated, query bone locations
+	if (PoseableHandMesh && PoseableHandMesh->GetSkinnedAsset())
+	{
+		const TArray<FName> CriticalBones = {
+			TEXT("wrist_r"), TEXT("hand_r"),
+			TEXT("thumb_01_r"), TEXT("thumb_02_r"), TEXT("thumb_03_r"),
+			TEXT("index_01_r"), TEXT("index_02_r"), TEXT("index_03_r"),
+			TEXT("middle_01_r"), TEXT("middle_02_r"), TEXT("middle_03_r"),
+			TEXT("ring_01_r"), TEXT("ring_02_r"), TEXT("ring_03_r"),
+			TEXT("pinky_01_r"), TEXT("pinky_02_r"), TEXT("pinky_03_r")
+		};
+
+		for (const FName& BName : CriticalBones)
+		{
+			FVector CompLoc = PoseableHandMesh->GetBoneLocationByName(BName, EBoneSpaces::ComponentSpace);
+			if (!CompLoc.IsNearlyZero())
+			{
+				FVector WorldLoc = InTransform.TransformPosition(CompLoc);
+				OutPoints.Add(WorldLoc);
+			}
+		}
+	}
+
+	// Fallback/Supplement anatomical landmark points relative to root transform:
+	if (OutPoints.Num() < 6)
+	{
+		const TArray<FVector> AnatomicalLocalPoints = {
+			FVector(0.0f, 0.0f, 0.0f),      // Wrist
+			FVector(4.5f, 0.0f, 0.0f),      // Palm Center
+			FVector(3.0f, -2.5f, 0.0f),     // Thumb Knuckle
+			FVector(5.5f, -4.0f, -1.0f),    // Thumb Tip
+			FVector(8.0f, -1.8f, 0.0f),     // Index Knuckle
+			FVector(13.5f, -1.8f, -0.5f),   // Index Tip
+			FVector(8.5f, 0.0f, 0.0f),      // Middle Knuckle
+			FVector(14.2f, 0.0f, -0.5f),    // Middle Tip
+			FVector(8.0f, 1.8f, 0.0f),      // Ring Knuckle
+			FVector(13.2f, 1.8f, -0.5f),    // Ring Tip
+			FVector(7.0f, 3.2f, 0.0f),      // Pinky Knuckle
+			FVector(11.5f, 3.2f, -0.5f)     // Pinky Tip
+		};
+
+		for (const FVector& LocalPt : AnatomicalLocalPoints)
+		{
+			OutPoints.Add(InTransform.TransformPosition(LocalPt));
+		}
+	}
+
+	OutLowestZ = FLT_MAX;
+	for (const FVector& Pt : OutPoints)
+	{
+		OutLowestZ = FMath::Min(OutLowestZ, Pt.Z - SkinPadding);
+	}
+}
+
+FTransform AYenkaHandAvatar::ValidateAndResolveCollisions(const FTransform& ProposedTransform, float InTableSurfaceZ, const AActor* AllowedContactActor) const
+{
+	FTransform CorrectedTransform = ProposedTransform;
+
+	// 1. CONSTRAINT 1: STRICT TABLE SURFACE NON-PENETRATION
+	// The entire hand (wrist, palm, phalanges, fingertips) must stay strictly above the table surface.
+	TArray<FVector> SamplePoints;
+	float LowestZ = InTableSurfaceZ;
+	GetHandAnatomicalSamplePoints(CorrectedTransform, SamplePoints, LowestZ);
+
+	const float TableClearancePadding = 0.25f; // 2.5mm minimum margin above tabletop
+	const float MinAllowedZ = InTableSurfaceZ + TableClearancePadding;
+
+	if (LowestZ < MinAllowedZ)
+	{
+		float LiftDeltaZ = MinAllowedZ - LowestZ;
+		FVector CurrentLoc = CorrectedTransform.GetLocation();
+		CurrentLoc.Z += LiftDeltaZ;
+		CorrectedTransform.SetLocation(CurrentLoc);
+
+		// Re-sample points at new elevated position
+		GetHandAnatomicalSamplePoints(CorrectedTransform, SamplePoints, LowestZ);
+	}
+
+	// 2. CONSTRAINT 2: SOLID TOWER BLOCK NON-PENETRATION
+	// Check against all blocks in the scene to ensure no finger/palm volume penetrates inside solid blocks
+	UWorld* World = GetWorld();
+	if (World)
+	{
+		TArray<AActor*> AllBlocks;
+		UGameplayStatics::GetAllActorsOfClass(World, AYenkaBlock::StaticClass(), AllBlocks);
+
+		const float FingerRadius = 0.60f; // cm
+		const FVector BlockHalfExtent(3.75f, 1.25f, 0.75f); // Half extents of 7.5 x 2.5 x 1.5 cm block
+
+		FVector AccumulatedDepenetration = FVector::ZeroVector;
+
+		for (AActor* BlockActor : AllBlocks)
+		{
+			if (BlockActor == AllowedContactActor) continue; // Allow deliberate interaction contact with the target piece
+
+			FTransform BlockTransform = BlockActor->GetActorTransform();
+
+			for (const FVector& HandPoint : SamplePoints)
+			{
+				// Transform hand sample point into block's local coordinate system
+				FVector LocalPoint = BlockTransform.InverseTransformPosition(HandPoint + AccumulatedDepenetration);
+
+				// Check if point (with finger radius) penetrates inside the block's oriented bounding box
+				float OverlapX = (BlockHalfExtent.X + FingerRadius) - FMath::Abs(LocalPoint.X);
+				float OverlapY = (BlockHalfExtent.Y + FingerRadius) - FMath::Abs(LocalPoint.Y);
+				float OverlapZ = (BlockHalfExtent.Z + FingerRadius) - FMath::Abs(LocalPoint.Z);
+
+				if (OverlapX > 0.0f && OverlapY > 0.0f && OverlapZ > 0.0f)
+				{
+					// Penetration detected: find the axis of minimum penetration to push the hand out
+					FVector LocalPush = FVector::ZeroVector;
+					if (OverlapZ <= OverlapX && OverlapZ <= OverlapY)
+					{
+						LocalPush.Z = (LocalPoint.Z >= 0.0f ? 1.0f : -1.0f) * OverlapZ;
+					}
+					else if (OverlapY <= OverlapX)
+					{
+						LocalPush.Y = (LocalPoint.Y >= 0.0f ? 1.0f : -1.0f) * OverlapY;
+					}
+					else
+					{
+						LocalPush.X = (LocalPoint.X >= 0.0f ? 1.0f : -1.0f) * OverlapX;
+					}
+
+					FVector WorldPush = BlockTransform.TransformVector(LocalPush);
+					AccumulatedDepenetration += WorldPush;
+				}
+			}
+		}
+
+		if (!AccumulatedDepenetration.IsNearlyZero())
+		{
+			FVector NewLoc = CorrectedTransform.GetLocation() + AccumulatedDepenetration;
+			// Re-verify that depenetration did not push below table surface
+			if (NewLoc.Z < MinAllowedZ)
+			{
+				NewLoc.Z = MinAllowedZ;
+			}
+			CorrectedTransform.SetLocation(NewLoc);
+		}
+	}
+
+	return CorrectedTransform;
+}
+
 void AYenkaHandAvatar::SetTargetHandTransform(const FTransform& InTransform, float InGripStrength)
 {
-	ReplicatedHandTransform = InTransform;
+	SetTargetHandTransformWithCollision(InTransform, InGripStrength, 90.0f, nullptr);
+}
+
+void AYenkaHandAvatar::SetTargetHandTransformWithCollision(const FTransform& InTransform, float InGripStrength, float InTableSurfaceZ, const AActor* AllowedContactActor)
+{
+	FTransform ValidTransform = ValidateAndResolveCollisions(InTransform, InTableSurfaceZ, AllowedContactActor);
+
+	ReplicatedHandTransform = ValidTransform;
 	ReplicatedGripStrength = InGripStrength;
-	SetActorTransform(InTransform);
+
+	SetActorTransform(ValidTransform);
+
 	if (CurrentPoseMode != LastAppliedPoseMode)
 	{
 		UpdateFingerPoses(InGripStrength);

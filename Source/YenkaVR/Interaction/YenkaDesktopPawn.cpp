@@ -442,7 +442,7 @@ void AYenkaDesktopPawn::TogglePhalanxEditMode()
 		if (VirtualHand)
 		{
 			VirtualHand->SetActorHiddenInGame(false);
-			VirtualHand->SetTargetHandTransform(FixedPhalanxEditTransform, 0.0f);
+			VirtualHand->SetTargetHandTransformWithCollision(FixedPhalanxEditTransform, 0.0f, LockedFloorZ, nullptr);
 		}
 	}
 	else
@@ -2430,7 +2430,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 			FVector FixedPos = FixedPhalanxEditTransform.GetLocation();
 			FVector FinalHandPos = FixedPos - HandQuat.RotateVector(ActiveLocOffset);
 
-			VirtualHand->SetTargetHandTransform(FTransform(HandQuat, FinalHandPos), 0.0f);
+			VirtualHand->SetTargetHandTransformWithCollision(FTransform(HandQuat, FinalHandPos), 0.0f, LockedFloorZ, nullptr);
 		}
 		return;
 	}
@@ -2472,7 +2472,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 				}
 			}
 
-			// Calculate smooth elevation based on continuous S-curve (5cm over table, 3cm over tower)
+			// Calculate smooth elevation based on continuous S-curve (5cm over table, 6cm over tower)
 			float TargetZ = CalculateCraneTargetZ(PlaneIntersection, HighestBlockZ);
 
 			// Smoothly interpolate current Z towards TargetZ for organic fluid movement
@@ -2492,7 +2492,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 			FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
 			FRotator VerticalHandRot = FRotator(90.0f, CraneTargetRotation.Yaw, 0.0f);
 			FVector HandPos = TargetLocation + FVector(0.0f, 0.0f, 3.5f) - VerticalHandRot.RotateVector(LocalOffset);
-			VirtualHand->SetTargetHandTransform(FTransform(VerticalHandRot.Quaternion(), HandPos), 1.0f);
+			VirtualHand->SetTargetHandTransformWithCollision(FTransform(VerticalHandRot.Quaternion(), HandPos), 1.0f, LockedFloorZ, GrabbedBlock);
 			return;
 		}
 
@@ -2528,7 +2528,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 			FVector HandPos = TargetLocation - LockedPullHandQuat.RotateVector(LocalOffset);
 			FTransform HandTarget(LockedPullHandQuat, HandPos);
 			VirtualHand->SetHandPoseMode(EHandPoseMode::GrabPinch);
-			VirtualHand->SetTargetHandTransform(HandTarget, 1.0f);
+			VirtualHand->SetTargetHandTransformWithCollision(HandTarget, 1.0f, LockedFloorZ, GrabbedBlock);
 			return;
 		}
 
@@ -2553,7 +2553,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 
 				FVector UpdatedFacePos = GetBlockChosenFacePos(LockedPushBlock, PushApproachNormal);
 				FVector HandPos = UpdatedFacePos - HandQuat.RotateVector(LocalOffset);
-				VirtualHand->SetTargetHandTransform(FTransform(HandQuat, HandPos), 0.0f);
+				VirtualHand->SetTargetHandTransformWithCollision(FTransform(HandQuat, HandPos), 0.0f, LockedFloorZ, LockedPushBlock);
 			}
 			return;
 		}
@@ -2600,7 +2600,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 				FQuat HandQuat = BaseRot.Quaternion() * ActiveRotOffset.Quaternion();
 				FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + ActiveLocOffset;
 				FVector SafeHandPos = TargetPos - HandQuat.RotateVector(LocalOffset);
-				VirtualHand->SetTargetHandTransform(FTransform(HandQuat, SafeHandPos), 0.0f);
+				VirtualHand->SetTargetHandTransformWithCollision(FTransform(HandQuat, SafeHandPos), 0.0f, LockedFloorZ, HoveredBlock);
 			}
 			else if (HoveredBlock && bHit)
 			{
@@ -2623,7 +2623,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 						FVector StandbyPos = HitResult.ImpactPoint + FVector(0.0f, 0.0f, 2.5f);
 						FRotator VerticalHandRot = FRotator(90.0f, HoveredBlock->GetActorRotation().Yaw, 0.0f);
 						FVector HandPos = StandbyPos - VerticalHandRot.RotateVector(LocalOffset);
-						VirtualHand->SetTargetHandTransform(FTransform(VerticalHandRot.Quaternion(), HandPos), 0.0f);
+						VirtualHand->SetTargetHandTransformWithCollision(FTransform(VerticalHandRot.Quaternion(), HandPos), 0.0f, LockedFloorZ, HoveredBlock);
 					}
 					else
 					{
@@ -2638,7 +2638,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 						FQuat HandQuat = BaseRot.Quaternion() * GrabHandRotationOffset.Quaternion();
 
 						FVector SafeHandPos = HitResult.ImpactPoint - HandQuat.RotateVector(LocalOffset);
-						VirtualHand->SetTargetHandTransform(FTransform(HandQuat, SafeHandPos), 0.0f);
+						VirtualHand->SetTargetHandTransformWithCollision(FTransform(HandQuat, SafeHandPos), 0.0f, LockedFloorZ, HoveredBlock);
 					}
 				}
 				else if (FaceType == EBlockFaceType::LargeSideFace && bIsProtruding)
@@ -2659,7 +2659,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 					FQuat HandQuat = BaseRot.Quaternion() * GrabHandRotationOffset.Quaternion();
 
 					FVector SafeHandPos = StandbyFingertipPos - HandQuat.RotateVector(LocalOffset);
-					VirtualHand->SetTargetHandTransform(FTransform(HandQuat, SafeHandPos), 0.0f);
+					VirtualHand->SetTargetHandTransformWithCollision(FTransform(HandQuat, SafeHandPos), 0.0f, LockedFloorZ, HoveredBlock);
 				}
 				else if (FaceType == EBlockFaceType::SmallEndFace)
 				{
@@ -2692,7 +2692,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 					FVector CurrentFacePos = GetBlockChosenFacePos(ActivePushBlock, ApproachNormal);
 					FVector TargetFingertipWorld = CurrentFacePos + (ApproachNormal * PokeStandbySeparation);
 					FVector HandPos = TargetFingertipWorld - HandQuat.RotateVector(LocalOffset);
-					VirtualHand->SetTargetHandTransform(FTransform(HandQuat, HandPos), 0.0f);
+					VirtualHand->SetTargetHandTransformWithCollision(FTransform(HandQuat, HandPos), 0.0f, LockedFloorZ, ActivePushBlock);
 				}
 				else
 				{
@@ -2709,7 +2709,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 					FQuat HandQuat = BaseRot.Quaternion() * GrabHandRotationOffset.Quaternion();
 
 					FVector SafeHandPos = HitResult.ImpactPoint - HandQuat.RotateVector(LocalOffset);
-					VirtualHand->SetTargetHandTransform(FTransform(HandQuat, SafeHandPos), 0.0f);
+					VirtualHand->SetTargetHandTransformWithCollision(FTransform(HandQuat, SafeHandPos), 0.0f, LockedFloorZ, HoveredBlock);
 				}
 			}
 			else if (bHit)
@@ -2725,7 +2725,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 				FQuat HandQuat = BaseRot.Quaternion() * GrabHandRotationOffset.Quaternion();
 
 				FVector SafeHandPos = HitResult.ImpactPoint - HandQuat.RotateVector(LocalOffset);
-				VirtualHand->SetTargetHandTransform(FTransform(HandQuat, SafeHandPos), 0.0f);
+				VirtualHand->SetTargetHandTransformWithCollision(FTransform(HandQuat, SafeHandPos), 0.0f, LockedFloorZ, nullptr);
 			}
 			else
 			{
@@ -2740,7 +2740,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 				FQuat HandQuat = BaseRot.Quaternion() * GrabHandRotationOffset.Quaternion();
 				FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
 				FVector SafeHandPos = FreeTargetPos - HandQuat.RotateVector(LocalOffset);
-				VirtualHand->SetTargetHandTransform(FTransform(HandQuat, SafeHandPos), 0.0f);
+				VirtualHand->SetTargetHandTransformWithCollision(FTransform(HandQuat, SafeHandPos), 0.0f, LockedFloorZ, nullptr);
 			}
 		}
 	}
@@ -2856,7 +2856,7 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 			FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
 			FVector HandPos = LockedPullInitialPos - LockedPullHandQuat.RotateVector(LocalOffset);
 			FTransform HandTarget(LockedPullHandQuat, HandPos);
-			VirtualHand->SetTargetHandTransform(HandTarget, 1.0f);
+			VirtualHand->SetTargetHandTransformWithCollision(HandTarget, 1.0f, LockedFloorZ, GrabbedBlock);
 			return;
 		}
 		else if (FaceType == EBlockFaceType::SmallEndFace || FaceType == EBlockFaceType::LargeSideFace)
@@ -2942,7 +2942,7 @@ void AYenkaDesktopPawn::OnPrimaryClickReleased()
 			VirtualHand->SetHandPoseMode(bForceGesturePreview ? ActiveGesturePreview : EHandPoseMode::OpenHand);
 			FRotator HandRot = GetHorizontalFacingRotation(LastHitLocation);
 			FTransform HandTarget(HandRot.Quaternion(), LastHitLocation);
-			VirtualHand->SetTargetHandTransform(HandTarget, 0.0f);
+			VirtualHand->SetTargetHandTransformWithCollision(HandTarget, 0.0f, LockedFloorZ, nullptr);
 		}
 	}
 }

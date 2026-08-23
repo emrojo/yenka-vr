@@ -144,6 +144,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Yenka|Hand")
 	void SetTargetHandTransform(const FTransform& InTransform, float InGripStrength);
 
+	/** Updates target transform validating against table surface and solid tower block non-penetration */
+	UFUNCTION(BlueprintCallable, Category = "Yenka|Hand")
+	void SetTargetHandTransformWithCollision(const FTransform& InTransform, float InGripStrength, float InTableSurfaceZ = 90.0f, const AActor* AllowedContactActor = nullptr);
+
+	/** Calculates key anatomical bounding points for table non-penetration and collision resolution */
+	void GetHandAnatomicalSamplePoints(const FTransform& InTransform, TArray<FVector>& OutPoints, float& OutLowestZ) const;
+
+	/** Solves continuous non-penetration constraints against table plane and tower blocks */
+	FTransform ValidateAndResolveCollisions(const FTransform& ProposedTransform, float InTableSurfaceZ = 90.0f, const AActor* AllowedContactActor = nullptr) const;
+
 	UFUNCTION(BlueprintCallable, Category = "Yenka|Hand")
 	void SetHandPoseMode(EHandPoseMode NewPoseMode);
 
