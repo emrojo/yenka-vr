@@ -165,9 +165,9 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		PlayerInputComponent->BindKey(EKeys::H, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYawMinus);
 		PlayerInputComponent->BindKey(EKeys::T, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibPitchPlus);
 		PlayerInputComponent->BindKey(EKeys::B, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibRollMinus);
-		PlayerInputComponent->BindKey(EKeys::N, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibRollPlus);
-		PlayerInputComponent->BindKey(EKeys::X, IE_Pressed, this, &AYenkaDesktopPawn::QuickRotateYaw90);
-		PlayerInputComponent->BindKey(EKeys::Z, IE_Pressed, this, &AYenkaDesktopPawn::QuickRotateRoll90);
+		PlayerInputComponent->BindKey(EKeys::X, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyXPressed);
+		PlayerInputComponent->BindKey(EKeys::Z, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyZPressed);
+		PlayerInputComponent->BindKey(EKeys::C, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyCPressed);
 		PlayerInputComponent->BindKey(EKeys::I, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibXPlus);
 		PlayerInputComponent->BindKey(EKeys::K, IE_Pressed, this, &AYenkaDesktopPawn::TogglePhalanxEditMode);
 		PlayerInputComponent->BindKey(EKeys::J, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYMinus);
@@ -184,6 +184,7 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		PlayerInputComponent->BindKey(EKeys::Five, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario5);
 		PlayerInputComponent->BindKey(EKeys::Six, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario6);
 		PlayerInputComponent->BindKey(EKeys::Seven, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario7);
+		PlayerInputComponent->BindKey(EKeys::Zero, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario6);
 
 		PlayerInputComponent->BindAxisKey(EKeys::MouseX, this, &AYenkaDesktopPawn::OnMouseX);
 		PlayerInputComponent->BindAxisKey(EKeys::MouseY, this, &AYenkaDesktopPawn::OnMouseY);
@@ -208,6 +209,46 @@ void AYenkaDesktopPawn::SelectFinger(int32 FingerIdx)
 void AYenkaDesktopPawn::SelectPhalanx(int32 PhalanxIdx)
 {
 	SelectedPhalanx = PhalanxIdx;
+}
+
+void AYenkaDesktopPawn::OnKeyZPressed()
+{
+	if (bIsPhalanxEditMode)
+	{
+		SelectedPhalanx = 1; // Proximal (Base)
+	}
+	else
+	{
+		QuickRotateRoll90();
+	}
+}
+
+void AYenkaDesktopPawn::OnKeyXPressed()
+{
+	if (bIsPhalanxEditMode)
+	{
+		SelectedPhalanx = 2; // Intermediate (Middle)
+	}
+	else
+	{
+		QuickRotateYaw90();
+	}
+}
+
+void AYenkaDesktopPawn::OnKeyCPressed()
+{
+	if (bIsPhalanxEditMode)
+	{
+		SelectedPhalanx = 3; // Distal (Tip)
+	}
+}
+
+void AYenkaDesktopPawn::OnKeyAPressed()
+{
+	if (bIsPhalanxEditMode)
+	{
+		SelectedPhalanx = 0; // All Phalanges
+	}
 }
 
 void AYenkaDesktopPawn::OnPhalanxFlexionPlus()

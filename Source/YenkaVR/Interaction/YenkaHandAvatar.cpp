@@ -1,5 +1,6 @@
 #include "YenkaHandAvatar.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/PoseableMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "PhysicsEngine/PhysicsHandleComponent.h"
 #include "Animation/AnimSequence.h"
@@ -20,12 +21,6 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 	HandRoot = CreateDefaultSubobject<USceneComponent>(TEXT("HandRoot"));
 	RootComponent = HandRoot;
 
-	// 0.1. MetaHuman / Standard Continuous Skeletal Mesh Hand Component
-	HandSkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("HandSkeletalMesh"));
-	HandSkeletalMesh->SetupAttachment(HandRoot);
-	HandSkeletalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	HandSkeletalMesh->SetCastShadow(true);
-
 	static ConstructorHelpers::FObjectFinder<USkeletalMesh> RightSkeletalMeshAsset(TEXT("/Game/Characters/MannequinsXR/Meshes/SKM_MannyXR_right.SKM_MannyXR_right"));
 	static ConstructorHelpers::FObjectFinder<USkeletalMesh> LeftSkeletalMeshAsset(TEXT("/Game/Characters/MannequinsXR/Meshes/SKM_MannyXR_left.SKM_MannyXR_left"));
 	static ConstructorHelpers::FObjectFinder<UAnimSequence> IdleSeqAsset(TEXT("/Game/Characters/MannequinsXR/Animations/A_MannequinsXR_Idle_Right.A_MannequinsXR_Idle_Right"));
@@ -38,22 +33,27 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 	if (PointSeqAsset.Succeeded()) AnimPoint = PointSeqAsset.Object;
 	if (GraspSeqAsset.Succeeded()) AnimGrasp = GraspSeqAsset.Object;
 
-	const bool bHasSkeletalHand = RightSkeletalMesh != nullptr;
-	if (bHasSkeletalHand)
+	// 0.1. Real-time Anatomically Poseable Mesh Hand Component
+	PoseableHandMesh = CreateDefaultSubobject<UPoseableMeshComponent>(TEXT("PoseableHandMesh"));
+	PoseableHandMesh->SetupAttachment(HandRoot);
+	PoseableHandMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	PoseableHandMesh->SetCastShadow(true);
+	if (RightSkeletalMesh)
 	{
-		HandSkeletalMesh->SetSkeletalMesh(RightSkeletalMesh);
-		// MannyXR right hand: scaled to 0.5 (half-size), rotated -90 deg to face pieces directly
-		// Offset wrist by -5.0cm so palm center is at HandRoot (0,0,0) and fingertips reach +2.5cm
-		HandSkeletalMesh->SetRelativeLocation(FVector(-5.0f, 0.0f, 0.0f));
-		HandSkeletalMesh->SetRelativeRotation(FRotator::ZeroRotator);
-		HandSkeletalMesh->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.5f));
-
-		if (AnimIdle)
-		{
-			HandSkeletalMesh->PlayAnimation(AnimIdle, true);
-			HandSkeletalMesh->SetPlayRate(1.0f);
-		}
+		PoseableHandMesh->SetSkeletalMesh(RightSkeletalMesh);
+		PoseableHandMesh->SetRelativeLocation(FVector(-5.0f, 0.0f, 0.0f));
+		PoseableHandMesh->SetRelativeRotation(FRotator::ZeroRotator);
+		PoseableHandMesh->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.5f));
 	}
+
+	// 0.2. Standard Continuous Skeletal Mesh Hand Component (Hidden when using poseable mesh)
+	HandSkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("HandSkeletalMesh"));
+	HandSkeletalMesh->SetupAttachment(HandRoot);
+	HandSkeletalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	HandSkeletalMesh->SetCastShadow(false);
+	HandSkeletalMesh->SetVisibility(false);
+
+	const bool bHasSkeletalHand = RightSkeletalMesh != nullptr;
 
 	// 1. Palm
 	PalmMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PalmMesh"));
@@ -508,8 +508,50 @@ FString AYenkaHandAvatar::GetDetectedGestureDescription() const
 	return TEXT("🎨 GESTO PERSONALIZADO (Custom Pose)");
 }
 
+static void RotatePhalanxBone(UPoseableMeshComponent* Mesh, const TArray<FName>& BoneNames, float FlexionAngle, float LateralAngle)
+{
+	if (!Mesh) return;
+	for (const FName& Name : BoneNames)
+	{
+		if (Mesh->GetBoneIndex(Name) != INDEX_NONE)
+		{
+			FRotator BoneRot(-FlexionAngle, LateralAngle, 0.0f);
+			Mesh->SetBoneRotationByName(Name, BoneRot, EBoneSpaces::ComponentSpace);
+			break;
+		}
+	}
+}
+
 void AYenkaHandAvatar::ApplyPhalanxTransforms()
 {
+	if (PoseableHandMesh)
+	{
+		// Thumb
+		RotatePhalanxBone(PoseableHandMesh, {TEXT("thumb_01_r"), TEXT("thumb_01_l"), TEXT("thumb_metacarpal_r"), TEXT("thumb_metacarpal_l"), TEXT("thumb_proximal_r"), TEXT("thumb_proximal_l")}, ThumbPhalanges.Proximal.FlexionAngle, ThumbPhalanges.Proximal.LateralAngle);
+		RotatePhalanxBone(PoseableHandMesh, {TEXT("thumb_02_r"), TEXT("thumb_02_l"), TEXT("thumb_intermediate_r"), TEXT("thumb_intermediate_l"), TEXT("thumb_proximal_r"), TEXT("thumb_proximal_l")}, ThumbPhalanges.Intermediate.FlexionAngle, ThumbPhalanges.Intermediate.LateralAngle);
+		RotatePhalanxBone(PoseableHandMesh, {TEXT("thumb_03_r"), TEXT("thumb_03_l"), TEXT("thumb_distal_r"), TEXT("thumb_distal_l")}, ThumbPhalanges.Distal.FlexionAngle, ThumbPhalanges.Distal.LateralAngle);
+
+		// Index
+		RotatePhalanxBone(PoseableHandMesh, {TEXT("index_01_r"), TEXT("index_01_l"), TEXT("index_metacarpal_r"), TEXT("index_metacarpal_l"), TEXT("index_proximal_r"), TEXT("index_proximal_l")}, IndexPhalanges.Proximal.FlexionAngle, IndexPhalanges.Proximal.LateralAngle);
+		RotatePhalanxBone(PoseableHandMesh, {TEXT("index_02_r"), TEXT("index_02_l"), TEXT("index_intermediate_r"), TEXT("index_intermediate_l")}, IndexPhalanges.Intermediate.FlexionAngle, IndexPhalanges.Intermediate.LateralAngle);
+		RotatePhalanxBone(PoseableHandMesh, {TEXT("index_03_r"), TEXT("index_03_l"), TEXT("index_distal_r"), TEXT("index_distal_l")}, IndexPhalanges.Distal.FlexionAngle, IndexPhalanges.Distal.LateralAngle);
+
+		// Middle
+		RotatePhalanxBone(PoseableHandMesh, {TEXT("middle_01_r"), TEXT("middle_01_l"), TEXT("middle_metacarpal_r"), TEXT("middle_metacarpal_l"), TEXT("middle_proximal_r"), TEXT("middle_proximal_l")}, MiddlePhalanges.Proximal.FlexionAngle, MiddlePhalanges.Proximal.LateralAngle);
+		RotatePhalanxBone(PoseableHandMesh, {TEXT("middle_02_r"), TEXT("middle_02_l"), TEXT("middle_intermediate_r"), TEXT("middle_intermediate_l")}, MiddlePhalanges.Intermediate.FlexionAngle, MiddlePhalanges.Intermediate.LateralAngle);
+		RotatePhalanxBone(PoseableHandMesh, {TEXT("middle_03_r"), TEXT("middle_03_l"), TEXT("middle_distal_r"), TEXT("middle_distal_l")}, MiddlePhalanges.Distal.FlexionAngle, MiddlePhalanges.Distal.LateralAngle);
+
+		// Ring
+		RotatePhalanxBone(PoseableHandMesh, {TEXT("ring_01_r"), TEXT("ring_01_l"), TEXT("ring_metacarpal_r"), TEXT("ring_metacarpal_l"), TEXT("ring_proximal_r"), TEXT("ring_proximal_l")}, RingPhalanges.Proximal.FlexionAngle, RingPhalanges.Proximal.LateralAngle);
+		RotatePhalanxBone(PoseableHandMesh, {TEXT("ring_02_r"), TEXT("ring_02_l"), TEXT("ring_intermediate_r"), TEXT("ring_intermediate_l")}, RingPhalanges.Intermediate.FlexionAngle, RingPhalanges.Intermediate.LateralAngle);
+		RotatePhalanxBone(PoseableHandMesh, {TEXT("ring_03_r"), TEXT("ring_03_l"), TEXT("ring_distal_r"), TEXT("ring_distal_l")}, RingPhalanges.Distal.FlexionAngle, RingPhalanges.Distal.LateralAngle);
+
+		// Pinky
+		RotatePhalanxBone(PoseableHandMesh, {TEXT("pinky_01_r"), TEXT("pinky_01_l"), TEXT("pinky_metacarpal_r"), TEXT("pinky_metacarpal_l"), TEXT("pinky_proximal_r"), TEXT("pinky_proximal_l")}, PinkyPhalanges.Proximal.FlexionAngle, PinkyPhalanges.Proximal.LateralAngle);
+		RotatePhalanxBone(PoseableHandMesh, {TEXT("pinky_02_r"), TEXT("pinky_02_l"), TEXT("pinky_intermediate_r"), TEXT("pinky_intermediate_l")}, PinkyPhalanges.Intermediate.FlexionAngle, PinkyPhalanges.Intermediate.LateralAngle);
+		RotatePhalanxBone(PoseableHandMesh, {TEXT("pinky_03_r"), TEXT("pinky_03_l"), TEXT("pinky_distal_r"), TEXT("pinky_distal_l")}, PinkyPhalanges.Distal.FlexionAngle, PinkyPhalanges.Distal.LateralAngle);
+	}
+
 	// Update procedural mesh rotations based on phalanx flexion and lateral spread
 	if (IndexFinger)
 	{
@@ -545,32 +587,6 @@ void AYenkaHandAvatar::ApplyPhalanxTransforms()
 		float TotalLat = ThumbPhalanges.Proximal.LateralAngle + ThumbPhalanges.Intermediate.LateralAngle;
 		ThumbMesh->SetRelativeLocation(FVector(1.0f, -2.2f, 0.0f));
 		ThumbMesh->SetRelativeRotation(FRotator(TotalFlex, -40.0f + TotalLat, 0.0f));
-	}
-
-	// Update skeletal animation position based on gesture
-	if (HandSkeletalMesh)
-	{
-		float IndexAvg = (IndexPhalanges.Proximal.FlexionAngle + IndexPhalanges.Intermediate.FlexionAngle + IndexPhalanges.Distal.FlexionAngle) / 3.0f;
-		float OthersAvg = (MiddlePhalanges.Proximal.FlexionAngle + RingPhalanges.Proximal.FlexionAngle + PinkyPhalanges.Proximal.FlexionAngle) / 3.0f;
-
-		if (IndexAvg < 20.0f && OthersAvg > 45.0f && AnimPoint)
-		{
-			HandSkeletalMesh->PlayAnimation(AnimPoint, false);
-			HandSkeletalMesh->SetPosition(AnimPoint->GetPlayLength() * 0.90f);
-			HandSkeletalMesh->SetPlayRate(0.0f);
-		}
-		else if (OthersAvg > 40.0f && AnimGrasp)
-		{
-			HandSkeletalMesh->PlayAnimation(AnimGrasp, false);
-			float GraspProgress = FMath::Clamp(OthersAvg / 80.0f, 0.0f, 1.0f);
-			HandSkeletalMesh->SetPosition(AnimGrasp->GetPlayLength() * (0.3f + GraspProgress * 0.5f));
-			HandSkeletalMesh->SetPlayRate(0.0f);
-		}
-		else if (AnimIdle)
-		{
-			HandSkeletalMesh->PlayAnimation(AnimIdle, true);
-			HandSkeletalMesh->SetPlayRate(1.0f);
-		}
 	}
 }
 
