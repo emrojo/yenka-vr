@@ -549,6 +549,17 @@ void AYenkaHandAvatar::SetPhalanxRoll(int32 FingerIndex, int32 PhalanxIndex, flo
 	ApplyPhalanxTransforms();
 }
 
+void AYenkaHandAvatar::SetHandAxialRotation(float Angle)
+{
+	HandAxialRotation = FRotator::NormalizeAxis(Angle);
+	ApplyPhalanxTransforms();
+}
+
+void AYenkaHandAvatar::AddHandAxialRotation(float DeltaAngle)
+{
+	SetHandAxialRotation(HandAxialRotation + DeltaAngle);
+}
+
 void AYenkaHandAvatar::ResetPhalanx(int32 FingerIndex, int32 PhalanxIndex)
 {
 	auto ResetFinger = [PhalanxIndex](FFingerPhalanges& Finger)
@@ -582,12 +593,14 @@ void AYenkaHandAvatar::ResetAllPhalanges()
 	MiddlePhalanges = FFingerPhalanges();
 	RingPhalanges = FFingerPhalanges();
 	PinkyPhalanges = FFingerPhalanges();
+	HandAxialRotation = 0.0f;
 	ApplyPhalanxTransforms();
 }
 
 void AYenkaHandAvatar::LoadPresetPose(EHandPoseMode Mode)
 {
 	CurrentPoseMode = Mode;
+	HandAxialRotation = 0.0f;
 
 	if (Mode == EHandPoseMode::FingerPoke)
 	{
@@ -681,6 +694,7 @@ FCustomHandGesture AYenkaHandAvatar::ExportCurrentGesture(const FString& Name, c
 	OutGesture.Pinky = PinkyPhalanges;
 	OutGesture.HandLocationOffset = LocOffset;
 	OutGesture.HandRotationOffset = RotOffset;
+	OutGesture.HandAxialRotation = HandAxialRotation;
 	return OutGesture;
 }
 
@@ -691,6 +705,7 @@ void AYenkaHandAvatar::ApplyCustomGesture(const FCustomHandGesture& InGesture)
 	MiddlePhalanges = InGesture.Middle;
 	RingPhalanges = InGesture.Ring;
 	PinkyPhalanges = InGesture.Pinky;
+	HandAxialRotation = InGesture.HandAxialRotation;
 	ApplyPhalanxTransforms();
 }
 
@@ -799,6 +814,39 @@ void AYenkaHandAvatar::ApplyPhalanxTransforms()
 		const int32 NumBones = RefSkeleton.GetNum();
 		const TArray<FTransform>& RefBonePoses = RefSkeleton.GetRefBonePose();
 
+		// Calculate exact unit axis vector from center of wrist (root) to the base of index finger
+		FVector IndexAxisVector = FVector(1.0f, 0.0f, 0.0f);
+		int32 IndexBoneIdx = INDEX_NONE;
+		for (int32 b = 0; b < NumBones; ++b)
+		{
+			FString BName = RefSkeleton.GetBoneName(b).ToString().ToLower();
+			if (BName.Contains(TEXT("index")) && (BName.Contains(TEXT("01")) || BName.Contains(TEXT("proximal")) || BName.Contains(TEXT("metacarpal"))))
+			{
+				IndexBoneIdx = b;
+				break;
+			}
+		}
+
+		if (IndexBoneIdx != INDEX_NONE)
+		{
+			FTransform IndexCompRef = RefBonePoses[IndexBoneIdx];
+			int32 CurParent = RefSkeleton.GetParentIndex(IndexBoneIdx);
+			while (CurParent != INDEX_NONE)
+			{
+				IndexCompRef = IndexCompRef * RefBonePoses[CurParent];
+				CurParent = RefSkeleton.GetParentIndex(CurParent);
+			}
+
+			FVector WristCompPos = (RefBonePoses.Num() > 0) ? RefBonePoses[0].GetLocation() : FVector::ZeroVector;
+			FVector Dir = IndexCompRef.GetLocation() - WristCompPos;
+			if (!Dir.IsNearlyZero())
+			{
+				IndexAxisVector = Dir.GetSafeNormal();
+			}
+		}
+
+		const FQuat AxialTwistQuat = FQuat(IndexAxisVector, FMath::DegreesToRadians(HandAxialRotation));
+
 		TArray<FTransform> CompTransforms;
 		CompTransforms.SetNum(NumBones);
 
@@ -821,6 +869,8 @@ void AYenkaHandAvatar::ApplyPhalanxTransforms()
 			}
 			else
 			{
+				// Root bone (wrist): apply axial rotation along the wrist-to-index axis
+				LocalTransform.SetRotation(AxialTwistQuat * LocalTransform.GetRotation());
 				CompTransforms[i] = LocalTransform;
 			}
 

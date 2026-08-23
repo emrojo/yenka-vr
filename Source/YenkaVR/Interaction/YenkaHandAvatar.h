@@ -86,6 +86,9 @@ struct FCustomHandGesture
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Gesture")
 	FRotator HandRotationOffset = FRotator::ZeroRotator;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Gesture")
+	float HandAxialRotation = 0.0f; // Rotation angle around the axis from wrist center to index base phalanx
 };
 
 USTRUCT(BlueprintType)
@@ -118,6 +121,19 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Yenka|Hand")
 	void SetHandPoseMode(EHandPoseMode NewPoseMode);
+
+	// --- Hand Axial Twist System (Rotation along axis from wrist center to index base knuckle) ---
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Hand")
+	float HandAxialRotation = 0.0f;
+
+	UFUNCTION(BlueprintCallable, Category = "Yenka|Hand")
+	void SetHandAxialRotation(float Angle);
+
+	UFUNCTION(BlueprintCallable, Category = "Yenka|Hand")
+	void AddHandAxialRotation(float DeltaAngle);
+
+	UFUNCTION(BlueprintPure, Category = "Yenka|Hand")
+	float GetHandAxialRotation() const { return HandAxialRotation; }
 
 	// --- 3-DOF Phalanx Articulation System (Pitch, Yaw, Roll) ---
 	UFUNCTION(BlueprintCallable, Category = "Yenka|Phalanx")
