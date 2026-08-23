@@ -12,6 +12,8 @@
 #include "Misc/Paths.h"
 #include "HAL/FileManager.h"
 #include "Physics/YenkaBlock.h"
+#include "Physics/YenkaTowerManager.h"
+#include "Environment/YenkaEnvironmentManager.h"
 #include "Kismet/GameplayStatics.h"
 
 AYenkaHandAvatar::AYenkaHandAvatar()
@@ -514,88 +516,144 @@ FTransform AYenkaHandAvatar::ValidateAndResolveCollisions(const FTransform& Prop
 {
 	FTransform CorrectedTransform = ProposedTransform;
 
-	// 1. CONSTRAINT 1: STRICT TABLE SURFACE NON-PENETRATION
-	// The entire hand (wrist, palm, phalanges, fingertips) must stay strictly above the table surface.
-	TArray<FVector> SamplePoints;
-	float LowestZ = InTableSurfaceZ;
-	GetHandAnatomicalSamplePoints(CorrectedTransform, SamplePoints, LowestZ);
+	UWorld* World = GetWorld();
+	if (!World) return CorrectedTransform;
+
+	// 1. QUERY JENGA BOARD GEOMETRY FROM TOWER MANAGER
+	AActor* TowerActor = UGameplayStatics::GetActorOfClass(World, AYenkaTowerManager::StaticClass());
+	AYenkaTowerManager* TowerManager = Cast<AYenkaTowerManager>(TowerActor);
+	FVector BoardCenter = TowerManager ? TowerManager->GetActorLocation() : FVector(0.0f, 0.0f, InTableSurfaceZ);
+	float ActualTableZ = TowerManager ? TowerManager->GetTableSurfaceZ() : InTableSurfaceZ;
+	if (ActualTableZ <= 0.0f) ActualTableZ = InTableSurfaceZ;
+
+	// Board Half Extents: 35cm x 35cm x 4cm board (half extents 17.5 x 17.5 x 2.0 cm)
+	const FVector BoardHalfExtents(17.5f, 17.5f, 2.0f);
+	const FVector BoardCenter3D = BoardCenter + FVector(0.0f, 0.0f, -BoardHalfExtents.Z); // Top surface at ActualTableZ
 
 	const float TableClearancePadding = 0.25f; // 2.5mm minimum margin above tabletop
-	const float MinAllowedZ = InTableSurfaceZ + TableClearancePadding;
+	const float FingerRadius = 0.60f; // cm
+	const float SkinPadding = 0.75f; // cm
 
-	if (LowestZ < MinAllowedZ)
+	// 2. CONSTRAINT 1: STRICT TABLE & BOARD VERTICAL FLOOR NON-PENETRATION
+	// The entire hand (wrist, palm, phalanges, fingertips) must stay strictly above the tabletop and Jenga board.
+	TArray<FVector> SamplePoints;
+	float LowestZ = ActualTableZ;
+	GetHandAnatomicalSamplePoints(CorrectedTransform, SamplePoints, LowestZ);
+
+	float RequiredLift = 0.0f;
+	for (const FVector& Pt : SamplePoints)
 	{
-		float LiftDeltaZ = MinAllowedZ - LowestZ;
+		float DistFromBoardX = FMath::Abs(Pt.X - BoardCenter.X);
+		float DistFromBoardY = FMath::Abs(Pt.Y - BoardCenter.Y);
+
+		// If point is over the Jenga board ($35\text{ cm} \times 35\text{ cm}$):
+		bool bIsOverBoard = (DistFromBoardX <= BoardHalfExtents.X + FingerRadius) && (DistFromBoardY <= BoardHalfExtents.Y + FingerRadius);
+		float LocalFloorZ = bIsOverBoard ? ActualTableZ : (ActualTableZ - 2.0f); // 90cm on board, 88cm on surrounding table desk
+
+		float EffectiveMinZ = LocalFloorZ + TableClearancePadding;
+		float PointLowestZ = Pt.Z - SkinPadding;
+		if (PointLowestZ < EffectiveMinZ)
+		{
+			RequiredLift = FMath::Max(RequiredLift, EffectiveMinZ - PointLowestZ);
+		}
+	}
+
+	if (RequiredLift > 0.0f)
+	{
 		FVector CurrentLoc = CorrectedTransform.GetLocation();
-		CurrentLoc.Z += LiftDeltaZ;
+		CurrentLoc.Z += RequiredLift;
 		CorrectedTransform.SetLocation(CurrentLoc);
 
 		// Re-sample points at new elevated position
 		GetHandAnatomicalSamplePoints(CorrectedTransform, SamplePoints, LowestZ);
 	}
 
-	// 2. CONSTRAINT 2: SOLID TOWER BLOCK NON-PENETRATION
-	// Check against all blocks in the scene to ensure no finger/palm volume penetrates inside solid blocks
-	UWorld* World = GetWorld();
-	if (World)
+	// 3. CONSTRAINT 2: JENGA BOARD 3D VOLUME & SIDE EDGES NON-PENETRATION
+	// The Jenga board itself is a solid physical obstacle from (ActualTableZ - 4.0cm) to ActualTableZ
+	FVector AccumulatedDepenetration = FVector::ZeroVector;
+
+	for (const FVector& HandPoint : SamplePoints)
 	{
-		TArray<AActor*> AllBlocks;
-		UGameplayStatics::GetAllActorsOfClass(World, AYenkaBlock::StaticClass(), AllBlocks);
+		FVector LocalPoint = (HandPoint + AccumulatedDepenetration) - BoardCenter3D;
+		float OverlapX = (BoardHalfExtents.X + FingerRadius) - FMath::Abs(LocalPoint.X);
+		float OverlapY = (BoardHalfExtents.Y + FingerRadius) - FMath::Abs(LocalPoint.Y);
+		float OverlapZ = (BoardHalfExtents.Z + FingerRadius) - FMath::Abs(LocalPoint.Z);
 
-		const float FingerRadius = 0.60f; // cm
-		const FVector BlockHalfExtent(3.75f, 1.25f, 0.75f); // Half extents of 7.5 x 2.5 x 1.5 cm block
-
-		FVector AccumulatedDepenetration = FVector::ZeroVector;
-
-		for (AActor* BlockActor : AllBlocks)
+		if (OverlapX > 0.0f && OverlapY > 0.0f && OverlapZ > 0.0f)
 		{
-			if (BlockActor == AllowedContactActor) continue; // Allow deliberate interaction contact with the target piece
-
-			FTransform BlockTransform = BlockActor->GetActorTransform();
-
-			for (const FVector& HandPoint : SamplePoints)
+			FVector LocalPush = FVector::ZeroVector;
+			if (OverlapZ <= OverlapX && OverlapZ <= OverlapY)
 			{
-				// Transform hand sample point into block's local coordinate system
-				FVector LocalPoint = BlockTransform.InverseTransformPosition(HandPoint + AccumulatedDepenetration);
+				LocalPush.Z = (LocalPoint.Z >= 0.0f ? 1.0f : -1.0f) * OverlapZ;
+			}
+			else if (OverlapY <= OverlapX)
+			{
+				LocalPush.Y = (LocalPoint.Y >= 0.0f ? 1.0f : -1.0f) * OverlapY;
+			}
+			else
+			{
+				LocalPush.X = (LocalPoint.X >= 0.0f ? 1.0f : -1.0f) * OverlapX;
+			}
+			AccumulatedDepenetration += LocalPush;
+		}
+	}
 
-				// Check if point (with finger radius) penetrates inside the block's oriented bounding box
-				float OverlapX = (BlockHalfExtent.X + FingerRadius) - FMath::Abs(LocalPoint.X);
-				float OverlapY = (BlockHalfExtent.Y + FingerRadius) - FMath::Abs(LocalPoint.Y);
-				float OverlapZ = (BlockHalfExtent.Z + FingerRadius) - FMath::Abs(LocalPoint.Z);
+	// 4. CONSTRAINT 3: SOLID TOWER BLOCK NON-PENETRATION
+	// Check against all blocks in the scene to ensure no finger/palm volume penetrates inside solid blocks
+	TArray<AActor*> AllBlocks;
+	UGameplayStatics::GetAllActorsOfClass(World, AYenkaBlock::StaticClass(), AllBlocks);
 
-				if (OverlapX > 0.0f && OverlapY > 0.0f && OverlapZ > 0.0f)
+	const FVector BlockHalfExtent(3.75f, 1.25f, 0.75f); // Half extents of 7.5 x 2.5 x 1.5 cm block
+
+	for (AActor* BlockActor : AllBlocks)
+	{
+		if (BlockActor == AllowedContactActor) continue; // Allow deliberate interaction contact with the target piece
+
+		FTransform BlockTransform = BlockActor->GetActorTransform();
+
+		for (const FVector& HandPoint : SamplePoints)
+		{
+			// Transform hand sample point into block's local coordinate system
+			FVector LocalPoint = BlockTransform.InverseTransformPosition(HandPoint + AccumulatedDepenetration);
+
+			// Check if point (with finger radius) penetrates inside the block's oriented bounding box
+			float OverlapX = (BlockHalfExtent.X + FingerRadius) - FMath::Abs(LocalPoint.X);
+			float OverlapY = (BlockHalfExtent.Y + FingerRadius) - FMath::Abs(LocalPoint.Y);
+			float OverlapZ = (BlockHalfExtent.Z + FingerRadius) - FMath::Abs(LocalPoint.Z);
+
+			if (OverlapX > 0.0f && OverlapY > 0.0f && OverlapZ > 0.0f)
+			{
+				// Penetration detected: find the axis of minimum penetration to push the hand out
+				FVector LocalPush = FVector::ZeroVector;
+				if (OverlapZ <= OverlapX && OverlapZ <= OverlapY)
 				{
-					// Penetration detected: find the axis of minimum penetration to push the hand out
-					FVector LocalPush = FVector::ZeroVector;
-					if (OverlapZ <= OverlapX && OverlapZ <= OverlapY)
-					{
-						LocalPush.Z = (LocalPoint.Z >= 0.0f ? 1.0f : -1.0f) * OverlapZ;
-					}
-					else if (OverlapY <= OverlapX)
-					{
-						LocalPush.Y = (LocalPoint.Y >= 0.0f ? 1.0f : -1.0f) * OverlapY;
-					}
-					else
-					{
-						LocalPush.X = (LocalPoint.X >= 0.0f ? 1.0f : -1.0f) * OverlapX;
-					}
-
-					FVector WorldPush = BlockTransform.TransformVector(LocalPush);
-					AccumulatedDepenetration += WorldPush;
+					LocalPush.Z = (LocalPoint.Z >= 0.0f ? 1.0f : -1.0f) * OverlapZ;
 				}
-			}
-		}
+				else if (OverlapY <= OverlapX)
+				{
+					LocalPush.Y = (LocalPoint.Y >= 0.0f ? 1.0f : -1.0f) * OverlapY;
+				}
+				else
+				{
+					LocalPush.X = (LocalPoint.X >= 0.0f ? 1.0f : -1.0f) * OverlapX;
+				}
 
-		if (!AccumulatedDepenetration.IsNearlyZero())
-		{
-			FVector NewLoc = CorrectedTransform.GetLocation() + AccumulatedDepenetration;
-			// Re-verify that depenetration did not push below table surface
-			if (NewLoc.Z < MinAllowedZ)
-			{
-				NewLoc.Z = MinAllowedZ;
+				FVector WorldPush = BlockTransform.TransformVector(LocalPush);
+				AccumulatedDepenetration += WorldPush;
 			}
-			CorrectedTransform.SetLocation(NewLoc);
 		}
+	}
+
+	if (!AccumulatedDepenetration.IsNearlyZero())
+	{
+		FVector NewLoc = CorrectedTransform.GetLocation() + AccumulatedDepenetration;
+		// Re-verify that depenetration did not push below the effective table floor
+		float BaseMinZ = (ActualTableZ - 2.0f) + TableClearancePadding;
+		if (NewLoc.Z < BaseMinZ)
+		{
+			NewLoc.Z = BaseMinZ;
+		}
+		CorrectedTransform.SetLocation(NewLoc);
 	}
 
 	return CorrectedTransform;

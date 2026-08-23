@@ -61,6 +61,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Yenka|Tower")
 	bool IsBuildingTower() const { return bIsBuildingTower; }
 
+	/** Returns the calibrated top surface height of the Jenga board */
+	UFUNCTION(BlueprintPure, Category = "Yenka|Tower")
+	float GetTableSurfaceZ() const { return TableSurfaceZ; }
+
 	/** Freezes all blocks to sleep state to avoid float drift between turns */
 	UFUNCTION(BlueprintCallable, Category = "Yenka|Physics")
 	void FreezeTowerPhysics();
