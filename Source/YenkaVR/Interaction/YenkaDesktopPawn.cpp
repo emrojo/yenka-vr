@@ -287,8 +287,8 @@ void AYenkaDesktopPawn::CheckForLiveJsonModifications()
 			if (GEngine)
 			{
 				GEngine->AddOnScreenDebugMessage(9995, 4.0f, FColor::Cyan,
-					FString::Printf(TEXT("⚡ AUTO-RECARGADO YenkaInteractionConfig.json [Clearance=%.2f cm | Protrusion=%.2f cm | CraneTable=%.1f cm | CraneTower=%.1f cm]"),
-						InteractionConfig.VerticalGrabMinClearance, InteractionConfig.ProtrusionThreshold, InteractionConfig.CraneTableClearanceHeight, InteractionConfig.CraneTowerTopClearanceHeight));
+					FString::Printf(TEXT("⚡ AUTO-RECARGADO YenkaInteractionConfig.json [Clearance=%.2f cm | SafeRad=%.1f cm | CraneTower=%.1f cm | CraneTable=%.1f cm]"),
+						InteractionConfig.VerticalGrabMinClearance, InteractionConfig.CraneSafeRadius, InteractionConfig.CraneTowerTopClearanceHeight, InteractionConfig.CraneTableClearanceHeight));
 			}
 		}
 	}
@@ -2149,7 +2149,13 @@ void AYenkaDesktopPawn::OnMouseY(float Val)
 void AYenkaDesktopPawn::OnMouseWheel(float Val)
 {
 	if (bIsNamingCustomGesture || bIsNamingCustomTransform) return;
-	if (CameraBoom && FMath::Abs(Val) > 0.001f)
+	if (bIsCraneGrabbing && FMath::Abs(Val) > 0.001f)
+	{
+		// Rotate the grabbed piece horizontally around Yaw in Crane Mode
+		CraneUserYaw += (Val * 15.0f);
+		CraneTargetRotation.Yaw = CraneUserYaw;
+	}
+	else if (CameraBoom && FMath::Abs(Val) > 0.001f)
 	{
 		CameraBoom->TargetArmLength = FMath::Clamp(CameraBoom->TargetArmLength - (Val * 8.0f), 30.0f, 250.0f);
 	}
@@ -2360,16 +2366,15 @@ float AYenkaDesktopPawn::CalculateCraneTargetZ(const FVector& TargetXY, float Hi
 	float DistToTowerXY = FVector::Dist2D(TargetXY, TowerCenter);
 
 	float TableClearanceZ = LockedFloorZ + InteractionConfig.CraneTableClearanceHeight; // e.g. 90.0 + 5.0 = 95.0 cm
-	float TowerTopClearanceZ = HighestBlockZ + InteractionConfig.CraneTowerTopClearanceHeight; // e.g. 117.0 + 3.0 = 120.0 cm
+	float TowerTopClearanceZ = HighestBlockZ + InteractionConfig.CraneTowerTopClearanceHeight; // e.g. 117.0 + 6.0 = 123.0 cm
 
-	// Radio de seguridad estricto: La distancia al perímetro de la torre DEBE ser mayor que el lado más largo de una pieza (7.5 cm).
-	// Perímetro de la torre = 3.75 cm. Lado más largo = 7.5 cm. Separación mínima > 7.5 cm -> InnerRadius = 3.75 + 7.5 + 1.25 = 12.5 cm.
-	const float InnerRadius = TOWER_BASE_RADIUS + 7.5f + 1.25f; // 12.5 cm (> 7.5 cm de separación de la pared de la torre)
-	const float OuterRadius = FMath::Max(InteractionConfig.CraneTransitionRadius, InnerRadius + 2.0f); // e.g. 22.0 cm
+	// Zona de margen de seguridad (InnerRadius): subida a 20.0 cm
+	const float InnerRadius = InteractionConfig.CraneSafeRadius; // 20.0 cm
+	const float OuterRadius = FMath::Max(InteractionConfig.CraneTransitionRadius, InnerRadius + 2.0f); // e.g. 30.0 cm
 
 	if (DistToTowerXY <= InnerRadius)
 	{
-		// A 12.5 cm ya ha alcanzado el 100% de la altura de la cúspide para no colisionar con ninguna pieza
+		// A <= 20.0 cm ya ha alcanzado el 100% de la altura de la cúspide (HighestBlockZ + 6.0 cm)
 		return TowerTopClearanceZ;
 	}
 	else if (DistToTowerXY >= OuterRadius)
@@ -2477,20 +2482,8 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 			FVector TargetLocation = PlaneIntersection;
 			TargetLocation.Z = CraneCurrentZ;
 
-			// Check if piece is hovering directly above the top layer of the tower for smart orientation snapping
-			float DistToTowerXY = FVector::Dist2D(TargetLocation, TowerCenter);
-			if (DistToTowerXY < InteractionConfig.CraneTopSnapRadius && TargetLocation.Z >= HighestBlockZ)
-			{
-				int32 CurrentTopLayer = FMath::RoundToInt((HighestBlockZ - 90.0f) / 1.5f);
-				int32 NextLayer = CurrentTopLayer + 1;
-				bool bIsLayerEven = (NextLayer % 2 == 0);
-				FRotator SnapRot = bIsLayerEven ? FRotator::ZeroRotator : FRotator(0.0f, 90.0f, 0.0f);
-				CraneTargetRotation = SnapRot;
-			}
-			else
-			{
-				CraneTargetRotation = GrabbedBlock->GetActorRotation();
-			}
+			// Target horizontal rotation is driven by CraneUserYaw (adjusted via mouse wheel)
+			CraneTargetRotation = FRotator(0.0f, CraneUserYaw, 0.0f);
 
 			VirtualHand->PhysicsHandle->SetTargetLocationAndRotation(TargetLocation, CraneTargetRotation);
 
@@ -2815,14 +2808,15 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 				}
 			}
 			CraneCurrentZ = CalculateCraneTargetZ(LastHitLocation, HighestBlockZ);
-			CraneTargetRotation = GrabbedBlock->GetActorRotation();
+			CraneUserYaw = GrabbedBlock->GetActorRotation().Yaw;
+			CraneTargetRotation = FRotator(0.0f, CraneUserYaw, 0.0f);
 
 			VirtualHand->SetHandPoseMode(EHandPoseMode::VerticalGrab);
 			VirtualHand->PhysicsHandle->GrabComponentAtLocationWithRotation(
 				GrabbedBlock->BlockMesh,
 				NAME_None,
 				LastHitLocation,
-				GrabbedBlock->GetActorRotation()
+				CraneTargetRotation
 			);
 			return;
 		}

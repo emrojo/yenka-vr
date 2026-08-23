@@ -24,10 +24,13 @@ struct FYenkaInteractionConfig
 	float CraneTableClearanceHeight = 5.0f; // cm (elevation above table surface when outside tower)
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Config")
-	float CraneTowerTopClearanceHeight = 3.0f; // cm (elevation above highest tower block when over tower)
+	float CraneTowerTopClearanceHeight = 6.0f; // cm (elevation above highest tower block when over tower)
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Config")
-	float CraneTransitionRadius = 22.0f; // cm (radial distance over which elevation is smoothly interpolated)
+	float CraneSafeRadius = 20.0f; // cm (safety zone radius where block is at full elevation)
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Config")
+	float CraneTransitionRadius = 30.0f; // cm (radial distance over which elevation is smoothly interpolated)
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Config")
 	float CraneTopSnapRadius = 8.0f; // cm
@@ -102,6 +105,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Crane")
 	float CraneCurrentZ;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Crane")
+	float CraneUserYaw;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Crane")
 	FVector CraneInitialGrabPos;
