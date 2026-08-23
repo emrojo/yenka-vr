@@ -23,7 +23,9 @@ public class YenkaVR : ModuleRules
 			"OnlineSubsystemUtils",
 			"OnlineSubsystemSteam",
 			"SteamSockets",
-			"VoiceChat"
+			"VoiceChat",
+			"Json",
+			"JsonUtilities"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { 

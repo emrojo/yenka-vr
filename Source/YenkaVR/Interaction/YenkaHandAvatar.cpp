@@ -506,6 +506,30 @@ FString AYenkaHandAvatar::GetDetectedGestureDescription() const
 	return TEXT("🎨 GESTO PERSONALIZADO (Custom Pose)");
 }
 
+FCustomHandGesture AYenkaHandAvatar::ExportCurrentGesture(const FString& Name, const FVector& LocOffset, const FRotator& RotOffset) const
+{
+	FCustomHandGesture OutGesture;
+	OutGesture.GestureName = Name.IsEmpty() ? TEXT("GestoPersonalizado") : Name;
+	OutGesture.Thumb = ThumbPhalanges;
+	OutGesture.Index = IndexPhalanges;
+	OutGesture.Middle = MiddlePhalanges;
+	OutGesture.Ring = RingPhalanges;
+	OutGesture.Pinky = PinkyPhalanges;
+	OutGesture.HandLocationOffset = LocOffset;
+	OutGesture.HandRotationOffset = RotOffset;
+	return OutGesture;
+}
+
+void AYenkaHandAvatar::ApplyCustomGesture(const FCustomHandGesture& InGesture)
+{
+	ThumbPhalanges = InGesture.Thumb;
+	IndexPhalanges = InGesture.Index;
+	MiddlePhalanges = InGesture.Middle;
+	RingPhalanges = InGesture.Ring;
+	PinkyPhalanges = InGesture.Pinky;
+	ApplyPhalanxTransforms();
+}
+
 FRotator AYenkaHandAvatar::GetPhalanxDeltaRotationForBone(FName BoneName) const
 {
 	FString Name = BoneName.ToString().ToLower();

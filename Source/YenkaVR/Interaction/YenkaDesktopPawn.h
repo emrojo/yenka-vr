@@ -21,6 +21,7 @@ public:
 	AYenkaDesktopPawn();
 
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
@@ -170,6 +171,50 @@ protected:
 	void OnKeyCPressed();
 	void OnKeyVPressed();
 	void OnKeyQPressed();
+
+	// --- Custom Gesture System (Creation, Naming, JSON Persistence & Cycling) ---
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Gestures")
+	TArray<FCustomHandGesture> CustomGesturesList;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Gestures")
+	int32 ActiveCustomGestureIndex = -1;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Gestures")
+	bool bIsNamingCustomGesture = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Gestures")
+	FString CurrentTypedGestureName;
+
+	void StartNamingGesture();
+	void ConfirmSaveGesture();
+	void CancelNamingGesture();
+	void OnAnyKeyPressed(FKey Key);
+	void OnKeyEnterPressed();
+	void OnKeyEscapePressed();
+	void OnKeyBackspacePressed();
+	void OnKeyLeftBracketPressed();
+	void OnKeyRightBracketPressed();
+	void OnKeyDeletePressed();
+
+	void CycleNextCustomGesture();
+	void CyclePrevCustomGesture();
+	void LoadCustomGestureByIndex(int32 Index);
+	void LoadCustomGestureByName(const FString& Name);
+
+	bool SaveCustomGesturesToDisk();
+	bool LoadCustomGesturesFromDisk();
+
+	UFUNCTION(Exec)
+	void SaveHandGesture(const FString& Name);
+
+	UFUNCTION(Exec)
+	void LoadHandGesture(const FString& Name);
+
+	UFUNCTION(Exec)
+	void ListHandGestures();
+
+	UFUNCTION(Exec)
+	void DeleteHandGesture(const FString& Name);
 
 	void OnSelectScenario1() { SelectScenarioTheme(0); }
 	void OnSelectScenario2() { SelectScenarioTheme(1); }

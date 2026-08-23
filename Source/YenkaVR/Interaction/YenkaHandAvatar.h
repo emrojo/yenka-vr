@@ -45,6 +45,45 @@ struct FFingerPhalanges
 	FPhalanxData Distal; // Tip / Nail
 };
 
+USTRUCT(BlueprintType)
+struct FCustomHandGesture
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Gesture")
+	FString GestureName = TEXT("Nuevo Gesto");
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Gesture")
+	FFingerPhalanges Thumb;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Gesture")
+	FFingerPhalanges Index;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Gesture")
+	FFingerPhalanges Middle;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Gesture")
+	FFingerPhalanges Ring;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Gesture")
+	FFingerPhalanges Pinky;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Gesture")
+	FVector HandLocationOffset = FVector::ZeroVector;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Gesture")
+	FRotator HandRotationOffset = FRotator::ZeroRotator;
+};
+
+USTRUCT(BlueprintType)
+struct FCustomGestureLibrary
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Gesture")
+	TArray<FCustomHandGesture> Gestures;
+};
+
 /**
  * Replicated visual representation of a player's hand in 3D space, visible to all users.
  */
@@ -97,6 +136,12 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Yenka|Phalanx")
 	FString GetDetectedGestureDescription() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Yenka|Phalanx")
+	FCustomHandGesture ExportCurrentGesture(const FString& Name, const FVector& LocOffset, const FRotator& RotOffset) const;
+
+	UFUNCTION(BlueprintCallable, Category = "Yenka|Phalanx")
+	void ApplyCustomGesture(const FCustomHandGesture& InGesture);
 
 	void ApplyPhalanxTransforms();
 	FRotator GetPhalanxDeltaRotationForBone(FName BoneName) const;

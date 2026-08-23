@@ -8,6 +8,12 @@
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 
+#include "JsonObjectConverter.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
+#include "HAL/PlatformFileManager.h"
+#include "Engine/GameViewportClient.h"
+
 #include "PhysicsEngine/PhysicsHandleComponent.h"
 
 AYenkaDesktopPawn::AYenkaDesktopPawn()
@@ -93,6 +99,13 @@ void AYenkaDesktopPawn::BeginPlay()
 			VirtualHand->SetActorHiddenInGame(true);
 		}
 	}
+
+	LoadCustomGesturesFromDisk();
+}
+
+void AYenkaDesktopPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	Super::EndPlay(EndPlayReason);
 }
 
 void AYenkaDesktopPawn::Tick(float DeltaTime)
@@ -123,9 +136,19 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		PlayerInputComponent->BindKey(EKeys::F, IE_Pressed, this, &AYenkaDesktopPawn::OnTogglePokeMode);
 		PlayerInputComponent->BindKey(EKeys::M, IE_Pressed, this, &AYenkaDesktopPawn::OnToggleScenarioMenu);
 
-		// Phalanx Edit Mode Toggle
+		// Phalanx Edit Mode Toggle & Custom Gestures
+		PlayerInputComponent->BindKey(EKeys::AnyKey, IE_Pressed, this, &AYenkaDesktopPawn::OnAnyKeyPressed);
 		PlayerInputComponent->BindKey(EKeys::F4, IE_Pressed, this, &AYenkaDesktopPawn::TogglePhalanxEditMode);
 		PlayerInputComponent->BindKey(EKeys::SpaceBar, IE_Pressed, this, &AYenkaDesktopPawn::OnResetSelectedPhalanx);
+		PlayerInputComponent->BindKey(EKeys::F5, IE_Pressed, this, &AYenkaDesktopPawn::StartNamingGesture);
+		PlayerInputComponent->BindKey(EKeys::Enter, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyEnterPressed);
+		PlayerInputComponent->BindKey(EKeys::Escape, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyEscapePressed);
+		PlayerInputComponent->BindKey(EKeys::BackSpace, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyBackspacePressed);
+		PlayerInputComponent->BindKey(EKeys::LeftBracket, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyLeftBracketPressed);
+		PlayerInputComponent->BindKey(EKeys::RightBracket, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyRightBracketPressed);
+		PlayerInputComponent->BindKey(EKeys::F6, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyLeftBracketPressed);
+		PlayerInputComponent->BindKey(EKeys::F7, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyRightBracketPressed);
+		PlayerInputComponent->BindKey(EKeys::Delete, IE_Pressed, this, &AYenkaDesktopPawn::OnKeyDeletePressed);
 
 		// Gesture Switching Keys
 		PlayerInputComponent->BindKey(EKeys::F1, IE_Pressed, this, &AYenkaDesktopPawn::SetGesturePush);
@@ -342,6 +365,319 @@ void AYenkaDesktopPawn::OnResetSelectedPhalanx()
 	{
 		VirtualHand->ResetPhalanx(SelectedFinger, SelectedPhalanx);
 	}
+}
+
+void AYenkaDesktopPawn::StartNamingGesture()
+{
+	bIsNamingCustomGesture = true;
+	CurrentTypedGestureName.Empty();
+}
+
+void AYenkaDesktopPawn::ConfirmSaveGesture()
+{
+	if (!bIsNamingCustomGesture && CurrentTypedGestureName.IsEmpty()) return;
+
+	FString FinalName = CurrentTypedGestureName.TrimStartAndEnd();
+	if (FinalName.IsEmpty())
+	{
+		FinalName = FString::Printf(TEXT("Gesto_%d"), CustomGesturesList.Num() + 1);
+	}
+
+	SaveHandGesture(FinalName);
+	bIsNamingCustomGesture = false;
+	CurrentTypedGestureName.Empty();
+}
+
+void AYenkaDesktopPawn::CancelNamingGesture()
+{
+	bIsNamingCustomGesture = false;
+	CurrentTypedGestureName.Empty();
+}
+
+void AYenkaDesktopPawn::OnKeyEnterPressed()
+{
+	if (bIsNamingCustomGesture)
+	{
+		ConfirmSaveGesture();
+	}
+	else if (bIsPhalanxEditMode)
+	{
+		StartNamingGesture();
+	}
+}
+
+void AYenkaDesktopPawn::OnKeyEscapePressed()
+{
+	if (bIsNamingCustomGesture)
+	{
+		CancelNamingGesture();
+	}
+	else if (bIsPhalanxEditMode)
+	{
+		TogglePhalanxEditMode();
+	}
+}
+
+void AYenkaDesktopPawn::OnKeyBackspacePressed()
+{
+	if (bIsNamingCustomGesture && CurrentTypedGestureName.Len() > 0)
+	{
+		CurrentTypedGestureName.RemoveAt(CurrentTypedGestureName.Len() - 1);
+	}
+}
+
+void AYenkaDesktopPawn::OnKeyLeftBracketPressed()
+{
+	CyclePrevCustomGesture();
+}
+
+void AYenkaDesktopPawn::OnKeyRightBracketPressed()
+{
+	CycleNextCustomGesture();
+}
+
+void AYenkaDesktopPawn::OnKeyDeletePressed()
+{
+	if (CustomGesturesList.IsValidIndex(ActiveCustomGestureIndex))
+	{
+		FString DeletedName = CustomGesturesList[ActiveCustomGestureIndex].GestureName;
+		DeleteHandGesture(DeletedName);
+	}
+}
+
+void AYenkaDesktopPawn::SaveHandGesture(const FString& Name)
+{
+	if (!VirtualHand) return;
+
+	const bool bInPoke = (bIsPokeModeActive || bIsPushingBlock || (bForceGesturePreview && ActiveGesturePreview == EHandPoseMode::FingerPoke));
+	const FVector ActivePos = bInPoke ? PokeHandLocationOffset : GrabHandLocationOffset;
+	const FRotator ActiveRot = bInPoke ? PokeHandRotationOffset : GrabHandRotationOffset;
+
+	FCustomHandGesture NewGesture = VirtualHand->ExportCurrentGesture(Name, ActivePos, ActiveRot);
+
+	// Check if a gesture with this name already exists -> overwrite it
+	int32 ExistingIndex = CustomGesturesList.IndexOfByPredicate([&Name](const FCustomHandGesture& G) {
+		return G.GestureName.Equals(Name, ESearchCase::IgnoreCase);
+	});
+
+	if (ExistingIndex != INDEX_NONE)
+	{
+		CustomGesturesList[ExistingIndex] = NewGesture;
+		ActiveCustomGestureIndex = ExistingIndex;
+	}
+	else
+	{
+		ActiveCustomGestureIndex = CustomGesturesList.Add(NewGesture);
+	}
+
+	SaveCustomGesturesToDisk();
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(9999, 4.0f, FColor::Green,
+			FString::Printf(TEXT("✅ GESTO GUARDADO: \"%s\" (Total: %d)"), *Name, CustomGesturesList.Num()));
+	}
+}
+
+void AYenkaDesktopPawn::LoadHandGesture(const FString& Name)
+{
+	int32 FoundIndex = CustomGesturesList.IndexOfByPredicate([&Name](const FCustomHandGesture& G) {
+		return G.GestureName.Equals(Name, ESearchCase::IgnoreCase);
+	});
+
+	if (FoundIndex != INDEX_NONE)
+	{
+		LoadCustomGestureByIndex(FoundIndex);
+	}
+	else if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(9998, 4.0f, FColor::Red,
+			FString::Printf(TEXT("❌ No se encontró el gesto: \"%s\""), *Name));
+	}
+}
+
+void AYenkaDesktopPawn::LoadCustomGestureByIndex(int32 Index)
+{
+	if (!CustomGesturesList.IsValidIndex(Index) || !VirtualHand) return;
+
+	ActiveCustomGestureIndex = Index;
+	const FCustomHandGesture& Gesture = CustomGesturesList[Index];
+
+	VirtualHand->ApplyCustomGesture(Gesture);
+
+	// Apply spatial offsets
+	PokeHandLocationOffset = Gesture.HandLocationOffset;
+	PokeHandRotationOffset = Gesture.HandRotationOffset;
+	GrabHandLocationOffset = Gesture.HandLocationOffset;
+	GrabHandRotationOffset = Gesture.HandRotationOffset;
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(9997, 3.0f, FColor::Cyan,
+			FString::Printf(TEXT("📂 GESTO CARGADO [%d/%d]: \"%s\""), Index + 1, CustomGesturesList.Num(), *Gesture.GestureName));
+	}
+}
+
+void AYenkaDesktopPawn::LoadCustomGestureByName(const FString& Name)
+{
+	LoadHandGesture(Name);
+}
+
+void AYenkaDesktopPawn::CycleNextCustomGesture()
+{
+	if (CustomGesturesList.Num() == 0)
+	{
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(9995, 2.5f, FColor::Orange, TEXT("⚠️ No hay gestos guardados. Pulsa F4 y luego F5 para crear uno."));
+		}
+		return;
+	}
+	int32 NextIdx = (ActiveCustomGestureIndex + 1) % CustomGesturesList.Num();
+	LoadCustomGestureByIndex(NextIdx);
+}
+
+void AYenkaDesktopPawn::CyclePrevCustomGesture()
+{
+	if (CustomGesturesList.Num() == 0)
+	{
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(9995, 2.5f, FColor::Orange, TEXT("⚠️ No hay gestos guardados. Pulsa F4 y luego F5 para crear uno."));
+		}
+		return;
+	}
+	int32 PrevIdx = (ActiveCustomGestureIndex - 1 + CustomGesturesList.Num()) % CustomGesturesList.Num();
+	LoadCustomGestureByIndex(PrevIdx);
+}
+
+void AYenkaDesktopPawn::DeleteHandGesture(const FString& Name)
+{
+	int32 FoundIndex = CustomGesturesList.IndexOfByPredicate([&Name](const FCustomHandGesture& G) {
+		return G.GestureName.Equals(Name, ESearchCase::IgnoreCase);
+	});
+
+	if (FoundIndex != INDEX_NONE)
+	{
+		CustomGesturesList.RemoveAt(FoundIndex);
+		SaveCustomGesturesToDisk();
+		if (ActiveCustomGestureIndex >= CustomGesturesList.Num())
+		{
+			ActiveCustomGestureIndex = CustomGesturesList.Num() - 1;
+		}
+		if (ActiveCustomGestureIndex >= 0)
+		{
+			LoadCustomGestureByIndex(ActiveCustomGestureIndex);
+		}
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(9996, 3.0f, FColor::Yellow,
+				FString::Printf(TEXT("🗑️ Gesto \"%s\" eliminado. Restantes: %d"), *Name, CustomGesturesList.Num()));
+		}
+	}
+}
+
+void AYenkaDesktopPawn::ListHandGestures()
+{
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 6.0f, FColor::White, FString::Printf(TEXT("=== BIBLIOTECA DE GESTOS (%d guardados) ==="), CustomGesturesList.Num()));
+		for (int32 i = 0; i < CustomGesturesList.Num(); ++i)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 6.0f, FColor::Cyan, FString::Printf(TEXT(" [%d] %s"), i + 1, *CustomGesturesList[i].GestureName));
+		}
+	}
+}
+
+bool AYenkaDesktopPawn::SaveCustomGesturesToDisk()
+{
+	FCustomGestureLibrary Library;
+	Library.Gestures = CustomGesturesList;
+
+	FString JsonString;
+	if (FJsonObjectConverter::UStructToJsonObjectString(Library, JsonString, 0, 0))
+	{
+		FString FilePath = FPaths::ProjectSavedDir() / TEXT("HandGestures/CustomGestures.json");
+		IFileManager::Get().MakeDirectory(*FPaths::GetPath(FilePath), true);
+		return FFileHelper::SaveStringToFile(JsonString, *FilePath);
+	}
+	return false;
+}
+
+bool AYenkaDesktopPawn::LoadCustomGesturesFromDisk()
+{
+	FString FilePath = FPaths::ProjectSavedDir() / TEXT("HandGestures/CustomGestures.json");
+	if (!FPaths::FileExists(FilePath))
+	{
+		return false;
+	}
+
+	FString JsonString;
+	if (FFileHelper::LoadFileToString(JsonString, *FilePath))
+	{
+		FCustomGestureLibrary Library;
+		if (FJsonObjectConverter::JsonObjectStringToUStruct(JsonString, &Library, 0, 0))
+		{
+			CustomGesturesList = Library.Gestures;
+			return true;
+		}
+	}
+	return false;
+}
+
+void AYenkaDesktopPawn::OnAnyKeyPressed(FKey Key)
+{
+	if (!bIsNamingCustomGesture)
+	{
+		return;
+	}
+
+	if (Key == EKeys::Enter)
+	{
+		ConfirmSaveGesture();
+		return;
+	}
+	if (Key == EKeys::Escape)
+	{
+		CancelNamingGesture();
+		return;
+	}
+	if (Key == EKeys::BackSpace)
+	{
+		if (CurrentTypedGestureName.Len() > 0)
+		{
+			CurrentTypedGestureName.RemoveAt(CurrentTypedGestureName.Len() - 1);
+		}
+		return;
+	}
+	if (Key == EKeys::SpaceBar)
+	{
+		if (CurrentTypedGestureName.Len() < 24)
+		{
+			CurrentTypedGestureName.AppendChar(TEXT('_'));
+		}
+		return;
+	}
+
+	FString KeyStr = Key.GetFName().ToString();
+	if (KeyStr.Len() == 1 && FChar::IsAlnum(KeyStr[0]))
+	{
+		if (CurrentTypedGestureName.Len() < 24)
+		{
+			CurrentTypedGestureName.Append(KeyStr);
+		}
+	}
+	else if (Key == EKeys::Zero || Key == EKeys::NumPadZero) CurrentTypedGestureName.AppendChar(TEXT('0'));
+	else if (Key == EKeys::One || Key == EKeys::NumPadOne) CurrentTypedGestureName.AppendChar(TEXT('1'));
+	else if (Key == EKeys::Two || Key == EKeys::NumPadTwo) CurrentTypedGestureName.AppendChar(TEXT('2'));
+	else if (Key == EKeys::Three || Key == EKeys::NumPadThree) CurrentTypedGestureName.AppendChar(TEXT('3'));
+	else if (Key == EKeys::Four || Key == EKeys::NumPadFour) CurrentTypedGestureName.AppendChar(TEXT('4'));
+	else if (Key == EKeys::Five || Key == EKeys::NumPadFive) CurrentTypedGestureName.AppendChar(TEXT('5'));
+	else if (Key == EKeys::Six || Key == EKeys::NumPadSix) CurrentTypedGestureName.AppendChar(TEXT('6'));
+	else if (Key == EKeys::Seven || Key == EKeys::NumPadSeven) CurrentTypedGestureName.AppendChar(TEXT('7'));
+	else if (Key == EKeys::Eight || Key == EKeys::NumPadEight) CurrentTypedGestureName.AppendChar(TEXT('8'));
+	else if (Key == EKeys::Nine || Key == EKeys::NumPadNine) CurrentTypedGestureName.AppendChar(TEXT('9'));
+	else if (Key == EKeys::Underscore || Key == EKeys::Hyphen) CurrentTypedGestureName.AppendChar(TEXT('_'));
 }
 
 void AYenkaDesktopPawn::SelectScenarioTheme(int32 ThemeIndex)
@@ -564,6 +900,22 @@ void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
 {
 	if (GEngine && IsLocallyControlled())
 	{
+		if (bIsNamingCustomGesture)
+		{
+			FString Line1 = TEXT("╔══════════════════════════════════════════════════════════════════════════════╗");
+			FString Line2 = TEXT("║ 💾 GUARDAR NUEVO GESTO: Teclea el nombre y pulsa ENTER (ESC para Cancelar)   ║");
+			FString Line3 = FString::Printf(TEXT("║ 📝 NOMBRE DEL GESTO: [ %s_ ]                                                 ║"), *CurrentTypedGestureName);
+			FString Line4 = FString::Printf(TEXT("║ 📊 Gestos Guardados Actuales en Biblioteca: %d                                ║"), CustomGesturesList.Num());
+			FString Line5 = TEXT("╚══════════════════════════════════════════════════════════════════════════════╝");
+
+			GEngine->AddOnScreenDebugMessage(1001, 0.20f, FColor(50, 255, 50), Line1);
+			GEngine->AddOnScreenDebugMessage(1002, 0.20f, FColor(255, 255, 50), Line2);
+			GEngine->AddOnScreenDebugMessage(1003, 0.20f, FColor(50, 255, 255), Line3);
+			GEngine->AddOnScreenDebugMessage(1004, 0.20f, FColor(200, 200, 255), Line4);
+			GEngine->AddOnScreenDebugMessage(1005, 0.20f, FColor(50, 255, 50), Line5);
+			return;
+		}
+
 		if (bIsPhalanxEditMode && VirtualHand)
 		{
 			// --- PHALANX EDIT MODE HUD ---
@@ -582,7 +934,7 @@ void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
 			FString Line1 = FString::Printf(TEXT("=== 🖐️ MODO EDICIÓN DE FALANGES (3 EJES: PITCH, YAW, ROLL) [Pulsa F4 o K para Salir] ==="));
 			FString Line2 = FString::Printf(TEXT("🎯 SELECCIÓN: [ DEDO (%d): %s | FALANGE (%d): %s ]  (Teclas: 1-5 Dedo, 0 Todos | Z: Base, X: Media, C: Punta, V: Todas)"),
 				SelectedFinger, ActiveFingerName, SelectedPhalanx, ActivePhalanxName);
-			FString Line3 = FString::Printf(TEXT("⌨️ 3 EJES: [ Arriba/Abajo o Num8/2: Pitch +-5° | Izq/Der o Num4/6: Yaw +-5° | Q / E o Num7/9: Roll +-5° | Espacio: Reset ]"));
+			FString Line3 = FString::Printf(TEXT("⌨️ 3 EJES: [ Arriba/Abajo: Pitch | Izq/Der: Yaw | Q/E: Roll | Espacio: Reset | F5 o ENTER: Guardar Gesto ]"));
 			FString Line4 = FString::Printf(TEXT("📊 PULGAR: [P:%+.0f° Y:%+.0f° R:%+.0f°, P:%+.0f° Y:%+.0f° R:%+.0f°, P:%+.0f° Y:%+.0f° R:%+.0f°] | ÍNDICE: [P:%+.0f° Y:%+.0f° R:%+.0f°, P:%+.0f° Y:%+.0f° R:%+.0f°, P:%+.0f° Y:%+.0f° R:%+.0f°]"),
 				Thumb.Proximal.Pitch, Thumb.Proximal.Yaw, Thumb.Proximal.Roll, Thumb.Intermediate.Pitch, Thumb.Intermediate.Yaw, Thumb.Intermediate.Roll, Thumb.Distal.Pitch, Thumb.Distal.Yaw, Thumb.Distal.Roll,
 				Index.Proximal.Pitch, Index.Proximal.Yaw, Index.Proximal.Roll, Index.Intermediate.Pitch, Index.Intermediate.Yaw, Index.Intermediate.Roll, Index.Distal.Pitch, Index.Distal.Yaw, Index.Distal.Roll);
@@ -590,8 +942,8 @@ void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
 				Middle.Proximal.Pitch, Middle.Proximal.Yaw, Middle.Proximal.Roll, Middle.Intermediate.Pitch, Middle.Intermediate.Yaw, Middle.Intermediate.Roll, Middle.Distal.Pitch, Middle.Distal.Yaw, Middle.Distal.Roll,
 				Ring.Proximal.Pitch, Ring.Proximal.Yaw, Ring.Proximal.Roll, Ring.Intermediate.Pitch, Ring.Intermediate.Yaw, Ring.Intermediate.Roll, Ring.Distal.Pitch, Ring.Distal.Yaw, Ring.Distal.Roll,
 				Pinky.Proximal.Pitch, Pinky.Proximal.Yaw, Pinky.Proximal.Roll, Pinky.Intermediate.Pitch, Pinky.Intermediate.Yaw, Pinky.Intermediate.Roll, Pinky.Distal.Pitch, Pinky.Distal.Yaw, Pinky.Distal.Roll);
-			FString Line6 = FString::Printf(TEXT("🏷️ DEFINICIÓN GESTO: [ %s ] | Presets: F1(Empujar), F2(Pinza), F3(Mano Libre)"),
-				*VirtualHand->GetDetectedGestureDescription());
+			FString Line6 = FString::Printf(TEXT("🏷️ GESTO: [ %s ] | 📂 GUARDADOS (%d): [ y ] o F6/F7 para Ciclar | Supr: Borrar"),
+				*VirtualHand->GetDetectedGestureDescription(), CustomGesturesList.Num());
 
 			GEngine->AddOnScreenDebugMessage(1001, 0.20f, FColor(255, 100, 255), Line1);
 			GEngine->AddOnScreenDebugMessage(1002, 0.20f, FColor(255, 220, 50), Line2);
@@ -607,7 +959,11 @@ void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
 		const FRotator ActiveRot = bInPoke ? PokeHandRotationOffset : GrabHandRotationOffset;
 
 		FString GestureName = VirtualHand ? VirtualHand->GetDetectedGestureDescription() : TEXT("🖐️ LIBRE / INSPECCIÓN (OpenHand)");
-		if (bForceGesturePreview)
+		if (ActiveCustomGestureIndex >= 0 && CustomGesturesList.IsValidIndex(ActiveCustomGestureIndex))
+		{
+			GestureName = FString::Printf(TEXT("🎨 [%d/%d] %s"), ActiveCustomGestureIndex + 1, CustomGesturesList.Num(), *CustomGesturesList[ActiveCustomGestureIndex].GestureName);
+		}
+		else if (bForceGesturePreview)
 		{
 			if (ActiveGesturePreview == EHandPoseMode::FingerPoke) GestureName = TEXT("👉 EMPUJAR FORZADO (FingerPoke)");
 			else if (ActiveGesturePreview == EHandPoseMode::GrabPinch) GestureName = TEXT("🤏 AGARRAR FORZADO (GrabPinch)");
@@ -752,7 +1108,7 @@ void AYenkaDesktopPawn::OnMouseWheel(float Val)
 
 void AYenkaDesktopPawn::MoveForward(float Val)
 {
-	if (bIsPhalanxEditMode) return;
+	if (bIsPhalanxEditMode || bIsNamingCustomGesture) return;
 	if (FMath::Abs(Val) > 0.01f)
 	{
 		FVector Forward = FollowCamera ? FollowCamera->GetForwardVector() : GetActorForwardVector();
@@ -763,7 +1119,7 @@ void AYenkaDesktopPawn::MoveForward(float Val)
 
 void AYenkaDesktopPawn::MoveRight(float Val)
 {
-	if (bIsPhalanxEditMode) return;
+	if (bIsPhalanxEditMode || bIsNamingCustomGesture) return;
 	if (FMath::Abs(Val) > 0.01f)
 	{
 		FVector Right = FollowCamera ? FollowCamera->GetRightVector() : GetActorRightVector();
