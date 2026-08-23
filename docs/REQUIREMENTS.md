@@ -158,16 +158,19 @@ This section maintains the immutable history of all requirements defined and agr
 * **`[REQ-CROSS-18]` Strictly Horizontal Perpendicular Block Pulling & Locked Extraction Pose:**
   * When initiating a pull interaction, the hand rotation is permanently locked (`LockedPullHandQuat`) along the block's outward normal with the configured `GrabHandRotationOffset`, remaining 100% invariant throughout the entire pull interaction.
   * Mouse cursor rays are intersected with the horizontal plane of the active layer ($Z = \text{LockedPullPlaneZ}$) and projected onto the outward normal vector ($\text{LockedPullDirection}$), exerting extraction force strictly horizontal and perpendicular to the tower face without downward or vertical dragging into the table.
-* **`[REQ-CROSS-19]` Context-Aware Intelligent Gesture Selection Matrix:**
-  * Cursor hovering dynamically transitions the hand posture in real time:
-    * **`FingerPoke` (Push):** Automatically activated when hovering over an end/side face of a block that is flush or recessed inside the tower.
-    * **`GrabPinch` (Pull):** Automatically activated when hovering over an end/side face of a block that protrudes ($\ge 0.4\text{ cm}$) beyond the tower boundary.
+* **`[REQ-CROSS-19]` Face-Specific Context-Aware Intelligent Gesture Selection Matrix:**
+  * Cursor hovering dynamically evaluates the specific targeted face of the block:
+    * **`FingerPoke` (Push):** Automatically activated when hovering over an end/side face of a block that is flush or recessed/metido inside the tower boundary.
+    * **`GrabPinch` (Pull):** Automatically activated when hovering over the specific end/side face of a block that protrudes ($\ge 0.4\text{ cm}$) beyond the tower boundary.
     * **`VerticalGrab` (Top-Down Claw):** Automatically activated when hovering over the top face of a block with clearance ($\ge 0.5\text{ cm}$) on both sides of the upper layer.
-    * **`OpenHand` (Neutral):** Displayed in all other cases (tabletop, air, or inaccessible block faces).
-* **`[REQ-CROSS-20]` 3D Crane-Like Block Placement & Live Interaction Config:**
-  * Grabbing an accessible top face in `VerticalGrab` enters 3D crane mode: mouse drag translates the block in $XY$, and mouse wheel controls vertical elevation.
-  * When lifted above the top of the tower, rotation automatically assists alignment to the alternating orthogonal grid ($0^\circ$ / $90^\circ$) for placement on the top layer.
-  * Interaction thresholds are parameterized in `Saved/Config/YenkaInteractionConfig.json` and hot-reloaded live on save (`Ctrl+S`).
+    * **`OpenHand` (Neutral):** Displayed in all other cases (tabletop, air, or blocked/inaccessible block faces).
+* **`[REQ-CROSS-20]` 3D Crane Block Manipulation with Smooth S-Curve Elevation Profile:**
+  * Grabbing an accessible top face in `VerticalGrab` enters 3D crane mode: 2D mouse drag translates the block horizontally in $XY$ without requiring mouse wheel inputs.
+  * Elevation is governed by an automated continuous Hermite SmoothStep cubic curve ($S(t) = 3t^2 - 2t^3$):
+    * Away from tower (table region): elevation holds steady at $5.0\text{ cm}$ above tabletop (`CraneTableClearanceHeight`).
+    * In proximity to tower: elevation smoothly ascends to $3.0\text{ cm}$ above the tower apex (`CraneTowerTopClearanceHeight`).
+  * When positioned directly above the highest layer, rotation automatically assists orthogonal alignment ($0^\circ$ / $90^\circ$).
+  * Clearance heights, transition radii, and protrusion thresholds are parameterized in `Saved/Config/YenkaInteractionConfig.json` and hot-reloaded live on save (`Ctrl+S`).
 
 ---
 
