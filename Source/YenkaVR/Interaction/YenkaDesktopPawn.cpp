@@ -47,7 +47,7 @@ AYenkaDesktopPawn::AYenkaDesktopPawn()
 
 	// Hand Calibration defaults (Applied to ALL gestures: Push, Grab, OpenHand)
 	GrabHandLocationOffset = FVector(-5.50f, 8.50f, -0.50f);
-	GrabHandRotationOffset = FRotator(0.0f, -90.0f, 0.0f);
+	GrabHandRotationOffset = FRotator(90.0f, -90.0f, 0.0f);
 
 	PokeHandLocationOffset = FVector(-5.50f, 8.50f, -0.50f);
 	PokeHandRotationOffset = FRotator(0.0f, -90.0f, 0.0f);
@@ -451,7 +451,7 @@ void AYenkaDesktopPawn::OnResetSelectedPhalanx()
 		else if (SelectedFinger == 6)
 		{
 			PokeHandRotationOffset = FRotator(0.0f, -90.0f, 0.0f);
-			GrabHandRotationOffset = FRotator(0.0f, -90.0f, 0.0f);
+			GrabHandRotationOffset = FRotator(90.0f, -90.0f, 0.0f);
 		}
 		else if (VirtualHand)
 		{
@@ -833,8 +833,46 @@ bool AYenkaDesktopPawn::LoadCustomGesturesFromDisk()
 
 		PointGesture.HandLocationOffset = PokeHandLocationOffset;
 		PointGesture.HandRotationOffset = PokeHandRotationOffset;
+		PointGesture.HandAxialRotation = 0.0f;
 
 		CustomGesturesList.Add(PointGesture);
+		SaveCustomGesturesToDisk();
+	}
+
+	// Ensure default LightPullGesture is present in the library
+	int32 PullIdx = CustomGesturesList.IndexOfByPredicate([](const FCustomHandGesture& G) {
+		return G.GestureName.Equals(TEXT("LightPullGesture"), ESearchCase::IgnoreCase);
+	});
+
+	if (PullIdx == INDEX_NONE)
+	{
+		FCustomHandGesture LightPull;
+		LightPull.GestureName = TEXT("LightPullGesture");
+		LightPull.Thumb.Proximal = FPhalanxData{ -45.0f, -85.0f, 20.0f };
+		LightPull.Thumb.Intermediate = FPhalanxData{ 0.0f, 0.0f, 15.0f };
+		LightPull.Thumb.Distal = FPhalanxData{ 0.0f, 0.0f, -10.0f };
+
+		LightPull.Index.Proximal = FPhalanxData{ 0.0f, 0.0f, 0.0f };
+		LightPull.Index.Intermediate = FPhalanxData{ 0.0f, 0.0f, -30.0f };
+		LightPull.Index.Distal = FPhalanxData{ 0.0f, 0.0f, -15.0f };
+
+		LightPull.Middle.Proximal = FPhalanxData{ 0.0f, 0.0f, 10.0f };
+		LightPull.Middle.Intermediate = FPhalanxData{ 0.0f, 0.0f, 0.0f };
+		LightPull.Middle.Distal = FPhalanxData{ 0.0f, 0.0f, 10.0f };
+
+		LightPull.Ring.Proximal = FPhalanxData{ 0.0f, 0.0f, 15.0f };
+		LightPull.Ring.Intermediate = FPhalanxData{ 0.0f, 0.0f, 0.0f };
+		LightPull.Ring.Distal = FPhalanxData{ 0.0f, 0.0f, 0.0f };
+
+		LightPull.Pinky.Proximal = FPhalanxData{ 0.0f, 0.0f, 25.0f };
+		LightPull.Pinky.Intermediate = FPhalanxData{ 0.0f, 0.0f, 15.0f };
+		LightPull.Pinky.Distal = FPhalanxData{ 0.0f, 0.0f, 0.0f };
+
+		LightPull.HandLocationOffset = FVector(-5.50f, 8.50f, -0.50f);
+		LightPull.HandRotationOffset = FRotator(90.0f, -90.0f, 0.0f);
+		LightPull.HandAxialRotation = 0.0f;
+
+		CustomGesturesList.Add(LightPull);
 		SaveCustomGesturesToDisk();
 	}
 
@@ -1069,7 +1107,7 @@ void AYenkaDesktopPawn::ResetHandCalibration()
 {
 	if (bIsNamingCustomGesture) return;
 	GrabHandLocationOffset = FVector(-5.50f, 8.50f, -0.50f);
-	GrabHandRotationOffset = FRotator(0.0f, -90.0f, 0.0f);
+	GrabHandRotationOffset = FRotator(90.0f, -90.0f, 0.0f);
 	PokeHandLocationOffset = FVector(-5.50f, 8.50f, -0.50f);
 	PokeHandRotationOffset = FRotator(0.0f, -90.0f, 0.0f);
 	bForceGesturePreview = false;

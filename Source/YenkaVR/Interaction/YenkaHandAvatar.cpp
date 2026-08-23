@@ -453,6 +453,7 @@ void AYenkaHandAvatar::SetHandPoseMode(EHandPoseMode NewPoseMode)
 	if (CurrentPoseMode != NewPoseMode)
 	{
 		CurrentPoseMode = NewPoseMode;
+		LoadPresetPose(NewPoseMode);
 		UpdateFingerPoses(ReplicatedGripStrength);
 	}
 }
@@ -624,6 +625,29 @@ void AYenkaHandAvatar::LoadPresetPose(EHandPoseMode Mode)
 		PinkyPhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, -20.0f };
 		PinkyPhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, -80.0f };
 		PinkyPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, -95.0f };
+	}
+	else if (Mode == EHandPoseMode::GrabPinch)
+	{
+		// Grab / LightPullGesture configuration
+		ThumbPhalanges.Proximal = FPhalanxData{ -45.0f, -85.0f, 20.0f };
+		ThumbPhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, 15.0f };
+		ThumbPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, -10.0f };
+
+		IndexPhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, 0.0f };
+		IndexPhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, -30.0f };
+		IndexPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, -15.0f };
+
+		MiddlePhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, 10.0f };
+		MiddlePhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, 0.0f };
+		MiddlePhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, 10.0f };
+
+		RingPhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, 15.0f };
+		RingPhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, 0.0f };
+		RingPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, 0.0f };
+
+		PinkyPhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, 25.0f };
+		PinkyPhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, 15.0f };
+		PinkyPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, 0.0f };
 	}
 	else
 	{
