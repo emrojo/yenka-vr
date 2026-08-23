@@ -416,9 +416,20 @@ This document records all architectural, technical design, and mechanics decisio
     1. Table plane & Jenga board surface non-penetration constraint ($Z \ge \text{ActualTableZ} + 0.25\text{ cm}$ over the board, $Z \ge \text{ActualTableZ} - 2.0\text{ cm} + 0.25\text{ cm}$ over the desk): lifts hand if any finger/palm descends below solid surfaces.
     2. Jenga board 3D volume & edge non-penetration: prevents horizontal/vertical penetration into the 4cm-thick board.
     3. Kinematic OBB depenetration solver: pushes hand outwards along contact normals if any finger penetrates solid non-target tower blocks.
-  * Apply `SetTargetHandTransformWithCollision` across all pawn interaction modes (Hover, Push, Pull, Crane, OpenHand, and Phalanx Edit).
+### ADR-029: Multi-Phase Crane Grab Sequence & VerticalGrab-1 Calibration
+* **Date:** 2026-08-24
+* **Status:** Accepted
+* **Context:** Hovering over a block's top face previously snapped the hand immediately into a claw pose before the user clicked, which broke visual continuity and did not reflect realistic hand anatomy. Additionally, the vertical grab needed to apply the customized `VerticalGrab-1` offset and allow dropping the piece dynamically on click release.
+* **Decision:**
+  * Keep default resting/hover pose as `OpenHand` when hovering above top faces.
+  * Implement state-machine crane sequence (`ECraneGrabPhase`):
+    1. Descending: hand descends smoothly in `OpenHand` to touch block top.
+    2. Grasping: hand closes into `VerticalGrab` using `VerticalGrab-1` (`x: -1, y: 4, z: -1.5`, `pitch: 75°, yaw: 180°, roll: 180°`) and attaches physics handle.
+    3. Ascending: hand and block lift smoothly up to crane clearance height.
+    4. Carrying: full horizontal translation with mouse wheel yaw rotation and S-curve elevation.
+  * Releasing LMB releases the physics handle constraint, drops the piece under gravity, and immediately returns the hand pose to `OpenHand`.
 * **Consequences:**
-  * *(Positive)* Absolute physical non-penetration of table, Jenga board, and blocks with zero clipping and natural, believable physical interactions.
+  * *(Positive)* Extremely fluid, realistic tactile animation cycle with zero jarring pose pops and natural physics block drops.
 
 ---
 

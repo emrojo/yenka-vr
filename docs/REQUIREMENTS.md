@@ -176,6 +176,14 @@ This section maintains the immutable history of all requirements defined and agr
   * **Jenga Board 3D Volume & Edge Non-Penetration:** The Jenga board ($35\text{ cm} \times 35\text{ cm} \times 4\text{ cm}$) is treated as an impenetrable physical obstacle. Hand and finger points approaching from the side cannot penetrate into the board volume or vertical edges, and are depenetrated outward or lifted smoothly onto the board surface.
   * **Tower & Block Non-Penetration:** Kinematic OBB depenetration solver continuously verifies all hand bone spheres ($R = 0.60\text{ cm}$) against all tower blocks. If an un-targeted block is overlapped, the hand transform is immediately resolved to the nearest exterior contact surface along the contact normal.
   * **Physical World Collision:** The hand avatar acts as a real physical body, exerting natural kinematic impulse and contact response when bumping into blocks.
+* **`[REQ-CROSS-22]` Multi-Phase Crane Grab Sequence & `VerticalGrab-1` Positioning:**
+  * **Default Resting Gesture:** The default hand pose across the entire environment is `OpenHand` (`EHandPoseMode::OpenHand`). Hovering over accessible top faces keeps the hand in `OpenHand` floating at hover altitude without premature claw triggers.
+  * **State-Machine Crane Grab Sequence (`ECraneGrabPhase`):**
+    1. **Descending:** On Left Click, the hand in `OpenHand` moves smoothly downward to touch the piece top surface.
+    2. **Grasping:** The hand closes into `VerticalGrab` using custom transform `VerticalGrab-1` (`x: -1, y: 4, z: -1.5`, `pitch: 75°, yaw: 180°, roll: 180°`) and attaches the physics handle.
+    3. **Ascending:** Hand and grabbed piece lift smoothly together up to the automated crane elevation height.
+    4. **Carrying:** While Left Click remains held, user freely translates the piece in $XY$, adjusts Yaw with mouse wheel, and elevation conforms to the continuous S-curve.
+    5. **Drop & Release:** Releasing Left Click immediately unconstrains the block to fall under gravity and restores hand pose to `OpenHand`.
 
 ---
 
