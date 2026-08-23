@@ -102,6 +102,83 @@ void AYenkaDesktopPawn::BeginPlay()
 
 	LoadCustomGesturesFromDisk();
 	LoadCustomTransformsFromDisk();
+
+	FString TransformPath = FPaths::ProjectSavedDir() / TEXT("HandTransforms/CustomTransforms.json");
+	LastTransformFileTimestamp = IFileManager::Get().GetTimeStamp(*TransformPath);
+
+	FString GesturePath = FPaths::ProjectSavedDir() / TEXT("HandGestures/CustomGestures.json");
+	LastGestureFileTimestamp = IFileManager::Get().GetTimeStamp(*GesturePath);
+
+	// Apply default transforms from disk right into active offsets
+	int32 LightPullPosIdx = CustomTransformsList.IndexOfByPredicate([](const FCustomHandTransform& T) {
+		return T.TransformName.Equals(TEXT("LightPullPositioning-1"), ESearchCase::IgnoreCase);
+	});
+	if (LightPullPosIdx != INDEX_NONE)
+	{
+		GrabHandLocationOffset = CustomTransformsList[LightPullPosIdx].LocationOffset;
+		GrabHandRotationOffset = CustomTransformsList[LightPullPosIdx].RotationOffset;
+		ActiveCustomTransformIndex = LightPullPosIdx;
+	}
+
+	int32 PointPosIdx = CustomTransformsList.IndexOfByPredicate([](const FCustomHandTransform& T) {
+		return T.TransformName.Equals(TEXT("PointPositioning-1"), ESearchCase::IgnoreCase);
+	});
+	if (PointPosIdx != INDEX_NONE)
+	{
+		PokeHandLocationOffset = CustomTransformsList[PointPosIdx].LocationOffset;
+		PokeHandRotationOffset = CustomTransformsList[PointPosIdx].RotationOffset;
+	}
+}
+
+void AYenkaDesktopPawn::CheckForLiveJsonModifications()
+{
+	FString TransformPath = FPaths::ProjectSavedDir() / TEXT("HandTransforms/CustomTransforms.json");
+	if (FPaths::FileExists(TransformPath))
+	{
+		FDateTime CurrentTimestamp = IFileManager::Get().GetTimeStamp(*TransformPath);
+		if (CurrentTimestamp != FDateTime::MinValue() && CurrentTimestamp != LastTransformFileTimestamp)
+		{
+			LastTransformFileTimestamp = CurrentTimestamp;
+			LoadCustomTransformsFromDisk();
+
+			int32 LightPullPosIdx = CustomTransformsList.IndexOfByPredicate([](const FCustomHandTransform& T) {
+				return T.TransformName.Equals(TEXT("LightPullPositioning-1"), ESearchCase::IgnoreCase);
+			});
+			if (LightPullPosIdx != INDEX_NONE)
+			{
+				GrabHandLocationOffset = CustomTransformsList[LightPullPosIdx].LocationOffset;
+				GrabHandRotationOffset = CustomTransformsList[LightPullPosIdx].RotationOffset;
+				ActiveCustomTransformIndex = LightPullPosIdx;
+			}
+
+			int32 PointPosIdx = CustomTransformsList.IndexOfByPredicate([](const FCustomHandTransform& T) {
+				return T.TransformName.Equals(TEXT("PointPositioning-1"), ESearchCase::IgnoreCase);
+			});
+			if (PointPosIdx != INDEX_NONE)
+			{
+				PokeHandLocationOffset = CustomTransformsList[PointPosIdx].LocationOffset;
+				PokeHandRotationOffset = CustomTransformsList[PointPosIdx].RotationOffset;
+			}
+
+			if (GEngine)
+			{
+				GEngine->AddOnScreenDebugMessage(9994, 4.0f, FColor::Green,
+					FString::Printf(TEXT("⚡ AUTO-RECARGADO CustomTransforms.json [Grab: Y=%.0f° P=%.0f° R=%.0f°]"),
+						GrabHandRotationOffset.Yaw, GrabHandRotationOffset.Pitch, GrabHandRotationOffset.Roll));
+			}
+		}
+	}
+
+	FString GesturePath = FPaths::ProjectSavedDir() / TEXT("HandGestures/CustomGestures.json");
+	if (FPaths::FileExists(GesturePath))
+	{
+		FDateTime CurrentTimestamp = IFileManager::Get().GetTimeStamp(*GesturePath);
+		if (CurrentTimestamp != FDateTime::MinValue() && CurrentTimestamp != LastGestureFileTimestamp)
+		{
+			LastGestureFileTimestamp = CurrentTimestamp;
+			ReloadHandGestures();
+		}
+	}
 }
 
 void AYenkaDesktopPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -115,6 +192,7 @@ void AYenkaDesktopPawn::Tick(float DeltaTime)
 
 	if (IsLocallyControlled())
 	{
+		CheckForLiveJsonModifications();
 		HandleMouseTrace();
 		UpdatePersistentCalibrationHUD();
 	}

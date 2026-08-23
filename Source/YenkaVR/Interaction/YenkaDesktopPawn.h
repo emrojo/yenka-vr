@@ -237,6 +237,14 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Yenka|Transforms")
 	FString CurrentTypedTransformName;
 
+	UPROPERTY()
+	FDateTime LastTransformFileTimestamp;
+
+	UPROPERTY()
+	FDateTime LastGestureFileTimestamp;
+
+	void CheckForLiveJsonModifications();
+
 	void StartNamingTransform();
 	void ConfirmSaveTransform();
 	void CancelNamingTransform();
