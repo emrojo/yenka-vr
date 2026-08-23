@@ -49,6 +49,24 @@ public:
 	UStaticMeshComponent* FloorMesh;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* CarpetMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* TableDeskMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* TableLeg1;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* TableLeg2;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* TableLeg3;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* TableLeg4;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* CeilingMesh;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
@@ -88,6 +106,12 @@ protected:
 	// Dynamic Material Instances
 	UPROPERTY()
 	UMaterialInstanceDynamic* FloorDynMat;
+
+	UPROPERTY()
+	UMaterialInstanceDynamic* CarpetDynMat;
+
+	UPROPERTY()
+	UMaterialInstanceDynamic* TableDynMat;
 
 	UPROPERTY()
 	UMaterialInstanceDynamic* WallDynMat;
