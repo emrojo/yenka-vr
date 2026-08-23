@@ -406,8 +406,18 @@ This document records all architectural, technical design, and mechanics decisio
     * $R_{\text{outer}} = 30.0\text{ cm}$: settles at $5.0\text{ cm}$ above table surface.
   * Enable horizontal rotation of the suspended piece via mouse wheel (`OnMouseWheel`, $\pm 15^\circ$ per step) in Crane Mode.
   * Live hot-reloading from `Saved/Config/YenkaInteractionConfig.json`.
+### ADR-028: Strict Hand & Finger Physical Non-Penetration & Continuous Collision Solver
+* **Date:** 2026-08-24
+* **Status:** Accepted
+* **Context:** In flat desktop and VR interaction, pointing near the tabletop or rotating the camera could cause virtual hand fingers or palm mesh to clip through the table surface or penetrate inside solid tower blocks. The hand must strictly remain in valid physical space above the table and collide realistically with the tower.
+* **Decision:**
+  * Implement `GetHandAnatomicalSamplePoints` in `AYenkaHandAvatar` sampling 14 anatomical landmarks (wrist, palm, knuckles, and all 5 fingertips).
+  * Implement `ValidateAndResolveCollisions`:
+    1. Table plane non-penetration constraint ($Z \ge \text{TableSurfaceZ} + 0.25\text{ cm}$): lifts hand if any finger/palm descends below tabletop.
+    2. Kinematic OBB depenetration solver: pushes hand outwards along contact normals if any finger penetrates solid non-target tower blocks.
+  * Apply `SetTargetHandTransformWithCollision` across all pawn interaction modes (Hover, Push, Pull, Crane, OpenHand, and Phalanx Edit).
 * **Consequences:**
-  * *(Positive)* Intuitive, completely collision-free crane-like transport and precise manual horizontal alignment of blocks onto the top of the tower.
+  * *(Positive)* Absolute physical non-penetration of table and blocks with zero clipping and natural, believable physical interactions.
 
 ---
 

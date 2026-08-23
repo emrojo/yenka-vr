@@ -171,6 +171,10 @@ This section maintains the immutable history of all requirements defined and agr
     * Proximity clearance zone ($r \le R_{\text{inner}} = 20.0\text{ cm}$): elevation achieves $100\%$ apex height ($6.0\text{ cm}$ above the highest tower block, `CraneTowerTopClearanceHeight`), providing a generous $16.25\text{ cm}$ clearance buffer from the tower perimeter ($R_{\text{tower}} = 3.75\text{ cm}$), fully eliminating lateral collisions with tower walls or protruding blocks.
   * **Horizontal Rotation:** The mouse wheel (`OnMouseWheel`) rotates the suspended block horizontally around the Yaw axis ($\pm 15^\circ$ per step) in Crane Mode.
   * Clearance heights, transition radii, and protrusion thresholds are parameterized in `Saved/Config/YenkaInteractionConfig.json` and hot-reloaded live on save (`Ctrl+S`).
+* **`[REQ-CROSS-21]` Strict Hand & Finger Physical Non-Penetration & Continuous Collision Solver:**
+  * **Absolute Table Clearance:** The hand avatar's entire anatomical volume (wrist, palm center, knuckles, and all 5 fingertips) is constrained to valid world space strictly above the tabletop ($Z \ge \text{TableSurfaceZ} + 0.25\text{ cm}$). Any proposed gesture or camera tilt that would clip below the table automatically elevates the hand vertically ($\Delta Z$).
+  * **Tower & Block Non-Penetration:** Kinematic OBB depenetration solver continuously verifies all hand bone spheres ($R = 0.60\text{ cm}$) against all tower blocks. If an un-targeted block is overlapped, the hand transform is immediately resolved to the nearest exterior contact surface along the contact normal.
+  * **Physical World Collision:** The hand avatar acts as a real physical body, exerting natural kinematic impulse and contact response when bumping into blocks.
 
 ---
 
