@@ -814,39 +814,68 @@ void AYenkaHandAvatar::ApplyPhalanxTransforms()
 		const int32 NumBones = RefSkeleton.GetNum();
 		const TArray<FTransform>& RefBonePoses = RefSkeleton.GetRefBonePose();
 
-		// Calculate exact unit axis vector from center of wrist (root) to the base of index finger
-		FVector IndexAxisVector = FVector(1.0f, 0.0f, 0.0f);
+		// 1. Calculate Component Space Reference Transforms to locate exact anatomical landmarks
+		TArray<FTransform> RefCompTransforms;
+		RefCompTransforms.SetNum(NumBones);
+		for (int32 i = 0; i < NumBones; ++i)
+		{
+			int32 ParentIdx = RefSkeleton.GetParentIndex(i);
+			if (ParentIdx != INDEX_NONE && RefCompTransforms.IsValidIndex(ParentIdx))
+			{
+				RefCompTransforms[i] = RefBonePoses[i] * RefCompTransforms[ParentIdx];
+			}
+			else
+			{
+				RefCompTransforms[i] = RefBonePoses[i];
+			}
+		}
+
+		// 2. Find exact bone indices for index base phalanx (index_01) and pinky base phalanx (pinky_01)
 		int32 IndexBoneIdx = INDEX_NONE;
+		int32 PinkyBoneIdx = INDEX_NONE;
 		for (int32 b = 0; b < NumBones; ++b)
 		{
 			FString BName = RefSkeleton.GetBoneName(b).ToString().ToLower();
-			if (BName.Contains(TEXT("index")) && (BName.Contains(TEXT("01")) || BName.Contains(TEXT("proximal")) || BName.Contains(TEXT("metacarpal"))))
+			if (BName.Contains(TEXT("index")) && BName.Contains(TEXT("01")))
 			{
 				IndexBoneIdx = b;
-				break;
+			}
+			else if (IndexBoneIdx == INDEX_NONE && BName.Contains(TEXT("index")) && BName.Contains(TEXT("proximal")))
+			{
+				IndexBoneIdx = b;
+			}
+
+			if (BName.Contains(TEXT("pinky")) && BName.Contains(TEXT("01")))
+			{
+				PinkyBoneIdx = b;
+			}
+			else if (PinkyBoneIdx == INDEX_NONE && (BName.Contains(TEXT("pinky")) || BName.Contains(TEXT("little"))) && BName.Contains(TEXT("proximal")))
+			{
+				PinkyBoneIdx = b;
 			}
 		}
 
-		if (IndexBoneIdx != INDEX_NONE)
-		{
-			FTransform IndexCompRef = RefBonePoses[IndexBoneIdx];
-			int32 CurParent = RefSkeleton.GetParentIndex(IndexBoneIdx);
-			while (CurParent != INDEX_NONE)
-			{
-				IndexCompRef = IndexCompRef * RefBonePoses[CurParent];
-				CurParent = RefSkeleton.GetParentIndex(CurParent);
-			}
+		// 3. Compute Pivot Point at the start of the index base phalanx
+		const FVector WristPos = (RefCompTransforms.Num() > 0) ? RefCompTransforms[0].GetLocation() : FVector::ZeroVector;
+		const FVector IndexBasePos = (IndexBoneIdx != INDEX_NONE) ? RefCompTransforms[IndexBoneIdx].GetLocation() : (WristPos + FVector(8.0f, 0.0f, 0.0f));
+		const FVector PinkyBasePos = (PinkyBoneIdx != INDEX_NONE) ? RefCompTransforms[PinkyBoneIdx].GetLocation() : (IndexBasePos + FVector(0.0f, 6.0f, 0.0f));
 
-			FVector WristCompPos = (RefBonePoses.Num() > 0) ? RefBonePoses[0].GetLocation() : FVector::ZeroVector;
-			FVector Dir = IndexCompRef.GetLocation() - WristCompPos;
-			if (!Dir.IsNearlyZero())
-			{
-				IndexAxisVector = Dir.GetSafeNormal();
-			}
-		}
+		FVector LongDir = (IndexBasePos - WristPos).GetSafeNormal();
+		FVector LatDir = (PinkyBasePos - IndexBasePos).GetSafeNormal();
+		if (LongDir.IsNearlyZero()) LongDir = FVector(1.0f, 0.0f, 0.0f);
+		if (LatDir.IsNearlyZero()) LatDir = FVector(0.0f, 1.0f, 0.0f);
 
-		const FQuat AxialTwistQuat = FQuat(IndexAxisVector, FMath::DegreesToRadians(HandAxialRotation));
+		// Normal vector to the palm plane
+		FVector PalmNormal = FVector::CrossProduct(LongDir, LatDir).GetSafeNormal();
+		if (PalmNormal.IsNearlyZero()) PalmNormal = FVector(0.0f, 0.0f, 1.0f);
 
+		// Perpendicular axis in the horizontal (palm) plane passing through the index base phalanx
+		FVector PerpAxisInPalmPlane = FVector::CrossProduct(PalmNormal, LongDir).GetSafeNormal();
+		if (PerpAxisInPalmPlane.IsNearlyZero()) PerpAxisInPalmPlane = LatDir;
+
+		const FQuat TwistQuat = FQuat(PerpAxisInPalmPlane, FMath::DegreesToRadians(HandAxialRotation));
+
+		// 4. Compute Forward Kinematics for all phalanxes
 		TArray<FTransform> CompTransforms;
 		CompTransforms.SetNum(NumBones);
 
@@ -869,12 +898,26 @@ void AYenkaHandAvatar::ApplyPhalanxTransforms()
 			}
 			else
 			{
-				// Root bone (wrist): apply axial rotation along the wrist-to-index axis
-				LocalTransform.SetRotation(AxialTwistQuat * LocalTransform.GetRotation());
 				CompTransforms[i] = LocalTransform;
 			}
+		}
 
-			PoseableHandMesh->SetBoneTransformByName(BoneName, CompTransforms[i], EBoneSpaces::ComponentSpace);
+		// 5. Apply rigid rotation around the horizontal perpendicular axis passing through the start of the index base phalanx
+		if (!FMath::IsNearlyZero(HandAxialRotation))
+		{
+			for (int32 i = 0; i < NumBones; ++i)
+			{
+				FVector RelPos = CompTransforms[i].GetLocation() - IndexBasePos;
+				FVector RotatedRelPos = TwistQuat.RotateVector(RelPos);
+				CompTransforms[i].SetLocation(IndexBasePos + RotatedRelPos);
+				CompTransforms[i].SetRotation(TwistQuat * CompTransforms[i].GetRotation());
+			}
+		}
+
+		// 6. Set Final Bone Transforms in Component Space
+		for (int32 i = 0; i < NumBones; ++i)
+		{
+			PoseableHandMesh->SetBoneTransformByName(RefSkeleton.GetBoneName(i), CompTransforms[i], EBoneSpaces::ComponentSpace);
 		}
 	}
 

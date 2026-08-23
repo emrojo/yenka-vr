@@ -15,22 +15,22 @@ struct FScenarioMenuItem
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Menu")
-	EYenkaEnvironmentTheme Theme;
+	EYenkaEnvironmentTheme Theme = EYenkaEnvironmentTheme::ModernPenthouse;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Menu")
-	FString Title;
+	FString Title = TEXT("");
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Menu")
-	FLinearColor AccentColor;
+	FLinearColor AccentColor = FLinearColor::White;
 
 	UPROPERTY()
-	UStaticMeshComponent* ButtonMesh;
+	UStaticMeshComponent* ButtonMesh = nullptr;
 
 	UPROPERTY()
-	UTextRenderComponent* TitleText;
+	UTextRenderComponent* TitleText = nullptr;
 
 	UPROPERTY()
-	UMaterialInstanceDynamic* ButtonMat;
+	UMaterialInstanceDynamic* ButtonMat = nullptr;
 };
 
 /**

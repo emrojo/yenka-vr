@@ -1120,7 +1120,7 @@ void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
 
 		if (bIsPhalanxEditMode && VirtualHand)
 		{
-			// --- PHALANX, WRIST & WRIST-TO-INDEX AXIS EDIT MODE HUD ---
+			// --- PHALANX, WRIST & PERPENDICULAR INDEX BASE AXIS EDIT MODE HUD ---
 			static const TCHAR* FingerNames[] = {
 				TEXT("Todos los Dedos"),
 				TEXT("Pulgar"),
@@ -1129,7 +1129,7 @@ void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
 				TEXT("Anular"),
 				TEXT("Meñique"),
 				TEXT("🖐️ MUÑECA (Rotación Espacial de Muñeca)"),
-				TEXT("🎯 EJE MUÑECA-ÍNDICE (Giro Axial de Mano)")
+				TEXT("🎯 EJE BASE ÍNDICE (Rotación Perpendicular Horizontal)")
 			};
 			static const TCHAR* PhalanxNames[] = { TEXT("Todas las Falanges"), TEXT("Proximal (Base)"), TEXT("Media (Centro)"), TEXT("Distal (Punta)") };
 
@@ -1139,7 +1139,7 @@ void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
 			if (SelectedFinger == 6)
 			{
 				FString Line1 = FString::Printf(TEXT("=== 🖐️ MODO EDICIÓN: ROTACIÓN DE MUÑECA [Pulsa F4 o K para Salir] ==="));
-				FString Line2 = FString::Printf(TEXT("🎯 SELECCIÓN: [ %s ] (Teclas: 1-5 Dedos | 6/M: Muñeca | 7/B: Eje Muñeca-Índice | 0: Todos)"), ActiveFingerName);
+				FString Line2 = FString::Printf(TEXT("🎯 SELECCIÓN: [ %s ] (Teclas: 1-5 Dedos | 6/M: Muñeca | 7/B: Eje Base Índice | 0: Todos)"), ActiveFingerName);
 				FString Line3 = FString::Printf(TEXT("⌨️ 3 EJES MUÑECA: [ Arriba/Abajo: Pitch +-5° | Izq/Der: Yaw +-5° | Q/E: Roll +-5° | Espacio: Reset Muñeca | F5: Guardar ]"));
 				FString Line4 = FString::Printf(TEXT("📊 ROTACIÓN ACTUAL DE MUÑECA: [ Pitch: %+.0f° | Yaw: %+.0f° | Roll: %+.0f° ]"),
 					PokeHandRotationOffset.Pitch, PokeHandRotationOffset.Yaw, PokeHandRotationOffset.Roll);
@@ -1158,12 +1158,12 @@ void AYenkaDesktopPawn::UpdatePersistentCalibrationHUD()
 			}
 			else if (SelectedFinger == 7)
 			{
-				FString Line1 = FString::Printf(TEXT("=== 🎯 MODO EDICIÓN: ROTACIÓN EN EJE MUÑECA-ÍNDICE [Pulsa F4 para Salir] ==="));
-				FString Line2 = FString::Printf(TEXT("🎯 SELECCIÓN: [ %s ] (Teclas: 1-5 Dedos | 6/M: Muñeca | 7/B: Eje Muñeca-Índice | 0: Todos)"), ActiveFingerName);
-				FString Line3 = FString::Printf(TEXT("⌨️ CONTROLES DE GIRO AXIAL: [ Flechas Izq/Der o Arriba/Abajo o Q/E: Girar Mano +-5° | Espacio: Reset ]"));
-				FString Line4 = FString::Printf(TEXT("📊 ROTACIÓN AXIAL EN EJE MUÑECA-ÍNDICE: [ Ángulo de Giro: %+.0f° ]"),
+				FString Line1 = FString::Printf(TEXT("=== 🎯 MODO EDICIÓN: ROTACIÓN PERPENDICULAR (PIVOTE EN BASE DEL ÍNDICE) [Pulsa F4 para Salir] ==="));
+				FString Line2 = FString::Printf(TEXT("🎯 SELECCIÓN: [ %s ] (Teclas: 1-5 Dedos | 6/M: Muñeca | 7/B: Eje Base Índice | 0: Todos)"), ActiveFingerName);
+				FString Line3 = FString::Printf(TEXT("⌨️ CONTROLES DE GIRO: [ Flechas Izq/Der o Arriba/Abajo o Q/E: Girar Mano +-5° | Espacio: Reset ]"));
+				FString Line4 = FString::Printf(TEXT("📊 ROTACIÓN PERPENDICULAR HORIZONTAL: [ Ángulo de Giro: %+.0f° ]"),
 					VirtualHand->GetHandAxialRotation());
-				FString Line5 = FString::Printf(TEXT("📌 EJE DE GIRO: Rayo axial desde el centro de la muñeca hasta la falange base del índice"));
+				FString Line5 = FString::Printf(TEXT("📌 EJE DE GIRO: Eje perpendicular en el plano horizontal pasando por el inicio de la falange base del índice"));
 				FString Line6 = FString::Printf(TEXT("🏷️ GESTO: [ %s ] | 📂 GUARDADOS (%d): [ y ] para Ciclar | F5: Guardar"),
 					*VirtualHand->GetDetectedGestureDescription(), CustomGesturesList.Num());
 
