@@ -88,6 +88,46 @@ protected:
 	void OnMouseWheel(float Val);
 	void MoveForward(float Val);
 	void MoveRight(float Val);
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Hand Calibration")
+	FVector GrabHandLocationOffset;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Hand Calibration")
+	FRotator GrabHandRotationOffset;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Hand Calibration")
+	FVector PokeHandLocationOffset;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Hand Calibration")
+	FRotator PokeHandRotationOffset;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Hand Calibration")
+	float GrabStandbySeparation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Hand Calibration")
+	float PokeStandbySeparation;
+
+	void AdjustHandOffsetX(float Delta);
+	void AdjustHandOffsetY(float Delta);
+	void AdjustHandOffsetZ(float Delta);
+	void AdjustHandPitch(float Delta);
+	void AdjustHandYaw(float Delta);
+	void AdjustHandRoll(float Delta);
+	void ResetHandCalibration();
+	void DisplayHandCalibrationOnScreen();
+
+	void OnCalibXPlus() { AdjustHandOffsetX(+0.25f); }
+	void OnCalibXMinus() { AdjustHandOffsetX(-0.25f); }
+	void OnCalibYMinus() { AdjustHandOffsetY(-0.25f); }
+	void OnCalibYPlus() { AdjustHandOffsetY(+0.25f); }
+	void OnCalibZPlus() { AdjustHandOffsetZ(+0.25f); }
+	void OnCalibZMinus() { AdjustHandOffsetZ(-0.25f); }
+	void OnCalibPitchMinus() { AdjustHandPitch(-2.5f); }
+	void OnCalibPitchPlus() { AdjustHandPitch(+2.5f); }
+	void OnCalibYawMinus() { AdjustHandYaw(-2.5f); }
+	void OnCalibYawPlus() { AdjustHandYaw(+2.5f); }
+	void OnCalibRollMinus() { AdjustHandRoll(-2.5f); }
+	void OnCalibRollPlus() { AdjustHandRoll(+2.5f); }
+
 	void OnSelectScenario1() { SelectScenarioTheme(0); }
 	void OnSelectScenario2() { SelectScenarioTheme(1); }
 	void OnSelectScenario3() { SelectScenarioTheme(2); }

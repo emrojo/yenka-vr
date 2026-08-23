@@ -38,6 +38,14 @@ AYenkaDesktopPawn::AYenkaDesktopPawn()
 	LastHitLocation = FVector::ZeroVector;
 	LastHitNormal = FVector::UpVector;
 	LastPrimaryClickTime = -10.0f;
+
+	// Hand Calibration defaults
+	GrabHandLocationOffset = FVector::ZeroVector;
+	GrabHandRotationOffset = FRotator::ZeroRotator;
+	PokeHandLocationOffset = FVector::ZeroVector;
+	PokeHandRotationOffset = FRotator::ZeroRotator;
+	GrabStandbySeparation = 1.0f;
+	PokeStandbySeparation = 1.0f;
 }
 
 #include "YenkaVR/Physics/YenkaTowerManager.h"
@@ -106,6 +114,21 @@ void AYenkaDesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		PlayerInputComponent->BindKey(EKeys::F, IE_Pressed, this, &AYenkaDesktopPawn::OnTogglePokeMode);
 		PlayerInputComponent->BindKey(EKeys::M, IE_Pressed, this, &AYenkaDesktopPawn::OnToggleScenarioMenu);
 
+		// Hand Calibration Hotkeys (Live in-game tuning)
+		PlayerInputComponent->BindKey(EKeys::I, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibXPlus);
+		PlayerInputComponent->BindKey(EKeys::K, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibXMinus);
+		PlayerInputComponent->BindKey(EKeys::J, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYMinus);
+		PlayerInputComponent->BindKey(EKeys::L, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYPlus);
+		PlayerInputComponent->BindKey(EKeys::U, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibZPlus);
+		PlayerInputComponent->BindKey(EKeys::O, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibZMinus);
+		PlayerInputComponent->BindKey(EKeys::LeftBracket, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibPitchMinus);
+		PlayerInputComponent->BindKey(EKeys::RightBracket, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibPitchPlus);
+		PlayerInputComponent->BindKey(EKeys::Semicolon, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYawMinus);
+		PlayerInputComponent->BindKey(EKeys::Quote, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibYawPlus);
+		PlayerInputComponent->BindKey(EKeys::Comma, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibRollMinus);
+		PlayerInputComponent->BindKey(EKeys::Period, IE_Pressed, this, &AYenkaDesktopPawn::OnCalibRollPlus);
+		PlayerInputComponent->BindKey(EKeys::R, IE_Pressed, this, &AYenkaDesktopPawn::ResetHandCalibration);
+
 		// Scenario Theme Hotkeys (1 to 7)
 		PlayerInputComponent->BindKey(EKeys::One, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario1);
 		PlayerInputComponent->BindKey(EKeys::Two, IE_Pressed, this, &AYenkaDesktopPawn::OnSelectScenario2);
@@ -156,6 +179,68 @@ void AYenkaDesktopPawn::OnToggleScenarioMenu()
 	if (Menu)
 	{
 		Menu->ToggleMenuVisibility();
+	}
+}
+
+void AYenkaDesktopPawn::AdjustHandOffsetX(float Delta)
+{
+	GrabHandLocationOffset.X += Delta;
+	PokeHandLocationOffset.X += Delta;
+	DisplayHandCalibrationOnScreen();
+}
+
+void AYenkaDesktopPawn::AdjustHandOffsetY(float Delta)
+{
+	GrabHandLocationOffset.Y += Delta;
+	PokeHandLocationOffset.Y += Delta;
+	DisplayHandCalibrationOnScreen();
+}
+
+void AYenkaDesktopPawn::AdjustHandOffsetZ(float Delta)
+{
+	GrabHandLocationOffset.Z += Delta;
+	PokeHandLocationOffset.Z += Delta;
+	DisplayHandCalibrationOnScreen();
+}
+
+void AYenkaDesktopPawn::AdjustHandPitch(float Delta)
+{
+	GrabHandRotationOffset.Pitch += Delta;
+	PokeHandRotationOffset.Pitch += Delta;
+	DisplayHandCalibrationOnScreen();
+}
+
+void AYenkaDesktopPawn::AdjustHandYaw(float Delta)
+{
+	GrabHandRotationOffset.Yaw += Delta;
+	PokeHandRotationOffset.Yaw += Delta;
+	DisplayHandCalibrationOnScreen();
+}
+
+void AYenkaDesktopPawn::AdjustHandRoll(float Delta)
+{
+	GrabHandRotationOffset.Roll += Delta;
+	PokeHandRotationOffset.Roll += Delta;
+	DisplayHandCalibrationOnScreen();
+}
+
+void AYenkaDesktopPawn::ResetHandCalibration()
+{
+	GrabHandLocationOffset = FVector::ZeroVector;
+	GrabHandRotationOffset = FRotator::ZeroRotator;
+	PokeHandLocationOffset = FVector::ZeroVector;
+	PokeHandRotationOffset = FRotator::ZeroRotator;
+	DisplayHandCalibrationOnScreen();
+}
+
+void AYenkaDesktopPawn::DisplayHandCalibrationOnScreen()
+{
+	if (GEngine)
+	{
+		FString Msg = FString::Printf(TEXT("Hand Offset: [X: %+.2f cm, Y: %+.2f cm, Z: %+.2f cm] | Rot: [P: %+.1f deg, Y: %+.1f deg, R: %+.1f deg] | Keys: I/K (X), J/L (Y), U/O (Z), [/] (Pitch), ;/' (Yaw), ,/. (Roll), R (Reset)"),
+			GrabHandLocationOffset.X, GrabHandLocationOffset.Y, GrabHandLocationOffset.Z,
+			GrabHandRotationOffset.Pitch, GrabHandRotationOffset.Yaw, GrabHandRotationOffset.Roll);
+		GEngine->AddOnScreenDebugMessage(1001, 3.0f, FColor::Cyan, Msg);
 	}
 }
 
@@ -448,8 +533,8 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 		{
 			FVector DragTargetLocation = WorldLocation + (WorldDirection * GrabDistance);
 			VirtualHand->PhysicsHandle->SetTargetLocation(DragTargetLocation);
-			FRotator HandRot = GetHorizontalFacingRotation(DragTargetLocation);
-			FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset();
+			FRotator HandRot = GetHorizontalFacingRotation(DragTargetLocation) + GrabHandRotationOffset;
+			FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
 			FVector HandPos = DragTargetLocation - HandRot.RotateVector(LocalOffset);
 			FTransform HandTarget(HandRot.Quaternion(), HandPos);
 			VirtualHand->SetHandPoseMode(EHandPoseMode::GrabPinch);
@@ -501,7 +586,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 				{
 					// --- PUSH / POKE MODE ---
 					VirtualHand->SetHandPoseMode(EHandPoseMode::FingerPoke);
-					FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset(); // (6.0, -1.5, 0.0)
+					FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + PokeHandLocationOffset;
 
 					FVector ApproachNormal;
 					GetBlockStandOffLocation(ActivePushBlock, WorldLocation, ApproachNormal, PUSH_STANDBY_SEPARATION, LocalOffset);
@@ -514,7 +599,7 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 					PushLongitudinalAxis = (FMath::Abs(DotFwd) >= FMath::Abs(DotRt)) ? (ForwardVec * FMath::Sign(DotFwd)) : (RightVec * FMath::Sign(DotRt));
 					PushApproachNormal = ApproachNormal;
 
-					FRotator HandRot = (-ApproachNormal).Rotation();
+					FRotator HandRot = (-ApproachNormal).Rotation() + PokeHandRotationOffset;
 					HandRot.Pitch = 0.0f;
 					HandRot.Roll = 0.0f;
 
@@ -569,10 +654,10 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 						// Block is protruding: position pinch fingers 1.0cm from protruding edge
 						bIsLockedPerpendicular = false;
 						VirtualHand->SetHandPoseMode(EHandPoseMode::GrabPinch);
-						FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset(); // (3.5, 0.0, 0.0)
+						FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset; // (3.5, 0.0, 0.0)
 						FVector StandbyFingertipPos = ProtrudingPos + (ProtrudingNorm * GRAB_STANDBY_SEPARATION);
 
-						FRotator HandRot = (-ProtrudingNorm).Rotation();
+						FRotator HandRot = (-ProtrudingNorm).Rotation() + GrabHandRotationOffset;
 						HandRot.Pitch = 0.0f;
 						HandRot.Roll = 0.0f;
 
@@ -584,14 +669,14 @@ void AYenkaDesktopPawn::HandleMouseTrace()
 						// Block is flush/not protruding: hand hovers outside in inspection mode (fingertips strictly 1cm from tower)
 						bIsLockedPerpendicular = false;
 						VirtualHand->SetHandPoseMode(EHandPoseMode::OpenHand);
-						FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset(); // (6.4, -0.4, 0.0)
+						FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset; // (6.4, -0.4, 0.0)
 
 						FVector Diff = HitResult.ImpactPoint - TowerCenter;
 						float Angle = FMath::Atan2(Diff.Y, Diff.X);
 						float DistXY = FVector2D(Diff.X, Diff.Y).Size();
 						float SafeFingertipRadius = FMath::Max(DistXY, TOWER_BASE_RADIUS + 1.0f);
 						FVector TargetFingertipPos = TowerCenter + FVector(FMath::Cos(Angle) * SafeFingertipRadius, FMath::Sin(Angle) * SafeFingertipRadius, Diff.Z);
-						FRotator InspectRot = GetHorizontalFacingRotation(TargetFingertipPos);
+						FRotator InspectRot = GetHorizontalFacingRotation(TargetFingertipPos) + GrabHandRotationOffset;
 
 						FVector SafeHandPos = TargetFingertipPos - InspectRot.RotateVector(LocalOffset);
 						VirtualHand->SetTargetHandTransform(FTransform(InspectRot.Quaternion(), SafeHandPos), 0.0f);
@@ -733,10 +818,8 @@ void AYenkaDesktopPawn::OnPrimaryClickPressed()
 			ProtrudingPos,
 			GrabbedBlock->GetActorRotation()
 		);
-		FRotator HandRot = (-ProtrudingNorm).Rotation();
-		HandRot.Pitch = 0.0f;
-		HandRot.Roll = 0.0f;
-		FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset();
+		FRotator HandRot = (-ProtrudingNorm).Rotation() + GrabHandRotationOffset;
+		FVector LocalOffset = VirtualHand->GetExtendedFingertipLocalOffset() + GrabHandLocationOffset;
 		FVector HandPos = ProtrudingPos - HandRot.RotateVector(LocalOffset);
 		FTransform HandTarget(HandRot.Quaternion(), HandPos);
 		VirtualHand->SetTargetHandTransform(HandTarget, 1.0f);
