@@ -27,10 +27,19 @@ struct FYenkaInteractionConfig
 	float CraneTowerTopClearanceHeight = 3.0f; // cm (elevation above highest tower block when over tower)
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Config")
-	float CraneTransitionRadius = 16.0f; // cm (radial distance over which elevation is smoothly interpolated)
+	float CraneTransitionRadius = 22.0f; // cm (radial distance over which elevation is smoothly interpolated)
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Config")
 	float CraneTopSnapRadius = 8.0f; // cm
+};
+
+UENUM(BlueprintType)
+enum class EBlockFaceType : uint8
+{
+	None,
+	TopFace,
+	SmallEndFace,   // Lados pequeños: 2.5cm x 1.5cm (extremos longitudinales) -> PUSH
+	LargeSideFace   // Lados mayores: 7.5cm x 1.5cm (flancos laterales) -> PULL si sobresale
 };
 
 /**
@@ -147,6 +156,7 @@ protected:
 	FVector GetBlockChosenFacePos(const AYenkaBlock* Block, const FVector& ApproachNormal) const;
 	bool IsBlockProtruding(const AYenkaBlock* Block, FVector& OutProtrudingEdgePos, FVector& OutProtrudingNormal) const;
 	bool IsHoveredFaceProtruding(const AYenkaBlock* Block, const FVector& HitLocation, FVector& OutProtrudingPos, FVector& OutProtrudingNorm) const;
+	EBlockFaceType GetBlockHitFaceType(const AYenkaBlock* Block, const FVector& HitLocation, const FVector& HitNormal, FVector& OutFacePos, FVector& OutFaceNormal, bool& bOutIsProtruding) const;
 	float CalculateCraneTargetZ(const FVector& TargetXY, float HighestBlockZ) const;
 	void OnMouseX(float Val);
 	void OnMouseY(float Val);
