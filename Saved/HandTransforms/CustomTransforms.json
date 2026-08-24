@@ -59,6 +59,36 @@
 				"yaw": -135,
 				"roll": -90
 			}
+		},
+		{
+			"transformName": "VerticalGrab-1",
+			"locationOffset":
+			{
+				"x": -1,
+				"y": 4,
+				"z": -1.5
+			},
+			"rotationOffset":
+			{
+				"pitch": 75,
+				"yaw": 180,
+				"roll": 180
+			}
+		},
+		{
+			"transformName": "FULLHAND1",
+			"locationOffset":
+			{
+				"x": 7.5,
+				"y": 14.5,
+				"z": 1
+			},
+			"rotationOffset":
+			{
+				"pitch": 150,
+				"yaw": 45,
+				"roll": 75
+			}
 		}
 	]
 }

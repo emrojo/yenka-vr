@@ -68,6 +68,9 @@ struct FCustomHandGesture
 	FString GestureName = TEXT("Nuevo Gesto");
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Gesture")
+	FString LinkedTransformName = TEXT("");
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Gesture")
 	FFingerPhalanges Thumb;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Gesture")
@@ -202,7 +205,7 @@ public:
 	FString GetDetectedGestureDescription() const;
 
 	UFUNCTION(BlueprintCallable, Category = "Yenka|Phalanx")
-	FCustomHandGesture ExportCurrentGesture(const FString& Name, const FVector& LocOffset, const FRotator& RotOffset) const;
+	FCustomHandGesture ExportCurrentGesture(const FString& Name, const FVector& LocOffset, const FRotator& RotOffset, const FString& InLinkedTransformName = TEXT("")) const;
 
 	UFUNCTION(BlueprintCallable, Category = "Yenka|Phalanx")
 	void ApplyCustomGesture(const FCustomHandGesture& InGesture);

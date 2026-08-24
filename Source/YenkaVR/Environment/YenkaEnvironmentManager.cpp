@@ -198,7 +198,7 @@ AYenkaEnvironmentManager::AYenkaEnvironmentManager()
 	FireplaceLight->SetLightColor(FLinearColor(1.0f, 0.45f, 0.10f));
 	FireplaceLight->SetAttenuationRadius(350.0f);
 
-	CurrentTheme = EYenkaEnvironmentTheme::ModernPenthouse;
+	CurrentTheme = EYenkaEnvironmentTheme::MixedRealityPassthrough;
 	FireplaceFlickerTimer = 0.0f;
 }
 

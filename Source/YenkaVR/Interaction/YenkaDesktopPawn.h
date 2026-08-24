@@ -55,6 +55,18 @@ enum class EBlockFaceType : uint8
 	LargeSideFace   // Lados mayores: 7.5cm x 1.5cm (flancos laterales) -> PULL si sobresale
 };
 
+UENUM(BlueprintType)
+enum class EYenkaEditDimension : uint8
+{
+	LocationX      UMETA(DisplayName = "Posición X (Frente/Atrás)"),
+	LocationY      UMETA(DisplayName = "Posición Y (Izquierda/Derecha)"),
+	LocationZ      UMETA(DisplayName = "Posición Z (Altura/Vertical)"),
+	RotationPitch  UMETA(DisplayName = "Pitch (Inclinación/Flexión)"),
+	RotationYaw    UMETA(DisplayName = "Yaw (Giro/Lateral)"),
+	RotationRoll   UMETA(DisplayName = "Roll (Torsión/Inclinación Lateral)"),
+	AxialRotation  UMETA(DisplayName = "Eje Base Índice")
+};
+
 /**
  * Desktop / Flat PC Pawn with orbital camera and mouse-driven virtual hand.
  */
@@ -229,6 +241,18 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Hand Calibration")
 	bool bForceGesturePreview;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Hand Calibration")
+	EYenkaEditDimension SelectedDimension;
+
+	void CycleNextDimension();
+	void CyclePrevDimension();
+	void SelectDimension(EYenkaEditDimension NewDim);
+	void IncreaseSelectedDimension();
+	void DecreaseSelectedDimension();
+	void AdjustSelectedDimension(float Direction);
+	void ResetSelectedDimension();
+	FString GetSelectedDimensionName() const;
 
 	void AdjustHandOffsetX(float Delta);
 	void AdjustHandOffsetY(float Delta);

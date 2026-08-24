@@ -149,9 +149,9 @@ AYenkaScenarioMenu::AYenkaScenarioMenu()
 	ReopenButtonText->SetVisibility(false);
 
 	HoveredButtonIndex = -1;
-	bIsMenuOpen = true;
-	TargetScale = 1.0f;
-	CurrentScale = 1.0f;
+	bIsMenuOpen = false;
+	TargetScale = 0.0f;
+	CurrentScale = 0.0f;
 }
 
 void AYenkaScenarioMenu::BeginPlay()
@@ -161,6 +161,8 @@ void AYenkaScenarioMenu::BeginPlay()
 	// Spawn position: Floating comfortably at eye height between player (-70cm) and table (0cm)
 	SetActorLocation(FVector(-40.0f, 0.0f, 110.0f));
 	SetActorRotation(FRotator(0.0f, 0.0f, 0.0f));
+	SetActorScale3D(FVector::ZeroVector);
+	SetActorHiddenInGame(true);
 
 	// Initialize clean PBR solid materials
 	UMaterialInterface* BaseMat = BackgroundPlate ? BackgroundPlate->GetMaterial(0) : nullptr;

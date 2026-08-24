@@ -732,6 +732,7 @@ static void ModifyFingerPhalanges(FFingerPhalanges& Finger, int32 PhalanxIndex, 
 
 void AYenkaHandAvatar::SetPhalanxPitch(int32 FingerIndex, int32 PhalanxIndex, float DeltaAngle)
 {
+	bIsCustomGestureActive = true;
 	if (FingerIndex == 0) // All fingers
 	{
 		ModifyFingerPhalanges(ThumbPhalanges, PhalanxIndex, DeltaAngle, 0.0f, 0.0f);
@@ -751,6 +752,7 @@ void AYenkaHandAvatar::SetPhalanxPitch(int32 FingerIndex, int32 PhalanxIndex, fl
 
 void AYenkaHandAvatar::SetPhalanxYaw(int32 FingerIndex, int32 PhalanxIndex, float DeltaAngle)
 {
+	bIsCustomGestureActive = true;
 	if (FingerIndex == 0) // All fingers
 	{
 		ModifyFingerPhalanges(ThumbPhalanges, PhalanxIndex, 0.0f, DeltaAngle, 0.0f);
@@ -770,6 +772,7 @@ void AYenkaHandAvatar::SetPhalanxYaw(int32 FingerIndex, int32 PhalanxIndex, floa
 
 void AYenkaHandAvatar::SetPhalanxRoll(int32 FingerIndex, int32 PhalanxIndex, float DeltaAngle)
 {
+	bIsCustomGestureActive = true;
 	if (FingerIndex == 0) // All fingers
 	{
 		ModifyFingerPhalanges(ThumbPhalanges, PhalanxIndex, 0.0f, 0.0f, DeltaAngle);
@@ -789,12 +792,14 @@ void AYenkaHandAvatar::SetPhalanxRoll(int32 FingerIndex, int32 PhalanxIndex, flo
 
 void AYenkaHandAvatar::SetHandAxialRotation(float Angle)
 {
+	bIsCustomGestureActive = true;
 	HandAxialRotation = FRotator::NormalizeAxis(Angle);
 	ApplyPhalanxTransforms();
 }
 
 void AYenkaHandAvatar::AddHandAxialRotation(float DeltaAngle)
 {
+	bIsCustomGestureActive = true;
 	SetHandAxialRotation(HandAxialRotation + DeltaAngle);
 }
 
@@ -1089,10 +1094,11 @@ FString AYenkaHandAvatar::GetDetectedGestureDescription() const
 	return TEXT("🎨 GESTO PERSONALIZADO (Custom Pose)");
 }
 
-FCustomHandGesture AYenkaHandAvatar::ExportCurrentGesture(const FString& Name, const FVector& LocOffset, const FRotator& RotOffset) const
+FCustomHandGesture AYenkaHandAvatar::ExportCurrentGesture(const FString& Name, const FVector& LocOffset, const FRotator& RotOffset, const FString& InLinkedTransformName) const
 {
 	FCustomHandGesture OutGesture;
 	OutGesture.GestureName = Name.IsEmpty() ? TEXT("GestoPersonalizado") : Name;
+	OutGesture.LinkedTransformName = InLinkedTransformName;
 	OutGesture.Thumb = ThumbPhalanges;
 	OutGesture.Index = IndexPhalanges;
 	OutGesture.Middle = MiddlePhalanges;

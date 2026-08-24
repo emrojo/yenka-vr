@@ -2,6 +2,7 @@
 	"gestures": [
 		{
 			"gestureName": "PointGesture2",
+			"linkedTransformName": "PointPositioning-1",
 			"thumb":
 			{
 				"proximal":
@@ -123,6 +124,7 @@
 		},
 		{
 			"gestureName": "LightPullGesture",
+			"linkedTransformName": "LightPullPositioning-1",
 			"thumb":
 			{
 				"proximal":
@@ -244,6 +246,7 @@
 		},
 		{
 			"gestureName": "PointGesture",
+			"linkedTransformName": "PointPositioning-1",
 			"thumb":
 			{
 				"proximal":
@@ -360,6 +363,250 @@
 				"pitch": 0,
 				"yaw": -90,
 				"roll": 0
+			},
+			"handAxialRotation": 0
+		},
+		{
+			"gestureName": "VERTICALGRAB",
+			"linkedTransformName": "VerticalGrab-1",
+			"thumb":
+			{
+				"proximal":
+				{
+					"pitch": -40,
+					"yaw": -55,
+					"roll": 5
+				},
+				"intermediate":
+				{
+					"pitch": -20,
+					"yaw": -20,
+					"roll": 10
+				},
+				"distal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 0
+				}
+			},
+			"index":
+			{
+				"proximal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 0
+				},
+				"intermediate":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": -25
+				},
+				"distal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": -15
+				}
+			},
+			"middle":
+			{
+				"proximal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 0
+				},
+				"intermediate":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": -10
+				},
+				"distal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": -25
+				}
+			},
+			"ring":
+			{
+				"proximal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": -5
+				},
+				"intermediate":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": -15
+				},
+				"distal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": -10
+				}
+			},
+			"pinky":
+			{
+				"proximal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": -5
+				},
+				"intermediate":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": -5
+				},
+				"distal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": -10
+				}
+			},
+			"handLocationOffset":
+			{
+				"x": -5.5,
+				"y": 8.5,
+				"z": -0.5
+			},
+			"handRotationOffset":
+			{
+				"pitch": 0,
+				"yaw": -90,
+				"roll": 0
+			},
+			"handAxialRotation": 0
+		},
+		{
+			"gestureName": "MANOABIERTA",
+			"linkedTransformName": "FULLHAND1",
+			"thumb":
+			{
+				"proximal":
+				{
+					"pitch": -20,
+					"yaw": -30,
+					"roll": -30
+				},
+				"intermediate":
+				{
+					"pitch": 40,
+					"yaw": -70,
+					"roll": 0
+				},
+				"distal":
+				{
+					"pitch": 0,
+					"yaw": 25,
+					"roll": 0
+				}
+			},
+			"index":
+			{
+				"proximal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 10
+				},
+				"intermediate":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 20
+				},
+				"distal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 10
+				}
+			},
+			"middle":
+			{
+				"proximal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 15
+				},
+				"intermediate":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 20
+				},
+				"distal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 5
+				}
+			},
+			"ring":
+			{
+				"proximal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 15
+				},
+				"intermediate":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 20
+				},
+				"distal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 15
+				}
+			},
+			"pinky":
+			{
+				"proximal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 15
+				},
+				"intermediate":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 20
+				},
+				"distal":
+				{
+					"pitch": 0,
+					"yaw": 0,
+					"roll": 0
+				}
+			},
+			"handLocationOffset":
+			{
+				"x": 7.5,
+				"y": 14.5,
+				"z": 1.0
+			},
+			"handRotationOffset":
+			{
+				"pitch": 150,
+				"yaw": 45,
+				"roll": 75
 			},
 			"handAxialRotation": 0
 		}
