@@ -33,6 +33,11 @@ This document records all architectural, technical design, and mechanics decisio
 * [ADR-025: Strictly Horizontal Perpendicular Block Pulling & Invariant Extraction Orientation](#adr-025-strictly-horizontal-perpendicular-block-pulling--invariant-extraction-orientation)
 * [ADR-026: Context-Aware Intelligent Gesture Selection Matrix](#adr-026-context-aware-intelligent-gesture-selection-matrix)
 * [ADR-027: 3D Crane Block Manipulation & Top-of-Tower Placement Assist](#adr-027-3d-crane-block-manipulation--top-of-tower-placement-assist)
+* [ADR-028: Strict Hand & Finger Physical Non-Penetration & Continuous Collision Solver](#adr-028-strict-hand--finger-physical-non-penetration--continuous-collision-solver)
+* [ADR-029: Multi-Phase Crane Grab Sequence & VerticalGrab-1 Calibration](#adr-029-multi-phase-crane-grab-sequence--verticalgrab-1-calibration)
+* [ADR-030: Resolution of Table Hierarchy Alignment and Default MANOABIERTA Preset Loading](#adr-030-resolution-of-table-hierarchy-alignment-and-default-manoabierta-preset-loading)
+* [ADR-031: Hand Tracking Standard Selection (Khronos OpenXR + UE5 MannequinsXR vs. Valve SteamVR Skeletal Input) & Third-Party Asset Licensing](#adr-031-hand-tracking-standard-selection-khronos-openxr--ue5-mannequinsxr-vs-valve-steamvr-skeletal-input--third-party-asset-licensing)
+* [ADR-032: Dual Hand Skeleton Architecture & Configuration-Driven Hand System Switching](#adr-032-dual-hand-skeleton-architecture--configuration-driven-hand-system-switching)
 
 ---
 
@@ -437,6 +442,41 @@ This document records all architectural, technical design, and mechanics decisio
   * In `LoadPresetPose(OpenHand)` and `AYenkaDesktopPawn`, query and apply the `"MANOABIERTA"` gesture and its calibrated offsets (`OpenHandLocationOffset`, `OpenHandRotationOffset`) by default.
 * **Consequences:**
   * *(Positive)* Impeccable collision depenetration against table/board geometry with zero clipping and immediate display of the user's custom open hand gesture.
+
+### ADR-031: Hand Tracking Standard Selection (Khronos OpenXR + UE5 MannequinsXR vs. Valve SteamVR Skeletal Input) & Third-Party Asset Licensing
+* **Date:** 2026-09-05
+* **Status:** Accepted
+* **Context:** Architectural audit of third-party assets and skeletal input standards was required to confirm whether the project depends on Valve SteamVR Hand Skeleton Assets (`vr_glove` / SteamVR Skeletal Input), verify licensing compliance across commercial/cross-play distribution, and evaluate if Valve's reference assets should be integrated or if the current OpenXR architecture is superior.
+* **Decision:**
+  * Standardize strictly on **Khronos OpenXR** and the `OpenXRHandTracking` plugin in Unreal Engine 5, paired with Epic Games' **MannequinsXR** skeletal assets (`SKM_MannyXR`, `SKM_QuinnXR`) and an in-house 15-phalanx procedural kinematics solver in `AYenkaHandAvatar`.
+  * **Confirm non-usage of Valve SteamVR Hand Skeleton Assets:** The project does *not* utilize `vr_glove` or SteamVR Skeletal Input data structures.
+  * **Licensing & Feasibility Analysis of Valve SteamVR Hand Assets:**
+    * *Cost:* 100% Free / Royalty-Free.
+    * *License:* OpenVR SDK and plugin source code are licensed under the **BSD 3-Clause License** (permissive open source, allowing commercial exploitation, modification, and redistribution provided Valve's copyright notice and disclaimers are preserved).
+    * *Runtime:* Bound by the Steam Subscriber Agreement (SSA).
+  * **Architectural Rationale for Rejecting SteamVR Hand Skeleton in favor of OpenXR:**
+    * OpenXR is the vendor-agnostic industry standard supported natively by Unreal Engine 5.4+ without requiring deprecated vendor-specific plugins.
+    * Ensures unified cross-platform support across standalone headsets (Meta Quest via Link/AirLink), SteamVR headsets (Valve Index, HTC Vive), Pico, and future OpenXR runtimes without code branching.
+    * Retains clean alignment with Epic's skeletal naming standards (`wrist_r`, `thumb_01_r`, etc.) across all hand rendering and collision depenetration routines.
+* **Consequences:**
+  * *(Positive)* Full cross-vendor VR headset compatibility under a single OpenXR runtime without depending on legacy SteamVR plugin pipelines.
+  * *(Positive)* Clear legal footing under Unreal Engine EULA / MIT License with zero third-party royalty liabilities.
+  * *(Positive)* Cohesive bone hierarchy for physics depenetration (`GetHandAnatomicalSamplePoints`) and procedural gesture libraries (`FCustomGestureLibrary`).
+
+### ADR-032: Dual Hand Skeleton Architecture & Configuration-Driven Hand System Switching
+* **Date:** 2026-09-05
+* **Status:** Accepted
+* **Context:** Developers and players may wish to utilize official Valve SteamVR Hand Skeleton Assets (`vr_glove`) as an alternative to the default OpenXR / Epic MannequinsXR hands, without recompiling or hardcoding bone references.
+* **Decision:**
+  * Implement a decoupled, dual-skeleton subsystem in `AYenkaHandAvatar`:
+    1. Dedicated configuration file `Saved/Config/YenkaHandConfig.json` declaring `handSkeletonSystem` (`"OpenXR_Mannequin"` or `"Valve_SteamVR"`), mesh asset paths, and automatic fallback flags.
+    2. File-watcher heartbeat monitoring `YenkaHandConfig.json` for live hot-reloading without engine restart.
+    3. Universal bone compatibility layer in `GetPhalanxDeltaRotationForBone` and `GetHandAnatomicalSamplePoints` mapping Epic bone tokens (`thumb_01_r`, `index_01_r`) to Valve bone tokens (`finger_thumb_0_r`, `finger_index_0_r`) dynamically.
+    4. Fault-tolerant fallback (`bAutoFallbackIfMeshMissing = true`) displaying pedagogical on-screen guidance if Valve FBX meshes have not yet been imported into `Content/Characters/SteamVR/`.
+* **Consequences:**
+  * *(Positive)* Players and developers can alternate between OpenXR and Valve SteamVR hand representations via a single JSON edit.
+  * *(Positive)* Full preservation of physics non-penetration, pinch grabbing, and crane modes across both skeletal hierarchies.
+  * *(Positive)* Safe error handling preventing missing mesh crashes.
 
 ---
 

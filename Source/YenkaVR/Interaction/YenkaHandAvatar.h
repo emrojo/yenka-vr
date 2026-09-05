@@ -26,7 +26,36 @@ enum class EHandModelType : uint8
 	HumanSkin UMETA(DisplayName = "Piel Humana Natural"),
 	HologramNeon UMETA(DisplayName = "Holograma Neón Translúcido"),
 	StealthBlack UMETA(DisplayName = "Negro Mate / Stealth"),
-	GoldenChrome UMETA(DisplayName = "Oro Metálico / Chrome")
+	GoldenChrome UMETA(DisplayName = "Oro Metálico / Chrome"),
+	ValveSteamVR UMETA(DisplayName = "Valve SteamVR Glove (vr_glove)")
+};
+
+UENUM(BlueprintType)
+enum class EHandSkeletonSystem : uint8
+{
+	OpenXR_Mannequin   UMETA(DisplayName = "OpenXR / Epic MannequinsXR (Predeterminado)"),
+	Valve_SteamVR      UMETA(DisplayName = "Valve SteamVR Hand Skeleton (vr_glove)")
+};
+
+USTRUCT(BlueprintType)
+struct FYenkaHandConfig
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Config")
+	FString HandSkeletonSystem = TEXT("OpenXR_Mannequin");
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Config")
+	FString SteamVRMeshPath_Right = TEXT("/Game/Characters/SteamVR/vr_glove_right.vr_glove_right");
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Config")
+	FString SteamVRMeshPath_Left = TEXT("/Game/Characters/SteamVR/vr_glove_left.vr_glove_left");
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Config")
+	bool bAutoFallbackIfMeshMissing = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Config")
+	FString PreferredHandModel = TEXT("MannyXR");
 };
 
 USTRUCT(BlueprintType)
@@ -203,6 +232,13 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Yenka|Phalanx")
 	FString GetDetectedGestureDescription() const;
+
+	/**
+	 * Half-Life: Alyx continuous capacitive finger tracking & natural gesture blending.
+	 * Values range from 0.0 (fully open/extended) to 1.0 (fully clenched/curled).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Yenka|ExpressiveHands")
+	void UpdateContinuousFingerCurls(float ThumbCurl, float IndexCurl, float MiddleCurl, float RingCurl, float PinkyCurl, bool bThumbTouched = true, bool bIndexTouched = true);
 
 	UFUNCTION(BlueprintCallable, Category = "Yenka|Phalanx")
 	FCustomHandGesture ExportCurrentGesture(const FString& Name, const FVector& LocOffset, const FRotator& RotOffset, const FString& InLinkedTransformName = TEXT("")) const;
@@ -383,4 +419,38 @@ public:
 
 	UPROPERTY(ReplicatedUsing = OnRep_IsLeftHand, BlueprintReadOnly, Category = "Yenka|Hand")
 	bool bIsLeftHand;
+
+	// --- Hand Skeleton System (OpenXR Mannequins vs Valve SteamVR) ---
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|HandConfig")
+	EHandSkeletonSystem CurrentSkeletonSystem = EHandSkeletonSystem::OpenXR_Mannequin;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|HandConfig")
+	FYenkaHandConfig HandConfig;
+
+	UFUNCTION(BlueprintCallable, Category = "Yenka|HandConfig")
+	void SetHandSkeletonSystem(EHandSkeletonSystem NewSystem);
+
+	UFUNCTION(BlueprintPure, Category = "Yenka|HandConfig")
+	EHandSkeletonSystem GetHandSkeletonSystem() const { return CurrentSkeletonSystem; }
+
+	UFUNCTION(BlueprintCallable, Category = "Yenka|HandConfig")
+	bool LoadHandConfigFromDisk();
+
+	UFUNCTION(BlueprintCallable, Category = "Yenka|HandConfig")
+	bool SaveHandConfigToDisk();
+
+	UFUNCTION(BlueprintCallable, Category = "Yenka|HandConfig")
+	void ReloadHandConfig();
+
+	void CheckHandConfigFileWatcher(float DeltaTime);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Meshes")
+	USkeletalMesh* SteamVRRightSkeletalMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|Meshes")
+	USkeletalMesh* SteamVRLeftSkeletalMesh;
+
+private:
+	float HandConfigFileCheckTimer = 0.0f;
+	FDateTime LastHandConfigFileTimestamp;
 };

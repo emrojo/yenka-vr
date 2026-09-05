@@ -115,6 +115,27 @@ cd yenka-vr
 
 ---
 
+## 📦 Tech Stack, Plugins & Third-Party Libraries
+
+| Technology / Library | Provider | Purpose / Scope | License |
+| :--- | :--- | :--- | :--- |
+| **Unreal Engine 5.5** | Epic Games | Game Engine, Lumen GI, Nanite Geometry, C++ Core | [Unreal Engine EULA](https://www.unrealengine.com/en-US/eula/unreal) |
+| **Chaos Physics** | Epic Games | Rigid-body simulation, CCD, friction solver, 54-block stability | Unreal Engine EULA |
+| **Enhanced Input** | Epic Games | Mappings for Desktop (mouse/keyboard) & VR 6DOF controllers | Unreal Engine EULA |
+| **OpenXR & Hand Tracking** | Khronos Group / Epic | Multi-headset standard runtime & 26-joint skeletal hand tracking | Khronos OpenXR / UE EULA |
+| **OnlineSubsystemSteam** | Epic Games / Valve | Steam Lobbies, Steam avatar resolution & alphanumeric room codes | Steamworks SDK / UE EULA |
+| **SteamSockets** | Valve Corporation | Low-latency P2P relay networking with encrypted UDP packets | [BSD 3-Clause](https://opensource.org/licenses/BSD-3-Clause) |
+| **Steam Audio** | Valve Corporation | 3D spatial audio, HRTF binaural rendering & room acoustics | [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) |
+| **VoiceChat** | Epic Games | Low-level VoIP voice capture and network packetization | Unreal Engine EULA |
+| **Json / JsonUtilities** | Epic Games | Serialization and live hot-reloading of custom 15-phalanx gestures | Unreal Engine EULA |
+| **MannequinsXR** | Epic Games | MannyXR & QuinnXR skeletal hand meshes, materials & textures | [Unreal Content License](https://www.unrealengine.com/en-US/eula/content) |
+| **Procedural PBR Shaders** | In-House | Real-time wood grains (oak, mahogany, etc.) & Human Skin SSS | [MIT License](LICENSE) |
+
+> [!NOTE]
+> **Hand Asset Architecture:** YenkaVR **does not** utilize Valve SteamVR Hand Skeleton Assets (`vr_glove`). Instead, it standardizes on **Khronos OpenXR Hand Tracking**, Epic Games **MannequinsXR** skeletal hands, and an in-house 15-phalanx procedural kinematics avatar. For a comparative analysis and Valve's BSD 3-Clause licensing details, refer to [ARCHITECTURE.md](docs/ARCHITECTURE.md#61-hand-skeleton-architecture--valve-steamvr-assets-comparison).
+
+---
+
 ## 📄 License
 
 This project is licensed under the **MIT License**. See the `LICENSE` file for details.

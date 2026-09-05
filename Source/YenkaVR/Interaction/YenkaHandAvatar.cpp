@@ -221,13 +221,117 @@ AYenkaHandAvatar::AYenkaHandAvatar()
 	bIsLeftHand = false;
 	CurrentPoseMode = EHandPoseMode::OpenHand;
 	LastAppliedPoseMode = static_cast<EHandPoseMode>(255);
+	SteamVRRightSkeletalMesh = nullptr;
+	SteamVRLeftSkeletalMesh = nullptr;
 }
 
 void AYenkaHandAvatar::BeginPlay()
 {
 	Super::BeginPlay();
+	LoadHandConfigFromDisk();
 	ApplyHandModelAndMaterials();
 	ApplyHumanSkinMaterials();
+	LoadPresetPose(CurrentPoseMode);
+}
+
+void AYenkaHandAvatar::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	CheckHandConfigFileWatcher(DeltaTime);
+}
+
+bool AYenkaHandAvatar::LoadHandConfigFromDisk()
+{
+	const FString FilePath = FPaths::ProjectSavedDir() / TEXT("Config/YenkaHandConfig.json");
+	if (FPaths::FileExists(FilePath))
+	{
+		FString JsonString;
+		if (FFileHelper::LoadFileToString(JsonString, *FilePath))
+		{
+			FYenkaHandConfig LoadedConfig;
+			if (FJsonObjectConverter::JsonObjectStringToUStruct(JsonString, &LoadedConfig, 0, 0))
+			{
+				HandConfig = LoadedConfig;
+				if (HandConfig.HandSkeletonSystem.Equals(TEXT("Valve_SteamVR"), ESearchCase::IgnoreCase) ||
+				    HandConfig.HandSkeletonSystem.Equals(TEXT("SteamVR"), ESearchCase::IgnoreCase))
+				{
+					CurrentSkeletonSystem = EHandSkeletonSystem::Valve_SteamVR;
+				}
+				else
+				{
+					CurrentSkeletonSystem = EHandSkeletonSystem::OpenXR_Mannequin;
+				}
+				LastHandConfigFileTimestamp = IFileManager::Get().GetTimeStamp(*FilePath);
+				return true;
+			}
+		}
+	}
+	else
+	{
+		SaveHandConfigToDisk();
+	}
+	return false;
+}
+
+bool AYenkaHandAvatar::SaveHandConfigToDisk()
+{
+	FString JsonString;
+	if (FJsonObjectConverter::UStructToJsonObjectString(HandConfig, JsonString, 0, 0))
+	{
+		const FString FilePath = FPaths::ProjectSavedDir() / TEXT("Config/YenkaHandConfig.json");
+		IFileManager::Get().MakeDirectory(*FPaths::GetPath(FilePath), true);
+		if (FFileHelper::SaveStringToFile(JsonString, *FilePath))
+		{
+			LastHandConfigFileTimestamp = IFileManager::Get().GetTimeStamp(*FilePath);
+			return true;
+		}
+	}
+	return false;
+}
+
+void AYenkaHandAvatar::ReloadHandConfig()
+{
+	if (LoadHandConfigFromDisk())
+	{
+		ApplyHandModelAndMaterials();
+		LoadPresetPose(CurrentPoseMode);
+		if (GEngine)
+		{
+			const FString SysName = (CurrentSkeletonSystem == EHandSkeletonSystem::Valve_SteamVR) ? TEXT("Valve SteamVR (vr_glove)") : TEXT("OpenXR / MannequinsXR");
+			GEngine->AddOnScreenDebugMessage(8371, 5.0f, FColor::Cyan,
+				FString::Printf(TEXT("⚡ YenkaHandConfig.json recargado: Sistema = %s"), *SysName));
+		}
+		UE_LOG(LogTemp, Log, TEXT("[YenkaHandAvatar] Hand system switched to: %s"),
+			(CurrentSkeletonSystem == EHandSkeletonSystem::Valve_SteamVR) ? TEXT("Valve_SteamVR") : TEXT("OpenXR_Mannequin"));
+	}
+}
+
+void AYenkaHandAvatar::CheckHandConfigFileWatcher(float DeltaTime)
+{
+	HandConfigFileCheckTimer += DeltaTime;
+	if (HandConfigFileCheckTimer < 0.8f)
+	{
+		return;
+	}
+	HandConfigFileCheckTimer = 0.0f;
+
+	const FString FilePath = FPaths::ProjectSavedDir() / TEXT("Config/YenkaHandConfig.json");
+	if (FPaths::FileExists(FilePath))
+	{
+		const FDateTime CurrentTimestamp = IFileManager::Get().GetTimeStamp(*FilePath);
+		if (LastHandConfigFileTimestamp != FDateTime::MinValue() && CurrentTimestamp > LastHandConfigFileTimestamp)
+		{
+			ReloadHandConfig();
+		}
+	}
+}
+
+void AYenkaHandAvatar::SetHandSkeletonSystem(EHandSkeletonSystem NewSystem)
+{
+	CurrentSkeletonSystem = NewSystem;
+	HandConfig.HandSkeletonSystem = (NewSystem == EHandSkeletonSystem::Valve_SteamVR) ? TEXT("Valve_SteamVR") : TEXT("OpenXR_Mannequin");
+	SaveHandConfigToDisk();
+	ApplyHandModelAndMaterials();
 	LoadPresetPose(CurrentPoseMode);
 }
 
@@ -256,7 +360,7 @@ void AYenkaHandAvatar::SetHandModelType(EHandModelType NewType)
 void AYenkaHandAvatar::CycleHandModel()
 {
 	uint8 NextIndex = static_cast<uint8>(CurrentHandModelType) + 1;
-	if (NextIndex > static_cast<uint8>(EHandModelType::GoldenChrome))
+	if (NextIndex > static_cast<uint8>(EHandModelType::ValveSteamVR))
 	{
 		NextIndex = 0;
 	}
@@ -283,6 +387,8 @@ FString AYenkaHandAvatar::GetHandModelDisplayName() const
 		return TEXT("🕶️ Negro Mate / Stealth");
 	case EHandModelType::GoldenChrome:
 		return TEXT("👑 Oro Metálico / Chrome");
+	case EHandModelType::ValveSteamVR:
+		return TEXT("🧤 Valve SteamVR Glove (vr_glove)");
 	default:
 		return TEXT("Desconocido");
 	}
@@ -293,6 +399,43 @@ void AYenkaHandAvatar::ApplyHandModelAndMaterials()
 	if (!PoseableHandMesh)
 	{
 		return;
+	}
+
+	// 0. SteamVR Skeleton System & Valve Glove Mesh resolution
+	if (CurrentSkeletonSystem == EHandSkeletonSystem::Valve_SteamVR || CurrentHandModelType == EHandModelType::ValveSteamVR)
+	{
+		USkeletalMesh* SteamVRMesh = bIsLeftHand ? SteamVRLeftSkeletalMesh : SteamVRRightSkeletalMesh;
+		if (!SteamVRMesh)
+		{
+			const FString MeshPath = bIsLeftHand ? HandConfig.SteamVRMeshPath_Left : HandConfig.SteamVRMeshPath_Right;
+			SteamVRMesh = Cast<USkeletalMesh>(StaticLoadObject(USkeletalMesh::StaticClass(), nullptr, *MeshPath));
+			if (SteamVRMesh)
+			{
+				if (bIsLeftHand) SteamVRLeftSkeletalMesh = SteamVRMesh;
+				else SteamVRRightSkeletalMesh = SteamVRMesh;
+			}
+		}
+
+		if (SteamVRMesh)
+		{
+			if (PoseableHandMesh->GetSkinnedAsset() != SteamVRMesh)
+			{
+				PoseableHandMesh->SetSkinnedAssetAndUpdate(SteamVRMesh);
+				PoseableHandMesh->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
+			}
+			return;
+		}
+		else if (HandConfig.bAutoFallbackIfMeshMissing)
+		{
+			if (GEngine)
+			{
+				GEngine->AddOnScreenDebugMessage(8373, 6.0f, FColor::Orange,
+					FString::Printf(TEXT("⚠️ Modo Valve SteamVR activo: Malla no encontrada en '%s'. Aplicando fallback automático a MannyXR."),
+						*(bIsLeftHand ? HandConfig.SteamVRMeshPath_Left : HandConfig.SteamVRMeshPath_Right)));
+			}
+			UE_LOG(LogTemp, Warning, TEXT("[YenkaHandAvatar] SteamVR Mesh not found at '%s'. Falling back to default model."),
+				*(bIsLeftHand ? HandConfig.SteamVRMeshPath_Left : HandConfig.SteamVRMeshPath_Right));
+		}
 	}
 
 	// 1. Choose Skeletal Mesh (Quinn for Quinn models, Manny for others)
@@ -463,15 +606,34 @@ void AYenkaHandAvatar::GetHandAnatomicalSamplePoints(const FTransform& InTransfo
 	if (PoseableHandMesh && PoseableHandMesh->GetSkinnedAsset())
 	{
 		const FTransform MeshCompTransform = PoseableHandMesh->GetRelativeTransform() * InTransform;
+		const FString Side = bIsLeftHand ? TEXT("_l") : TEXT("_r");
 
-		const TArray<FName> CriticalBones = {
-			TEXT("wrist_r"), TEXT("hand_r"),
-			TEXT("thumb_01_r"), TEXT("thumb_02_r"), TEXT("thumb_03_r"),
-			TEXT("index_01_r"), TEXT("index_02_r"), TEXT("index_03_r"),
-			TEXT("middle_01_r"), TEXT("middle_02_r"), TEXT("middle_03_r"),
-			TEXT("ring_01_r"), TEXT("ring_02_r"), TEXT("ring_03_r"),
-			TEXT("pinky_01_r"), TEXT("pinky_02_r"), TEXT("pinky_03_r")
-		};
+		TArray<FName> CriticalBones;
+		const bool bIsSteamVRRig = (CurrentSkeletonSystem == EHandSkeletonSystem::Valve_SteamVR) ||
+		                           (PoseableHandMesh->GetBoneIndex(FName(*(TEXT("finger_thumb_0") + Side))) != INDEX_NONE);
+
+		if (bIsSteamVRRig)
+		{
+			CriticalBones = {
+				FName(*(TEXT("wrist") + Side)), FName(TEXT("Root")),
+				FName(*(TEXT("finger_thumb_0") + Side)), FName(*(TEXT("finger_thumb_1") + Side)), FName(*(TEXT("finger_thumb_2") + Side)),
+				FName(*(TEXT("finger_index_0") + Side)), FName(*(TEXT("finger_index_1") + Side)), FName(*(TEXT("finger_index_2") + Side)),
+				FName(*(TEXT("finger_middle_0") + Side)), FName(*(TEXT("finger_middle_1") + Side)), FName(*(TEXT("finger_middle_2") + Side)),
+				FName(*(TEXT("finger_ring_0") + Side)), FName(*(TEXT("finger_ring_1") + Side)), FName(*(TEXT("finger_ring_2") + Side)),
+				FName(*(TEXT("finger_pinky_0") + Side)), FName(*(TEXT("finger_pinky_1") + Side)), FName(*(TEXT("finger_pinky_2") + Side))
+			};
+		}
+		else
+		{
+			CriticalBones = {
+				FName(*(TEXT("wrist") + Side)), FName(*(TEXT("hand") + Side)),
+				FName(*(TEXT("thumb_01") + Side)), FName(*(TEXT("thumb_02") + Side)), FName(*(TEXT("thumb_03") + Side)),
+				FName(*(TEXT("index_01") + Side)), FName(*(TEXT("index_02") + Side)), FName(*(TEXT("index_03") + Side)),
+				FName(*(TEXT("middle_01") + Side)), FName(*(TEXT("middle_02") + Side)), FName(*(TEXT("middle_03") + Side)),
+				FName(*(TEXT("ring_01") + Side)), FName(*(TEXT("ring_02") + Side)), FName(*(TEXT("ring_03") + Side)),
+				FName(*(TEXT("pinky_01") + Side)), FName(*(TEXT("pinky_02") + Side)), FName(*(TEXT("pinky_03") + Side))
+			};
+		}
 
 		for (const FName& BName : CriticalBones)
 		{
@@ -1122,6 +1284,124 @@ void AYenkaHandAvatar::ApplyCustomGesture(const FCustomHandGesture& InGesture)
 	ApplyPhalanxTransforms();
 }
 
+void AYenkaHandAvatar::UpdateContinuousFingerCurls(float ThumbCurl, float IndexCurl, float MiddleCurl, float RingCurl, float PinkyCurl, bool bThumbTouched, bool bIndexTouched)
+{
+	bIsCustomGestureActive = true;
+
+	const float TC = FMath::Clamp(ThumbCurl, 0.0f, 1.0f);
+	const float IC = FMath::Clamp(IndexCurl, 0.0f, 1.0f);
+	const float MC = FMath::Clamp(MiddleCurl, 0.0f, 1.0f);
+	const float RC = FMath::Clamp(RingCurl, 0.0f, 1.0f);
+	const float PC = FMath::Clamp(PinkyCurl, 0.0f, 1.0f);
+
+	// 1. Thumb Synthesis (With Thumbs-Up capability when lifted from stick/buttons)
+	if (!bThumbTouched && TC < 0.15f)
+	{
+		// Natural Thumbs-Up posture: thumb extended and pointing upward
+		ThumbPhalanges.Proximal = FPhalanxData{ -10.0f, -40.0f, -15.0f };
+		ThumbPhalanges.Intermediate = FPhalanxData{ 15.0f, -15.0f, 0.0f };
+		ThumbPhalanges.Distal = FPhalanxData{ 25.0f, 15.0f, 0.0f };
+	}
+	else
+	{
+		ThumbPhalanges.Proximal = FPhalanxData{
+			FMath::Lerp(-20.0f, -45.0f, TC),
+			FMath::Lerp(-30.0f, -80.0f, TC),
+			FMath::Lerp(-30.0f, 15.0f, TC)
+		};
+		ThumbPhalanges.Intermediate = FPhalanxData{
+			FMath::Lerp(30.0f, 10.0f, TC),
+			FMath::Lerp(-60.0f, -15.0f, TC),
+			0.0f
+		};
+		ThumbPhalanges.Distal = FPhalanxData{
+			FMath::Lerp(0.0f, -20.0f, TC),
+			FMath::Lerp(20.0f, 10.0f, TC),
+			0.0f
+		};
+	}
+
+	// 2. Index Finger Synthesis (With Pointing capability when lifted from trigger)
+	if (!bIndexTouched && IC < 0.15f)
+	{
+		// Natural Pointing posture
+		IndexPhalanges.Proximal = FPhalanxData{ 0.0f, 0.0f, 0.0f };
+		IndexPhalanges.Intermediate = FPhalanxData{ 0.0f, 0.0f, 5.0f };
+		IndexPhalanges.Distal = FPhalanxData{ 0.0f, 0.0f, 5.0f };
+	}
+	else
+	{
+		IndexPhalanges.Proximal = FPhalanxData{
+			0.0f,
+			0.0f,
+			FMath::Lerp(10.0f, -40.0f, IC)
+		};
+		IndexPhalanges.Intermediate = FPhalanxData{
+			0.0f,
+			0.0f,
+			FMath::Lerp(15.0f, -65.0f, IC)
+		};
+		IndexPhalanges.Distal = FPhalanxData{
+			0.0f,
+			0.0f,
+			FMath::Lerp(10.0f, -50.0f, IC)
+		};
+	}
+
+	// 3. Middle Finger Synthesis
+	MiddlePhalanges.Proximal = FPhalanxData{
+		0.0f,
+		0.0f,
+		FMath::Lerp(15.0f, -45.0f, MC)
+	};
+	MiddlePhalanges.Intermediate = FPhalanxData{
+		0.0f,
+		0.0f,
+		FMath::Lerp(20.0f, -80.0f, MC)
+	};
+	MiddlePhalanges.Distal = FPhalanxData{
+		0.0f,
+		0.0f,
+		FMath::Lerp(5.0f, -65.0f, MC)
+	};
+
+	// 4. Ring Finger Synthesis
+	RingPhalanges.Proximal = FPhalanxData{
+		0.0f,
+		0.0f,
+		FMath::Lerp(15.0f, -40.0f, RC)
+	};
+	RingPhalanges.Intermediate = FPhalanxData{
+		0.0f,
+		0.0f,
+		FMath::Lerp(20.0f, -75.0f, RC)
+	};
+	RingPhalanges.Distal = FPhalanxData{
+		0.0f,
+		0.0f,
+		FMath::Lerp(15.0f, -60.0f, RC)
+	};
+
+	// 5. Pinky Finger Synthesis
+	PinkyPhalanges.Proximal = FPhalanxData{
+		0.0f,
+		0.0f,
+		FMath::Lerp(15.0f, -40.0f, PC)
+	};
+	PinkyPhalanges.Intermediate = FPhalanxData{
+		0.0f,
+		0.0f,
+		FMath::Lerp(20.0f, -80.0f, PC)
+	};
+	PinkyPhalanges.Distal = FPhalanxData{
+		0.0f,
+		0.0f,
+		FMath::Lerp(0.0f, -70.0f, PC)
+	};
+
+	ApplyPhalanxTransforms();
+}
+
 FRotator AYenkaHandAvatar::GetPhalanxDeltaRotationForBone(FName BoneName) const
 {
 	FString Name = BoneName.ToString().ToLower();
@@ -1134,15 +1414,15 @@ FRotator AYenkaHandAvatar::GetPhalanxDeltaRotationForBone(FName BoneName) const
 	// Thumb
 	if (Name.Contains(TEXT("thumb")))
 	{
-		if (Name.Contains(TEXT("01")) || Name.Contains(TEXT("metacarpal")) || (Name.Contains(TEXT("proximal")) && !Name.Contains(TEXT("intermediate")) && !Name.Contains(TEXT("distal"))))
+		if (Name.Contains(TEXT("01")) || Name.Contains(TEXT("thumb_0")) || Name.Contains(TEXT("metacarpal")) || (Name.Contains(TEXT("proximal")) && !Name.Contains(TEXT("intermediate")) && !Name.Contains(TEXT("distal"))))
 		{
 			return ToRot(ThumbPhalanges.Proximal);
 		}
-		if (Name.Contains(TEXT("02")) || Name.Contains(TEXT("intermediate")) || Name.Contains(TEXT("proximal")))
+		if (Name.Contains(TEXT("02")) || Name.Contains(TEXT("thumb_1")) || Name.Contains(TEXT("intermediate")) || (Name.Contains(TEXT("proximal")) && Name.Contains(TEXT("thumb"))))
 		{
 			return ToRot(ThumbPhalanges.Intermediate);
 		}
-		if (Name.Contains(TEXT("03")) || Name.Contains(TEXT("distal")))
+		if (Name.Contains(TEXT("03")) || Name.Contains(TEXT("thumb_2")) || Name.Contains(TEXT("distal")))
 		{
 			return ToRot(ThumbPhalanges.Distal);
 		}
@@ -1151,15 +1431,15 @@ FRotator AYenkaHandAvatar::GetPhalanxDeltaRotationForBone(FName BoneName) const
 	// Index
 	if (Name.Contains(TEXT("index")))
 	{
-		if (Name.Contains(TEXT("01")) || Name.Contains(TEXT("metacarpal")) || (Name.Contains(TEXT("proximal")) && !Name.Contains(TEXT("intermediate")) && !Name.Contains(TEXT("distal"))))
+		if (Name.Contains(TEXT("01")) || Name.Contains(TEXT("index_0")) || Name.Contains(TEXT("metacarpal")) || (Name.Contains(TEXT("proximal")) && !Name.Contains(TEXT("intermediate")) && !Name.Contains(TEXT("distal"))))
 		{
 			return ToRot(IndexPhalanges.Proximal);
 		}
-		if (Name.Contains(TEXT("02")) || Name.Contains(TEXT("intermediate")))
+		if (Name.Contains(TEXT("02")) || Name.Contains(TEXT("index_1")) || Name.Contains(TEXT("intermediate")))
 		{
 			return ToRot(IndexPhalanges.Intermediate);
 		}
-		if (Name.Contains(TEXT("03")) || Name.Contains(TEXT("distal")))
+		if (Name.Contains(TEXT("03")) || Name.Contains(TEXT("index_2")) || Name.Contains(TEXT("distal")))
 		{
 			return ToRot(IndexPhalanges.Distal);
 		}
@@ -1168,15 +1448,15 @@ FRotator AYenkaHandAvatar::GetPhalanxDeltaRotationForBone(FName BoneName) const
 	// Middle
 	if (Name.Contains(TEXT("middle")))
 	{
-		if (Name.Contains(TEXT("01")) || Name.Contains(TEXT("metacarpal")) || (Name.Contains(TEXT("proximal")) && !Name.Contains(TEXT("intermediate")) && !Name.Contains(TEXT("distal"))))
+		if (Name.Contains(TEXT("01")) || Name.Contains(TEXT("middle_0")) || Name.Contains(TEXT("metacarpal")) || (Name.Contains(TEXT("proximal")) && !Name.Contains(TEXT("intermediate")) && !Name.Contains(TEXT("distal"))))
 		{
 			return ToRot(MiddlePhalanges.Proximal);
 		}
-		if (Name.Contains(TEXT("02")) || Name.Contains(TEXT("intermediate")))
+		if (Name.Contains(TEXT("02")) || Name.Contains(TEXT("middle_1")) || Name.Contains(TEXT("intermediate")))
 		{
 			return ToRot(MiddlePhalanges.Intermediate);
 		}
-		if (Name.Contains(TEXT("03")) || Name.Contains(TEXT("distal")))
+		if (Name.Contains(TEXT("03")) || Name.Contains(TEXT("middle_2")) || Name.Contains(TEXT("distal")))
 		{
 			return ToRot(MiddlePhalanges.Distal);
 		}
@@ -1185,15 +1465,15 @@ FRotator AYenkaHandAvatar::GetPhalanxDeltaRotationForBone(FName BoneName) const
 	// Ring
 	if (Name.Contains(TEXT("ring")))
 	{
-		if (Name.Contains(TEXT("01")) || Name.Contains(TEXT("metacarpal")) || (Name.Contains(TEXT("proximal")) && !Name.Contains(TEXT("intermediate")) && !Name.Contains(TEXT("distal"))))
+		if (Name.Contains(TEXT("01")) || Name.Contains(TEXT("ring_0")) || Name.Contains(TEXT("metacarpal")) || (Name.Contains(TEXT("proximal")) && !Name.Contains(TEXT("intermediate")) && !Name.Contains(TEXT("distal"))))
 		{
 			return ToRot(RingPhalanges.Proximal);
 		}
-		if (Name.Contains(TEXT("02")) || Name.Contains(TEXT("intermediate")))
+		if (Name.Contains(TEXT("02")) || Name.Contains(TEXT("ring_1")) || Name.Contains(TEXT("intermediate")))
 		{
 			return ToRot(RingPhalanges.Intermediate);
 		}
-		if (Name.Contains(TEXT("03")) || Name.Contains(TEXT("distal")))
+		if (Name.Contains(TEXT("03")) || Name.Contains(TEXT("ring_2")) || Name.Contains(TEXT("distal")))
 		{
 			return ToRot(RingPhalanges.Distal);
 		}
@@ -1202,15 +1482,15 @@ FRotator AYenkaHandAvatar::GetPhalanxDeltaRotationForBone(FName BoneName) const
 	// Pinky
 	if (Name.Contains(TEXT("pinky")) || Name.Contains(TEXT("little")))
 	{
-		if (Name.Contains(TEXT("01")) || Name.Contains(TEXT("metacarpal")) || (Name.Contains(TEXT("proximal")) && !Name.Contains(TEXT("intermediate")) && !Name.Contains(TEXT("distal"))))
+		if (Name.Contains(TEXT("01")) || Name.Contains(TEXT("pinky_0")) || Name.Contains(TEXT("little_0")) || Name.Contains(TEXT("metacarpal")) || (Name.Contains(TEXT("proximal")) && !Name.Contains(TEXT("intermediate")) && !Name.Contains(TEXT("distal"))))
 		{
 			return ToRot(PinkyPhalanges.Proximal);
 		}
-		if (Name.Contains(TEXT("02")) || Name.Contains(TEXT("intermediate")))
+		if (Name.Contains(TEXT("02")) || Name.Contains(TEXT("pinky_1")) || Name.Contains(TEXT("little_1")) || Name.Contains(TEXT("intermediate")))
 		{
 			return ToRot(PinkyPhalanges.Intermediate);
 		}
-		if (Name.Contains(TEXT("03")) || Name.Contains(TEXT("distal")))
+		if (Name.Contains(TEXT("03")) || Name.Contains(TEXT("pinky_2")) || Name.Contains(TEXT("little_2")) || Name.Contains(TEXT("distal")))
 		{
 			return ToRot(PinkyPhalanges.Distal);
 		}
@@ -1249,7 +1529,7 @@ void AYenkaHandAvatar::ApplyPhalanxTransforms()
 		for (int32 b = 0; b < NumBones; ++b)
 		{
 			FString BName = RefSkeleton.GetBoneName(b).ToString().ToLower();
-			if (BName.Contains(TEXT("index")) && BName.Contains(TEXT("01")))
+			if (BName.Contains(TEXT("index")) && (BName.Contains(TEXT("01")) || BName.Contains(TEXT("index_0"))))
 			{
 				IndexBoneIdx = b;
 			}
@@ -1258,11 +1538,11 @@ void AYenkaHandAvatar::ApplyPhalanxTransforms()
 				IndexBoneIdx = b;
 			}
 
-			if (BName.Contains(TEXT("pinky")) && BName.Contains(TEXT("01")))
+			if (BName.Contains(TEXT("pinky")) && (BName.Contains(TEXT("01")) || BName.Contains(TEXT("pinky_0"))))
 			{
 				PinkyBoneIdx = b;
 			}
-			else if (PinkyBoneIdx == INDEX_NONE && (BName.Contains(TEXT("pinky")) || BName.Contains(TEXT("little"))) && BName.Contains(TEXT("proximal")))
+			else if (PinkyBoneIdx == INDEX_NONE && (BName.Contains(TEXT("pinky")) || BName.Contains(TEXT("little"))) && (BName.Contains(TEXT("proximal")) || BName.Contains(TEXT("0"))))
 			{
 				PinkyBoneIdx = b;
 			}

@@ -127,6 +127,40 @@ protected:
 	FVector InitialLeftWorldPos;
 	FVector InitialRightWorldPos;
 
+	// --- Half-Life: Alyx Expressive Hands & Continuous Capacitive Tracking ---
+	void UpdateExpressiveHandTracking(float DeltaTime);
+
+	// --- Half-Life: Alyx "Russell Gravity Gloves" Flick & Catch System ---
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|GravityGloves")
+	bool bEnableGravityGloves = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Yenka|GravityGloves")
+	float GravityGloveLockDistance = 350.0f;
+
+	UPROPERTY()
+	AActor* LeftTargetedBlock;
+
+	UPROPERTY()
+	AActor* RightTargetedBlock;
+
+	UPROPERTY()
+	AActor* LeftFlyingBlock;
+
+	UPROPERTY()
+	AActor* RightFlyingBlock;
+
+	float LeftFlyingFlightTime;
+	float RightFlyingFlightTime;
+
+	FVector LeftPrevControllerLoc;
+	FVector RightPrevControllerLoc;
+	FRotator LeftPrevControllerRot;
+	FRotator RightPrevControllerRot;
+
+	void UpdateGravityGloves(float DeltaTime);
+	void InitiateGravityPull(bool bIsLeftHand, AActor* TargetBlock);
+	void UpdateFlyingBlocks(float DeltaTime);
+
 	void UpdateSpectatorGestures();
 	void ClearSplineMeshes();
 	void BuildSplineMeshes();

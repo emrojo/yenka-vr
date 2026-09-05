@@ -254,6 +254,9 @@ void AYenkaVRPawn::Tick(float DeltaTime)
 		}
 
 		UpdateSpectatorGestures();
+		UpdateExpressiveHandTracking(DeltaTime);
+		UpdateGravityGloves(DeltaTime);
+		UpdateFlyingBlocks(DeltaTime);
 	}
 }
 
@@ -561,4 +564,181 @@ void AYenkaVRPawn::UpdateSpectatorGestures()
 		}
 		InitialPinchDistance = CurrentDistance;
 	}
+}
+
+#include "YenkaVR/Physics/YenkaBlock.h"
+#include "PhysicsEngine/PhysicsHandleComponent.h"
+
+void AYenkaVRPawn::UpdateExpressiveHandTracking(float DeltaTime)
+{
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!PC) return;
+
+	// --- 1. LEFT HAND CAPACITIVE & SKELETAL SYNTHESIS ---
+	if (LeftHandAvatar)
+	{
+		const float LeftTrigger = FMath::Max(PC->GetInputAnalogKeyState(EKeys::OculusTouch_Left_Trigger_Axis), PC->GetInputAnalogKeyState(EKeys::Gamepad_LeftTriggerAxis));
+		const float LeftGrip = FMath::Max(PC->GetInputAnalogKeyState(EKeys::OculusTouch_Left_Grip_Axis), PC->GetInputAnalogKeyState(EKeys::Gamepad_LeftTriggerAxis));
+
+		const bool bLeftIndexTouch = PC->IsInputKeyDown(EKeys::OculusTouch_Left_Trigger_Touch) || (LeftTrigger > 0.05f);
+		const bool bLeftThumbTouch = PC->IsInputKeyDown(EKeys::OculusTouch_Left_Thumbstick_Touch) 
+			|| PC->IsInputKeyDown(EKeys::OculusTouch_Left_X_Touch) 
+			|| PC->IsInputKeyDown(EKeys::OculusTouch_Left_Y_Touch);
+
+		// Continuous curl mapping for all 5 fingers
+		const float ThumbCurl = bLeftThumbTouch ? (0.2f + 0.8f * LeftTrigger) : 0.0f;
+		const float IndexCurl = LeftTrigger;
+		const float MiddleCurl = LeftGrip;
+		const float RingCurl = FMath::Clamp(LeftGrip * 1.05f, 0.0f, 1.0f);
+		const float PinkyCurl = FMath::Clamp(LeftGrip * 1.10f, 0.0f, 1.0f);
+
+		LeftHandAvatar->UpdateContinuousFingerCurls(ThumbCurl, IndexCurl, MiddleCurl, RingCurl, PinkyCurl, bLeftThumbTouch, bLeftIndexTouch);
+	}
+
+	// --- 2. RIGHT HAND CAPACITIVE & SKELETAL SYNTHESIS ---
+	if (RightHandAvatar)
+	{
+		const float RightTrigger = FMath::Max(PC->GetInputAnalogKeyState(EKeys::OculusTouch_Right_Trigger_Axis), PC->GetInputAnalogKeyState(EKeys::Gamepad_RightTriggerAxis));
+		const float RightGrip = FMath::Max(PC->GetInputAnalogKeyState(EKeys::OculusTouch_Right_Grip_Axis), PC->GetInputAnalogKeyState(EKeys::Gamepad_RightTriggerAxis));
+
+		const bool bRightIndexTouch = PC->IsInputKeyDown(EKeys::OculusTouch_Right_Trigger_Touch) || (RightTrigger > 0.05f);
+		const bool bRightThumbTouch = PC->IsInputKeyDown(EKeys::OculusTouch_Right_Thumbstick_Touch) 
+			|| PC->IsInputKeyDown(EKeys::OculusTouch_Right_A_Touch) 
+			|| PC->IsInputKeyDown(EKeys::OculusTouch_Right_B_Touch);
+
+		// Continuous curl mapping for all 5 fingers
+		const float ThumbCurl = bRightThumbTouch ? (0.2f + 0.8f * RightTrigger) : 0.0f;
+		const float IndexCurl = RightTrigger;
+		const float MiddleCurl = RightGrip;
+		const float RingCurl = FMath::Clamp(RightGrip * 1.05f, 0.0f, 1.0f);
+		const float PinkyCurl = FMath::Clamp(RightGrip * 1.10f, 0.0f, 1.0f);
+
+		RightHandAvatar->UpdateContinuousFingerCurls(ThumbCurl, IndexCurl, MiddleCurl, RingCurl, PinkyCurl, bRightThumbTouch, bRightIndexTouch);
+	}
+}
+
+void AYenkaVRPawn::UpdateGravityGloves(float DeltaTime)
+{
+	if (!bEnableGravityGloves) return;
+
+	auto ProcessGravityHand = [this, DeltaTime](bool bIsLeft, UMotionControllerComponent* MotionController, AYenkaHandAvatar* Avatar, AActor*& TargetedBlock, FVector& PrevLoc, FRotator& PrevRot)
+	{
+		if (!MotionController || !Avatar) return;
+
+		const FVector HandLoc = MotionController->GetComponentLocation();
+		const FRotator HandRot = MotionController->GetComponentRotation();
+		const FVector ForwardDir = MotionController->GetForwardVector();
+
+		// 1. Raycast cone towards Yenka blocks
+		FHitResult Hit;
+		FVector TraceStart = HandLoc;
+		FVector TraceEnd = TraceStart + (ForwardDir * GravityGloveLockDistance);
+
+		FCollisionQueryParams Params;
+		Params.AddIgnoredActor(this);
+		if (LeftHandAvatar) Params.AddIgnoredActor(LeftHandAvatar);
+		if (RightHandAvatar) Params.AddIgnoredActor(RightHandAvatar);
+
+		AActor* FoundBlock = nullptr;
+		if (GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Visibility, Params))
+		{
+			if (Hit.GetActor() && Hit.GetActor()->IsA(AYenkaBlock::StaticClass()))
+			{
+				FoundBlock = Hit.GetActor();
+			}
+		}
+
+		TargetedBlock = FoundBlock;
+
+		// 2. Wrist Flick Detector (Angular velocity / rapid tilt back towards player)
+		if (TargetedBlock && DeltaTime > 0.0001f)
+		{
+			FVector Velocity = (HandLoc - PrevLoc) / DeltaTime;
+			FRotator DeltaRot = (HandRot - PrevRot);
+			float PitchSpeed = DeltaRot.Pitch / DeltaTime;
+
+			// Quick upward/backward flick of the wrist while aiming at block
+			if (PitchSpeed > 140.0f || FVector::DotProduct(Velocity, -ForwardDir) > 80.0f)
+			{
+				InitiateGravityPull(bIsLeft, TargetedBlock);
+			}
+		}
+
+		PrevLoc = HandLoc;
+		PrevRot = HandRot;
+	};
+
+	ProcessGravityHand(true, LeftController, LeftHandAvatar, LeftTargetedBlock, LeftPrevControllerLoc, LeftPrevControllerRot);
+	ProcessGravityHand(false, RightController, RightHandAvatar, RightTargetedBlock, RightPrevControllerLoc, RightPrevControllerRot);
+}
+
+void AYenkaVRPawn::InitiateGravityPull(bool bIsLeftHand, AActor* TargetBlock)
+{
+	if (!TargetBlock) return;
+
+	if (bIsLeftHand)
+	{
+		LeftFlyingBlock = TargetBlock;
+		LeftFlyingFlightTime = 0.0f;
+	}
+	else
+	{
+		RightFlyingBlock = TargetBlock;
+		RightFlyingFlightTime = 0.0f;
+	}
+
+	AYenkaBlock* Block = Cast<AYenkaBlock>(TargetBlock);
+	if (Block && Block->BlockMesh)
+	{
+		Block->BlockMesh->WakeRigidBody();
+		Block->BlockMesh->SetEnableGravity(false);
+	}
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(9980, 2.0f, FColor(0, 255, 255),
+			FString::Printf(TEXT("🧲 GRAVITY GLOVE: ¡Bloque atraído hacia la mano %s!"), bIsLeftHand ? TEXT("Izquierda") : TEXT("Derecha")));
+	}
+}
+
+void AYenkaVRPawn::UpdateFlyingBlocks(float DeltaTime)
+{
+	auto ProcessFlying = [this, DeltaTime](bool bIsLeft, AActor*& FlyingBlock, float& FlightTime, UMotionControllerComponent* MotionController, AYenkaHandAvatar* Avatar)
+	{
+		if (!FlyingBlock || !MotionController) return;
+
+		FlightTime += DeltaTime;
+		const float FlightDuration = 0.35f;
+		const float Alpha = FMath::Clamp(FlightTime / FlightDuration, 0.0f, 1.0f);
+		const float SmoothAlpha = FMath::SmoothStep(0.0f, 1.0f, Alpha);
+
+		const FVector TargetPalmLoc = MotionController->GetComponentLocation() + (MotionController->GetForwardVector() * 10.0f);
+		FVector CurrentLoc = FlyingBlock->GetActorLocation();
+		FVector NewLoc = FMath::Lerp(CurrentLoc, TargetPalmLoc, SmoothAlpha);
+
+		FlyingBlock->SetActorLocation(NewLoc, true);
+
+		// Arrived at palm: Check if player catches it
+		if (Alpha >= 1.0f)
+		{
+			AYenkaBlock* Block = Cast<AYenkaBlock>(FlyingBlock);
+			if (Block && Block->BlockMesh)
+			{
+				Block->BlockMesh->SetEnableGravity(true);
+				if (Avatar && Avatar->PhysicsHandle)
+				{
+					Avatar->PhysicsHandle->GrabComponentAtLocationWithRotation(
+						Block->BlockMesh,
+						NAME_None,
+						TargetPalmLoc,
+						MotionController->GetComponentRotation()
+					);
+				}
+			}
+			FlyingBlock = nullptr;
+		}
+	};
+
+	ProcessFlying(true, LeftFlyingBlock, LeftFlyingFlightTime, LeftController, LeftHandAvatar);
+	ProcessFlying(false, RightFlyingBlock, RightFlyingFlightTime, RightController, RightHandAvatar);
 }
